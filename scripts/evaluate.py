@@ -18,6 +18,7 @@ import json
 import os
 import math
 import time
+import random
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, asdict
 
@@ -73,7 +74,12 @@ class Evaluator:
 
     @classmethod
     def from_checkpoint(cls, checkpoint_path: str, device: str = "auto"):
-        """Load model from checkpoint file."""
+        """Load model from checkpoint file.
+
+        Note: RoPE buffers are rebuilt based on the config's sequence_len,
+        not the saved buffer shape. This handles cases where training used
+        a different sequence_len than checkpoint save time.
+        """
         checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         ckpt_config = checkpoint["config"]
         config = NanoCoreConfig(
@@ -85,7 +91,22 @@ class Evaluator:
             head_dim=ckpt_config.get("head_dim", 128),
         )
         model = NanoCore(config)
-        model.load_state_dict(checkpoint["model_state"])
+
+        # Load only non-buffer parameters (RoPE buffers will be rebuilt)
+        state_dict = checkpoint["model_state"]
+        # Filter out RoPE buffers that might have mismatched sizes
+        filtered_state = {}
+        for k, v in state_dict.items():
+            if "attn.cos" in k or "attn.sin" in k:
+                continue  # Skip RoPE buffers, rebuild from config
+            filtered_state[k] = v
+
+        model.load_state_dict(filtered_state, strict=False)
+
+        # Rebuild RoPE buffers with correct sequence length
+        for block in model.transformer:
+            block.attn._build_rotary_embeddings(config.sequence_len * 10, block.attn.head_dim)
+
         return cls(model, config, device)
 
     def evaluate(self, datasets: dict = None) -> List[EvalResult]:
@@ -293,10 +314,6 @@ class Evaluator:
         with open(output_path, "w") as f:
             json.dump(report, f, indent=2)
         print(f"\nReport saved to: {output_path}")
-
-
-# For testing
-import random
 
 
 if __name__ == "__main__":
