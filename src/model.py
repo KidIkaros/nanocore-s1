@@ -31,6 +31,7 @@ class NanoCoreConfig:
     n_layer: int = 12
     n_head: int = 6
     n_embd: int = 768
+    head_dim: int = 128
     window_pattern: str = "SSSL"
 
     @classmethod
@@ -49,6 +50,7 @@ class NanoCoreConfig:
             vocab_size=vocab_size,
             n_layer=depth,
             n_head=num_heads,
+            head_dim=head_dim,
             n_embd=model_dim,
         )
 
