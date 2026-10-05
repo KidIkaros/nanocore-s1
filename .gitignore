@@ -1,0 +1,13 @@
+# NanoCore-S1 - Tiny System One Decision Model
+# Built from scratch following Karpathy's nanochat principles + Jev's typed decision API
+
+__pycache__
+*.pyc
+*.pt
+*.ckpt
+models/
+data/*.bin
+data/*.pt
+.venv/
+*.egg-info/
+.pytest_cache/
