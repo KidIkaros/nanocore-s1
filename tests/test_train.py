@@ -59,8 +59,13 @@ class TestTrainingDryRun:
         assert "step" in checkpoint
         assert "config" in checkpoint
 
-        # Verify config matches
-        config = NanoCoreConfig.from_depth(12)
+        # Build config matching the checkpoint (may use tokenizer-driven vocab size)
+        ckpt_config = checkpoint["config"]
+        config = NanoCoreConfig.from_depth(
+            depth=ckpt_config.get("depth", 12),
+            vocab_size=ckpt_config.get("vocab_size", 32768),
+            sequence_len=ckpt_config.get("sequence_len", 512),
+        )
         model = NanoCore(config)
 
         # Should be able to load state dict without missing keys

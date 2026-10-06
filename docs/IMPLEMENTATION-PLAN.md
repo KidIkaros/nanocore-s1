@@ -75,19 +75,24 @@ def build_config(depth, aspect_ratio=64, head_dim=128, max_seq_len=2048, vocab_s
     )
 ```
 
-### Task 6: Write failing test for tokenizer
+### Task 6: ✅ Write failing test for tokenizer [COMPLETE]
 ```python
-# tests/test_tokenizer.py
-def test_bpe_compression_ratio():
-    tokenizer = ByteLevelBPETokenizer()
-    tokenizer.train(["Hello world"] * 1000)
-    tokens = tokenizer.encode("Hello world")
-    assert 4.0 <= tokenizer.compression_ratio() <= 6.0  # 4.8x target
+# tests/test_tokenizer.py — 13 tests: training, encode/decode roundtrip,
+# compression ratio, special tokens, save/load
 ```
 
-### Task 7: Implement BPE tokenizer (fork from micrograd/nanochat)
-- Rust-like speed in pure Python (use `tiktoken` for speed)
-- Compression target: ~4.8x (chars to tokens)
+### Task 7: ✅ Implement BPE tokenizer (COMPLETE)
+- `src/tokenizer.py`: Byte-level BPE tokenizer (tiktoken-style) with:
+  - 256 byte base + 20 decision special tokens (`[STATE]`, `[CHOICE]`, `[ANSWER]`, `[Noul]`, `[SCORE]`, etc.)
+  - `NanoCoreTokenizer` wrapper with 32768 vocab target
+  - Encode/decode with special token preservation
+  - JSON save/load serialization
+  - Compression ratio calculation
+- `scripts/train_tokenizer.py`: Training script with dry-run + FineWeb-EDU streaming
+- `scripts/train_base.py`: Integrated tokenizer (was byte-level, now uses trained BPE)
+- `notebooks/train_colab.ipynb`: Added tokenizer as Step 0
+- **All 52 tests pass (39 existing + 13 new)**
+- **Quality gate passes: Architecture, Memory, Dry Run, Evaluation all green**
 
 ### Task 8: Write failing test for training loop
 ```python

@@ -1,7 +1,41 @@
 # NanoCore-S1 — Architecture Design
 
-> **Status:** Approved for Implementation  
+> **Status:** Archived — Pivot to Laya + EmbeddingGemma 2 stack
 > **Goal:** A ~140M-parameter model that makes fast, type-safe, calibrated decisions (Jev-style System One) while remaining trainable at $0 cost.
+> **New repository:** [jev-stack](https://github.com/KidIkaros/jev-stack) — See [ADR-001](https://github.com/KidIkaros/jev-stack/blob/main/docs/adr/0001-laya-stack.md)
+
+## Architecture Pivot
+
+On 2026-10-05, research revealed that **Laya** (Convai Innovations, Apache 2.0) provides a production-ready Jev-compatible System 1 decision model, and **EmbeddingGemma 2** (Google DeepMind, Apache 2.0) provides a 270M-parameter text encoder running in 0.5GB RAM.
+
+This supersedes the NanoCore-S1 from-scratch training path in favor of composing pre-trained, specialized models:
+
+```
+[Input State]
+      ↓
+EmbeddingGemma 2 (270M, 0.5GB RAM)  →  768-dim unified embeddings
+      ↓
+Laya Decision Head (421M)            →  {Choice, Noul, Score} calibrated probabilities
+      ↓
+OpenJev Flywheel                    →  self-refine decisions, System 2→1 loop
+```
+
+**Key advantages over the original plan:**
+| Metric | NanoCore-S1 | Laya + EmbeddingGemma 2 |
+|---|---|---|
+| Training time | 15-20 min cloud GPU | Download + run locally |
+| Memory (inference) | ~544MB (CPU) | 0.5GB encoder + 1GB Laya = 1.5GB |
+| Latency | 15-35ms (estimated) | 33ms (measured) |
+| Calibration | RLCD training needed | Pre-calibrated (ECE < 0.1) |
+| Option invariance | Untrained | 100% order-invariant |
+
+### Migration Path
+- NanoCore-S1 tokenizer (byte-level BPE) → SentencePiece (Laya's native tokenizer)
+- `[STATE][CHOICE][ANSWER]` format → Laya's `{type: "choice", criteria: [...], instructions: "..."}` API
+- Adapter layer: [jev-stack/src/adapter.py](https://github.com/KidIkaros/jev-stack/blob/main/src/adapter.py)
+- CLI: [jev-stack/src/cli.py](https://github.com/KidIkaros/jev-stack/blob/main/src/cli.py)
+
+The NanoCore-S1 codebase remains valid and functional (52 tests passing, quality gate green). It is archived in favor of the superior pre-trained stack.
 
 ## Core Philosophy
 

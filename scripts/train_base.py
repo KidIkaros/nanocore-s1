@@ -31,6 +31,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.model import NanoCore, NanoCoreConfig
+from src.tokenizer import NanoCoreTokenizer, BASE_VOCAB_SIZE
 
 # ---------------------------------------------------------------------------
 # Config
@@ -127,11 +128,16 @@ def estimate_loss(model: NanoCore, data: torch.Tensor, eval_iters: int,
     return losses
 
 
-def load_finetune_edu_data(vocab_size: int, sequence_len: int, limit_gb: float = 8.0):
+def load_finetune_edu_data(tokenizer, sequence_len: int, limit_gb: float = 8.0):
     """
-    Load FineWeb-EDU dataset (free from HuggingFace).
+    Load FineWeb-EDU dataset (free from HuggingFace) and tokenize with trained BPE.
     
     FineWeb-EDU is ~300B tokens, we limit to ~8GB (~800M tokens) for pretraining.
+    
+    Args:
+        tokenizer: Trained NanoCoreTokenizer instance
+        sequence_len: Model sequence length (for reshaping)
+        limit_gb: Maximum data to load in GB
     
     Returns: torch.Tensor of token ids
     """
@@ -145,17 +151,14 @@ def load_finetune_edu_data(vocab_size: int, sequence_len: int, limit_gb: float =
     print("Loading FineWeb-EDU dataset (this may take a while on first run)...")
     ds = load_dataset("HuggingFaceFW/fineweb-edu", split="train", streaming=True)
     
-    # Use a simple byte-level tokenizer approximation for demo
-    # In production, use a proper BPE tokenizer trained on this data
-    # For now, we use a hash-based approach for the dry run
     all_tokens = []
     total_bytes = 0
     max_bytes = int(limit_gb * 1024**3)
     
     for item in ds:
         text = item["text"]
-        # Simple tokenization: byte-level encoding
-        tokens = list(text.encode('utf-8'))
+        # Use trained BPE tokenizer
+        tokens = tokenizer.encode(text)
         all_tokens.extend(tokens)
         total_bytes += len(text.encode('utf-8'))
         
@@ -222,15 +225,39 @@ def main():
     amp_ctx = nullcontext() if device == "cpu" else torch.amp.autocast(device_type=device, dtype=ptdtype)
     
     print(f"Using device: {device}, dtype: {dtype}")
-    print(f"Mixed precision: {amp_ctx is not nullcontext}")
+    print(f"Mixed precision: {amp_ctx is nullcontext}")
     
-    # Build model
+    # Apply dry-run overrides BEFORE building config
+    if args.dry_run:
+        default_seq_len = 512
+        default_batch = 2
+        default_grad_accum = 2
+    else:
+        default_seq_len = DEFAULT_CONFIG["sequence_len"]
+        default_batch = min(DEFAULT_CONFIG["batch_size"], 32)
+        default_grad_accum = DEFAULT_CONFIG["grad_accum"]
+    
+    # Build model config first
     config = NanoCoreConfig.from_depth(
         depth=args.depth,
         aspect_ratio=DEFAULT_CONFIG["aspect_ratio"],
         vocab_size=DEFAULT_CONFIG["vocab_size"],
-        sequence_len=DEFAULT_CONFIG["sequence_len"],
+        sequence_len=default_seq_len,
     )
+    
+    # Load tokenizer
+    tokenizer_path = os.path.join(args.save_dir, "tokenizer.json")
+    if os.path.exists(tokenizer_path):
+        print(f"Loading tokenizer from {tokenizer_path}...")
+        tokenizer = NanoCoreTokenizer(config.vocab_size)
+        tokenizer.load(tokenizer_path)
+        # Update model vocab_size to match tokenizer
+        config.vocab_size = tokenizer.vocab_size()
+        print(f"  Tokenizer vocab size: {tokenizer.vocab_size()}")
+    else:
+        print(f"No tokenizer found at {tokenizer_path}, using byte-level (256 vocab)")
+        tokenizer = None
+        config.vocab_size = BASE_VOCAB_SIZE
     model = NanoCore(config).to(device)
     print(f"Model parameters: {model.num_parameters():,}")
     
@@ -272,18 +299,16 @@ def main():
         save_interval = 20
         log_interval = 10
         os.makedirs("models", exist_ok=True)
-        # Use small batch and sequence length for dry run to fit in 8GB VRAM
-        args.batch_size = 2
-        args.grad_accum = 2
+        # Batch size already set via default_batch for dry run
+        args.batch_size = default_batch
+        args.grad_accum = default_grad_accum
         save_path = os.path.join("models", "nanocore-s1-dryrun.pt")
-        # Override sequence_len for dry run to reduce memory
-        config.sequence_len = 512
     else:
         # Use conservative batch size for training
         if args.batch_size > 32:
             args.batch_size = 32
         train_data, val_data = load_finetune_edu_data(
-            config.vocab_size, config.sequence_len, limit_gb=8.0
+            tokenizer, config.sequence_len, limit_gb=8.0
         )
         max_steps = args.max_steps
         eval_interval = DEFAULT_CONFIG["eval_interval"]
