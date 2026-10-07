@@ -1,0 +1,306 @@
+{
+  "configs": {
+    "state=Classification|opt=Document": {
+      "state_prompt": "Classification",
+      "option_prompt": "Document",
+      "zero_shot_cosine": {
+        "accuracy": 0.9288961038961039
+      },
+      "knn5_tau": {
+        "accuracy": 0.9363636363636364,
+        "log_score": 0.42864490854703585,
+        "brier": 0.11305323577694475,
+        "ece_report_only": 0.037998333410209806,
+        "coverage_at_90pct": 1.0,
+        "coverage_at_95pct": 0.9678571428571429,
+        "temperature": 0.5012
+      },
+      "fingerprint": {
+        "accuracy": 0.931060606060606,
+        "log_score": 0.37654990531920407,
+        "brier": 0.1155313115183882,
+        "ece_report_only": 0.046107855158579784,
+        "coverage_at_90pct": 1.0,
+        "coverage_at_95pct": 0.9659090909090909
+      },
+      "fingerprint_std": {
+        "accuracy": 0.0001530534158412768,
+        "log_score": 0.0002607504057358333,
+        "brier": 8.538334899954101e-05,
+        "ece_report_only": 0.00042853311031470863
+      },
+      "abstention_curve_fingerprint": [
+        {
+          "coverage": 0.1,
+          "selective_accuracy": 1.0
+        },
+        {
+          "coverage": 0.2,
+          "selective_accuracy": 1.0
+        },
+        {
+          "coverage": 0.3,
+          "selective_accuracy": 0.9978354978354979
+        },
+        {
+          "coverage": 0.4,
+          "selective_accuracy": 0.9951298701298701
+        },
+        {
+          "coverage": 0.5,
+          "selective_accuracy": 0.9961038961038962
+        },
+        {
+          "coverage": 0.6,
+          "selective_accuracy": 0.9929653679653679
+        },
+        {
+          "coverage": 0.7,
+          "selective_accuracy": 0.9893320964749536
+        },
+        {
+          "coverage": 0.8,
+          "selective_accuracy": 0.984577922077922
+        },
+        {
+          "coverage": 0.9,
+          "selective_accuracy": 0.9693362193362194
+        },
+        {
+          "coverage": 1.0,
+          "selective_accuracy": 0.9311688311688312
+        }
+      ]
+    },
+    "state=SearchQuery|opt=Document": {
+      "state_prompt": "SearchQuery",
+      "option_prompt": "Document",
+      "zero_shot_cosine": {
+        "accuracy": 0.9337662337662338
+      },
+      "knn5_tau": {
+        "accuracy": 0.9457792207792208,
+        "log_score": 0.3457784379383931,
+        "brier": 0.09421230653468955,
+        "ece_report_only": 0.028219032175667666,
+        "coverage_at_90pct": 1.0,
+        "coverage_at_95pct": 0.9938311688311688,
+        "temperature": 0.5012
+      },
+      "fingerprint": {
+        "accuracy": 0.9360389610389609,
+        "log_score": 0.29920292767316137,
+        "brier": 0.10307014199720511,
+        "ece_report_only": 0.02633442812603275,
+        "coverage_at_90pct": 1.0,
+        "coverage_at_95pct": 0.9756493506493507
+      },
+      "fingerprint_std": {
+        "accuracy": 0.0013254814625450215,
+        "log_score": 0.008663467197237366,
+        "brier": 0.001110920143451841,
+        "ece_report_only": 0.0021291433766499777
+      },
+      "abstention_curve_fingerprint": [
+        {
+          "coverage": 0.1,
+          "selective_accuracy": 1.0
+        },
+        {
+          "coverage": 0.2,
+          "selective_accuracy": 0.9983766233766234
+        },
+        {
+          "coverage": 0.3,
+          "selective_accuracy": 0.9956709956709957
+        },
+        {
+          "coverage": 0.4,
+          "selective_accuracy": 0.9951298701298701
+        },
+        {
+          "coverage": 0.5,
+          "selective_accuracy": 0.9941558441558441
+        },
+        {
+          "coverage": 0.6,
+          "selective_accuracy": 0.9913419913419913
+        },
+        {
+          "coverage": 0.7,
+          "selective_accuracy": 0.988404452690167
+        },
+        {
+          "coverage": 0.8,
+          "selective_accuracy": 0.984577922077922
+        },
+        {
+          "coverage": 0.9,
+          "selective_accuracy": 0.9707792207792207
+        },
+        {
+          "coverage": 1.0,
+          "selective_accuracy": 0.9376623376623376
+        }
+      ]
+    },
+    "state=Classification|opt=Classification": {
+      "state_prompt": "Classification",
+      "option_prompt": "Classification",
+      "zero_shot_cosine": {
+        "accuracy": 0.9204545454545454
+      },
+      "knn5_tau": {
+        "accuracy": 0.9363636363636364,
+        "log_score": 0.42864490854703585,
+        "brier": 0.11305323577694475,
+        "ece_report_only": 0.037998333410209806,
+        "coverage_at_90pct": 1.0,
+        "coverage_at_95pct": 0.9678571428571429,
+        "temperature": 0.5012
+      },
+      "fingerprint": {
+        "accuracy": 0.931060606060606,
+        "log_score": 0.37654990531920407,
+        "brier": 0.1155313115183882,
+        "ece_report_only": 0.046107855158579784,
+        "coverage_at_90pct": 1.0,
+        "coverage_at_95pct": 0.9659090909090909
+      },
+      "fingerprint_std": {
+        "accuracy": 0.0001530534158412768,
+        "log_score": 0.0002607504057358333,
+        "brier": 8.538334899954101e-05,
+        "ece_report_only": 0.00042853311031470863
+      },
+      "abstention_curve_fingerprint": [
+        {
+          "coverage": 0.1,
+          "selective_accuracy": 1.0
+        },
+        {
+          "coverage": 0.2,
+          "selective_accuracy": 1.0
+        },
+        {
+          "coverage": 0.3,
+          "selective_accuracy": 0.9978354978354979
+        },
+        {
+          "coverage": 0.4,
+          "selective_accuracy": 0.9951298701298701
+        },
+        {
+          "coverage": 0.5,
+          "selective_accuracy": 0.9961038961038962
+        },
+        {
+          "coverage": 0.6,
+          "selective_accuracy": 0.9929653679653679
+        },
+        {
+          "coverage": 0.7,
+          "selective_accuracy": 0.9893320964749536
+        },
+        {
+          "coverage": 0.8,
+          "selective_accuracy": 0.984577922077922
+        },
+        {
+          "coverage": 0.9,
+          "selective_accuracy": 0.9693362193362194
+        },
+        {
+          "coverage": 1.0,
+          "selective_accuracy": 0.9311688311688312
+        }
+      ]
+    },
+    "state=None|opt=None": {
+      "state_prompt": null,
+      "option_prompt": null,
+      "zero_shot_cosine": {
+        "accuracy": 0.9288961038961039
+      },
+      "knn5_tau": {
+        "accuracy": 0.9425324675324676,
+        "log_score": 0.357620449144425,
+        "brier": 0.09642559079915054,
+        "ece_report_only": 0.02914460501140064,
+        "coverage_at_90pct": 1.0,
+        "coverage_at_95pct": 0.9902597402597403,
+        "temperature": 0.5012
+      },
+      "fingerprint": {
+        "accuracy": 0.935064935064935,
+        "log_score": 0.31638519243082075,
+        "brier": 0.10353916502575798,
+        "ece_report_only": 0.03269588797961994,
+        "coverage_at_90pct": 1.0,
+        "coverage_at_95pct": 0.9772727272727273
+      },
+      "fingerprint_std": {
+        "accuracy": 0.0,
+        "log_score": 0.00029586372255313397,
+        "brier": 0.00012247012949685428,
+        "ece_report_only": 0.00036013233316747694
+      },
+      "abstention_curve_fingerprint": [
+        {
+          "coverage": 0.1,
+          "selective_accuracy": 0.9967532467532467
+        },
+        {
+          "coverage": 0.2,
+          "selective_accuracy": 0.9935064935064936
+        },
+        {
+          "coverage": 0.3,
+          "selective_accuracy": 0.9935064935064936
+        },
+        {
+          "coverage": 0.4,
+          "selective_accuracy": 0.9918831168831169
+        },
+        {
+          "coverage": 0.5,
+          "selective_accuracy": 0.9928571428571429
+        },
+        {
+          "coverage": 0.6,
+          "selective_accuracy": 0.9902597402597403
+        },
+        {
+          "coverage": 0.7,
+          "selective_accuracy": 0.9893320964749536
+        },
+        {
+          "coverage": 0.8,
+          "selective_accuracy": 0.984577922077922
+        },
+        {
+          "coverage": 0.9,
+          "selective_accuracy": 0.9729437229437229
+        },
+        {
+          "coverage": 1.0,
+          "selective_accuracy": 0.935064935064935
+        }
+      ]
+    }
+  },
+  "protocol": {
+    "encoder": "google/embeddinggemma-2 text+vision, bf16",
+    "head": "fingerprint, 120 epochs, seeds 0/1/2, hidden unused",
+    "split": "90% fit / 10% temperature-fit, test untouched"
+  },
+  "verdict": {
+    "best_config_by_head_accuracy": "state=SearchQuery|opt=Document",
+    "incumbent": "state=Classification|opt=Document",
+    "incumbent_head_accuracy": 0.931060606060606,
+    "best_head_accuracy": 0.936,
+    "prompt_choice_matters": false,
+    "head_beats_knn5_in_best_config": false,
+    "note": "differences below ~0.005 are within seed noise (measured ~0.0002) plus split noise (unmeasured)"
+  }
+}

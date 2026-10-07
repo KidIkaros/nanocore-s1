@@ -1,0 +1,59 @@
+{
+  "kernel": "mauricew/nanocore-s1-baseline",
+  "kernel_version": 13,
+  "status": "complete",
+  "encoder": {
+    "model": "google/embeddinggemma-2",
+    "modalities": ["text", "vision"],
+    "parameters": 439000000,
+    "dtype": "bfloat16",
+    "embedding_dim": 768,
+    "peak_cuda_allocated_gib_for_vision_microbatches": 2.28
+  },
+  "contract_tests": {"passed": 55, "failed": 0},
+  "d1_banking77": {
+    "train_examples": 10003,
+    "test_examples": 3080,
+    "classes": 77,
+    "majority_accuracy": 0.012987012987012988,
+    "zero_shot_cosine_accuracy": 0.9292207792207792,
+    "knn_1_accuracy": 0.936038961038961,
+    "knn_5_accuracy": 0.936038961038961,
+    "fingerprint_head": {
+      "accuracy": 0.9314935064935065,
+      "log_score": 0.40163048419531727,
+      "brier": 0.11696987005437205,
+      "ece_report_only": 0.04868036056687305,
+      "temperature": 1.585,
+      "abstention_threshold": 10.637457847595215
+    },
+    "interaction_head": {
+      "accuracy": 0.9272727272727272,
+      "log_score": 0.38731908108809965,
+      "brier": 0.12268470765248528,
+      "ece_report_only": 0.04629747749536074,
+      "temperature": 2.818,
+      "abstention_threshold": 56.379486083984375
+    }
+  },
+  "d2_cifar10_smoke": {
+    "fit_examples": 100,
+    "test_examples": 100,
+    "zero_shot_cosine_accuracy": 0.91,
+    "fingerprint_10shot_accuracy": 0.93,
+    "interpretation": "smoke test only; too small to support a robust performance claim"
+  },
+  "controls": {
+    "shuffled_label_accuracy": 0.011688311688311689,
+    "zeroed_head_accuracy": 0.012987012987012988,
+    "chance_accuracy": 0.012987012987012988,
+    "evaluation_sane": true
+  },
+  "composer_smoke": {
+    "output_shape": [1, 768],
+    "parameters": 28315392,
+    "trained": false,
+    "capability_claim": false
+  },
+  "duration_seconds": 1230.8
+}

@@ -1,0 +1,18 @@
+{
+  "id": "mauricew/nanocore-audit",
+  "title": "nanocore audit",
+  "code_file": "nanocore_audit.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [
+    "mauricew/nanocore-s1-worktree"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

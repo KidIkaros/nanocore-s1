@@ -1,0 +1,10 @@
+{
+  "status": "complete",
+  "stage": "done",
+  "kernel": "mauricew/nanocore-s1-baseline",
+  "kernel_version": 13,
+  "started_epoch": 1791397714.1720924,
+  "ended_epoch": 1791398944.9781773,
+  "duration_seconds": 1230.8,
+  "artifact_source": "Kaggle kernel output; results.json independently copied from the output artifact"
+}

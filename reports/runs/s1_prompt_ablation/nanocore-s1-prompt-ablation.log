@@ -1,0 +1,61 @@
+[{"stream_name":"stderr","time":6.527931933,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":6.527974246,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":7.517965395,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":7.517994339,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":7.517999628,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":7.518009579,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":8.15661493,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.156659477,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.15666503,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.156670009,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":11.607100073,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":11.6071335,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":11.607137917,"data":"\n"}
+,{"stream_name":"stdout","time":16.554212374,"data":"torch 2.11.0+cu128 | cuda: True\n"}
+,{"stream_name":"stdout","time":16.554285974,"data":"work dir: /kaggle/working\n"}
+,{"stream_name":"stdout","time":16.580637461,"data":"source extracted to /kaggle/working/nanocore-s1\n"}
+,{"stream_name":"stdout","time":19.91829787,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 20.6 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":20.090194255,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 70.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":20.120297307,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 37.7 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":20.120441912,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 20.6 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":20.120451714,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 70.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":20.322711222,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 37.7 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":63.874299003,"data":"transformers 5.19.0 | sentence-transformers 6.1.0\n"}
+,{"stream_name":"stdout","time":71.985620287,"data":"..........................................                               [100%]\n"}
+,{"stream_name":"stdout","time":71.985648243,"data":"42 passed in 3.39s\n"}
+,{"stream_name":"stdout","time":71.985655381,"data":"\n"}
+,{"stream_name":"stderr","time":72.094500787,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":72.094523799,"data":"\n"}
+,{"stream_name":"stderr","time":72.094528735,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":89.528073682,"data":"params: 439 M | dtype: torch.bfloat16 | dim: 768\n"}
+,{"stream_name":"stdout","time":89.876354554,"data":"train 10003 | test 3080 | classes 77\n"}
+,{"stream_name":"stdout","time":89.904930533,"data":"helpers ready\n"}
+,{"stream_name":"stdout","time":89.938513615,"data":"=== state=Classification|opt=Document ===\n"}
+,{"stream_name":"stdout","time":526.084130137,"data":"    zero-shot 0.9289 | knn5 0.9364 | head 0.9311 log 0.377 brier 0.116 cov@90 1.000\n"}
+,{"stream_name":"stdout","time":526.084969702,"data":"=== state=SearchQuery|opt=Document ===\n"}
+,{"stream_name":"stdout","time":963.808146657,"data":"    zero-shot 0.9338 | knn5 0.9458 | head 0.9360 log 0.299 brier 0.103 cov@90 1.000\n"}
+,{"stream_name":"stdout","time":963.809084238,"data":"=== state=Classification|opt=Classification ===\n"}
+,{"stream_name":"stdout","time":1391.374530006,"data":"    zero-shot 0.9205 | knn5 0.9364 | head 0.9311 log 0.377 brier 0.116 cov@90 1.000\n"}
+,{"stream_name":"stdout","time":1391.375448099,"data":"=== state=None|opt=None ===\n"}
+,{"stream_name":"stdout","time":1807.169272923,"data":"    zero-shot 0.9289 | knn5 0.9425 | head 0.9351 log 0.316 brier 0.104 cov@90 1.000\n"}
+,{"stream_name":"stdout","time":1807.197356297,"data":"config                                       zero   knn5   head     log  brier    ece  cov90\n"}
+,{"stream_name":"stdout","time":1807.19737843,"data":"state=SearchQuery|opt=Document             0.9338 0.9458 0.9360   0.299  0.103  0.026  1.000\n"}
+,{"stream_name":"stdout","time":1807.197384812,"data":"state=None|opt=None                        0.9289 0.9425 0.9351   0.316  0.104  0.033  1.000\n"}
+,{"stream_name":"stdout","time":1807.197389955,"data":"state=Classification|opt=Document          0.9289 0.9364 0.9311   0.377  0.116  0.046  1.000\n"}
+,{"stream_name":"stdout","time":1807.197395241,"data":"state=Classification|opt=Classification    0.9205 0.9364 0.9311   0.377  0.116  0.046  1.000\n"}
+,{"stream_name":"stdout","time":1807.197400647,"data":"best_config_by_head_accuracy: state=SearchQuery|opt=Document\n"}
+,{"stream_name":"stdout","time":1807.197405555,"data":"incumbent: state=Classification|opt=Document\n"}
+,{"stream_name":"stdout","time":1807.197410359,"data":"incumbent_head_accuracy: 0.931060606060606\n"}
+,{"stream_name":"stdout","time":1807.197415114,"data":"best_head_accuracy: 0.936\n"}
+,{"stream_name":"stdout","time":1807.197419865,"data":"prompt_choice_matters: False\n"}
+,{"stream_name":"stdout","time":1807.197424625,"data":"head_beats_knn5_in_best_config: False\n"}
+,{"stream_name":"stdout","time":1807.197429683,"data":"note: differences below ~0.005 are within seed noise (measured ~0.0002) plus split noise (unmeasured)\n"}
+,{"stream_name":"stderr","time":1812.635750356,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":1812.63577649,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":1812.808130098,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":1812.808155263,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":1813.579508788,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":1813.680360354,"data":"[NbConvertApp] Writing 247371 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":1816.15943892,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":1816.738490007,"data":"[NbConvertApp] Writing 535149 bytes to __results__.html\n"}
+]

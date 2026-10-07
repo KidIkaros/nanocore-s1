@@ -1,0 +1,17 @@
+{
+  "id": "mauricew/nanocore-s1-sharpening",
+  "title": "nanocore s1 sharpening",
+  "code_file": "s1_sharpening.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "mauricew/nanocore-s1-banking77-emb"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

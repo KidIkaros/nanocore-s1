@@ -1,0 +1,158 @@
+{
+  "revision_under_test": "mauricew/nanocore-s1-worktree (uploaded working tree)",
+  "accelerator": "Tesla T4, 15360 MiB\nTesla T4, 15360 MiB",
+  "torch": "2.11.0+cu128",
+  "V0_blocks_identity_at_init": {
+    "block_is_identity": true,
+    "scramble_blocks_changes_logits": 0.058083321899175644,
+    "attn_c_proj_zero": true,
+    "mlp_c_proj_zero": true
+  },
+  "V5_parameter_count": {
+    "counted_params": 135266328,
+    "by_hand": 135266328,
+    "doc_line60": 157000000,
+    "doc_line74": 137000000,
+    "head_dim_field_read": false
+  },
+  "V6_window_pattern_inert": {
+    "identical_at_init": true,
+    "identical_dezeroed": true,
+    "token0_influences_last_position_dezeroed": true,
+    "shift": 0.00012576207518577576
+  },
+  "V1_decision_accuracy_is_random": {
+    "deterministic_on_same_input": false,
+    "repeat_values": [
+      0.12,
+      0.16,
+      0.12,
+      0.1,
+      0.08,
+      0.16,
+      0.08,
+      0.16
+    ],
+    "d2_mean": 0.10500000000000001,
+    "d4_mean": 0.092,
+    "dezero_mean": 0.098,
+    "hardcoded_p": 0.1,
+    "zeros_input_mean": 0.11100000000000002,
+    "zeroed_weights_mean": 0.0
+  },
+  "V2_ece_does_not_respond": {
+    "hit_rate": 0.0,
+    "chance_rate": 0.001953125,
+    "ece_init_range": [
+      0.002019816618412733,
+      0.0020226010493934153
+    ],
+    "ece_dezero_range": [
+      0.002019700016826391,
+      0.002022681748494506
+    ],
+    "ece_zeroed": 0.001953125
+  },
+  "V3_perplexity_unshifted_targets": {
+    "init": {
+      "repo": 512.3449247138072,
+      "unshifted": 512.4445375846108,
+      "shifted": 512.7185300685785
+    },
+    "dezeroed": {
+      "repo": 512.304322815411,
+      "unshifted": 512.5699057998937,
+      "shifted": 512.7185300685785
+    },
+    "vocab": 512
+  },
+  "V8_tokenizer": {
+    "vocab_size": 867,
+    "target_vocab": 8192,
+    "merges": 592,
+    "compression": 1.6708860759493671,
+    "nanochat_compression": 4.8
+  },
+  "V7_latency_cpu": {
+    "prefill_init_ms": 167.04662199998666,
+    "generate_init_ms": 3593.300023999973,
+    "prefill_dezero_ms": 142.40456400000312,
+    "generate_dezero_ms": 3601.0633209999696,
+    "ms_per_token_dezero": 150.0443050416654,
+    "claimed_ms": [
+      15,
+      35
+    ]
+  },
+  "V9_notebook_json": {
+    "notebook_parses": false,
+    "error": "JSONDecodeError: Expecting ',' delimiter: line 64 column 5 (char 2456)"
+  },
+  "V4a_gate_skipped": {
+    "exit_code": 0,
+    "all_passed": true,
+    "checks": [
+      {
+        "name": "Imports",
+        "status": "True"
+      },
+      {
+        "name": "Architecture",
+        "status": "True"
+      },
+      {
+        "name": "Memory",
+        "status": "True"
+      },
+      {
+        "name": "Dry Run",
+        "status": "skipped"
+      },
+      {
+        "name": "Evaluation",
+        "status": "True"
+      },
+      {
+        "name": "Test Suite",
+        "status": "skipped"
+      }
+    ],
+    "skipped": [
+      "Dry Run",
+      "Test Suite"
+    ]
+  },
+  "V4b_gate_full": {
+    "ran": true,
+    "exit_code": 0,
+    "all_passed": true,
+    "checks": [
+      {
+        "name": "Imports",
+        "status": "True"
+      },
+      {
+        "name": "Architecture",
+        "status": "True"
+      },
+      {
+        "name": "Memory",
+        "status": "True"
+      },
+      {
+        "name": "Dry Run",
+        "status": "True"
+      },
+      {
+        "name": "Evaluation",
+        "status": "True"
+      },
+      {
+        "name": "Test Suite",
+        "status": "True"
+      }
+    ],
+    "seconds": 149.8930628299713,
+    "checkpoint_gb": 1.066760585
+  }
+}

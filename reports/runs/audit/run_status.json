@@ -1,0 +1,37 @@
+{
+  "run": "audit",
+  "kernel": "mauricew/nanocore-audit",
+  "kernel_version": 2,
+  "source": "mauricew/nanocore-s1-worktree",
+  "accelerator": "2x Tesla T4",
+  "torch": "2.11.0+cu128",
+  "status": "complete",
+  "checks": {
+    "V0_blocks_identity_at_init": "confirmed",
+    "V1_decision_accuracy_is_random": "confirmed",
+    "V2_ece_does_not_respond": "confirmed",
+    "V3_perplexity_unshifted_targets": "confirmed_structural_only",
+    "V4_gate_fails_open": "confirmed",
+    "V5_parameter_count": "confirmed",
+    "V6_window_pattern_inert": "confirmed",
+    "V7_latency_cpu": "confirmed",
+    "V8_tokenizer": "confirmed",
+    "V9_notebook_json": "confirmed"
+  },
+  "gate_full": {
+    "exit_code": 0,
+    "all_passed": true,
+    "seconds": 149.9,
+    "tests_reported": 48,
+    "tests_in_repo": 52,
+    "dry_run_seconds": 15.5,
+    "checkpoint_gb": 1.0668
+  },
+  "artifacts": [
+    "audit_results.json",
+    "gate_a.json",
+    "gate_b.json",
+    "nanocore-audit.log",
+    "analysis.md"
+  ]
+}

@@ -1,0 +1,360 @@
+[{"stream_name":"stderr","time":6.710527831,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":6.710579702,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":7.711733671,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":7.71177094,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":7.71177548,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":7.711778511,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":8.39997335,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.400007095,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.400012479,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.400025879,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":11.982783721,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":11.982822708,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":17.028190917,"data":"torch 2.11.0+cu128 | cuda True | devices 2\n"}
+,{"stream_name":"stdout","time":17.229129311,"data":"contents of /kaggle/input:\n"}
+,{"stream_name":"stdout","time":17.229181739,"data":"input/  (0 files, 1 dirs)\n"}
+,{"stream_name":"stdout","time":17.229187769,"data":"  datasets/  (0 files, 1 dirs)\n"}
+,{"stream_name":"stdout","time":17.229192631,"data":"\n"}
+,{"stream_name":"stdout","time":17.229197212,"data":"Using attached repository: /kaggle/input/datasets/mauricew/nanocore-s1-worktree\n"}
+,{"stream_name":"stdout","time":17.229202561,"data":"python files found: 14\n"}
+,{"stream_name":"stdout","time":17.426998642,"data":"working copy: /kaggle/working/nanocore-s1 | cwd: /kaggle/working/nanocore-s1\n"}
+,{"stream_name":"stdout","time":17.736827255,"data":"max |TransformerBlock(x) - x| = 0.000e+00\n"}
+,{"stream_name":"stdout","time":17.736860519,"data":"block is the identity: True\n"}
+,{"stream_name":"stdout","time":17.7369645,"data":"  attn.c_proj.weight: all zero = True, absmax = 0.0e+00\n"}
+,{"stream_name":"stdout","time":17.736971192,"data":"  mlp.c_proj.weight: all zero = True, absmax = 0.0e+00\n"}
+,{"stream_name":"stdout","time":17.736976095,"data":"\n"}
+,{"stream_name":"stdout","time":17.736980591,"data":"scrambling every block weight moves the logits by 5.808e-02\n"}
+,{"stream_name":"stdout","time":17.736985044,"data":"-\u003e at initialization the entire transformer stack is inert\n"}
+,{"stream_name":"stdout","time":19.84469236,"data":"counted  : 135,266,328  (135.27M)\n"}
+,{"stream_name":"stdout","time":19.844726425,"data":"by hand  : 135,266,328  (135.27M)\n"}
+,{"stream_name":"stdout","time":19.844731729,"data":"doc says : 157M (line 60) / ~137M (line 74)\n"}
+,{"stream_name":"stdout","time":19.844736133,"data":"verdict  : line 60 is off by 22M (16%)\n"}
+,{"stream_name":"stdout","time":19.844740306,"data":"\n"}
+,{"stream_name":"stdout","time":19.844763828,"data":"cfg.head_dim = 128   attn.head_dim = 128\n"}
+,{"stream_name":"stdout","time":21.58893395,"data":"cfg.head_dim=999 still builds; attn.head_dim = 128 -\u003e the field is decorative\n"}
+,{"stream_name":"stdout","time":21.782288206,"data":"\n"}
+,{"stream_name":"stdout","time":21.782321289,"data":"as shipped (blocks inert)\n"}
+,{"stream_name":"stdout","time":21.782325761,"data":"  max |logits(SSSL) - logits(L) | = 0.000e+00\n"}
+,{"stream_name":"stdout","time":21.782329862,"data":"  max |logits(SSSL) - logits(SL)| = 0.000e+00\n"}
+,{"stream_name":"stdout","time":21.782333589,"data":"  identical: True\n"}
+,{"stream_name":"stdout","time":21.782337052,"data":"\n"}
+,{"stream_name":"stdout","time":21.782340508,"data":"de-zeroed (attention live)\n"}
+,{"stream_name":"stdout","time":21.782362541,"data":"  max |logits(SSSL) - logits(L) | = 0.000e+00\n"}
+,{"stream_name":"stdout","time":21.782366166,"data":"  max |logits(SSSL) - logits(SL)| = 0.000e+00\n"}
+,{"stream_name":"stdout","time":21.782369746,"data":"  identical: True\n"}
+,{"stream_name":"stdout","time":21.782373263,"data":"\n"}
+,{"stream_name":"stdout","time":21.78237662,"data":"de-zeroed: perturbing token 0 moves the last position by 0.0001\n"}
+,{"stream_name":"stdout","time":21.782380307,"data":"(\u003e0 means the full sequence is attended regardless of the SSSL pattern)\n"}
+,{"stream_name":"stdout","time":21.870025285,"data":"  evaluate.py:243: # For synthetic data, just count non-zero predictions as \"attempted\"\n"}
+,{"stream_name":"stdout","time":21.870059895,"data":"  evaluate.py:247: correct += 1 if random.random() \u003c 0.1 else 0\n"}
+,{"stream_name":"stdout","time":23.424102009,"data":"\n"}
+,{"stream_name":"stdout","time":23.42415407,"data":"(a) same model, same data, 8 calls : [0.12, 0.16, 0.12, 0.1, 0.08, 0.16, 0.08, 0.16]\n"}
+,{"stream_name":"stdout","time":23.424159971999998,"data":"    all identical? False   (a real metric must be)\n"}
+,{"stream_name":"stdout","time":61.901559218,"data":"\n"}
+,{"stream_name":"stdout","time":61.901622606,"data":"(b) d2 vocab=512, as shipped : mean=0.1050 sd=0.0343\n"}
+,{"stream_name":"stdout","time":61.901630579,"data":"    d4 vocab=1024, as shipped: mean=0.0920 sd=0.0360\n"}
+,{"stream_name":"stdout","time":61.901637093,"data":"    d2 vocab=512, de-zeroed  : mean=0.0980 sd=0.0419\n"}
+,{"stream_name":"stdout","time":61.901643163,"data":"    hardcoded p = 0.1 — all three sit on it, at every confidence interval\n"}
+,{"stream_name":"stdout","time":65.297289613,"data":"\n"}
+,{"stream_name":"stdout","time":65.297338418,"data":"(c) all-zero input (no tokens at all): mean=0.1110\n"}
+,{"stream_name":"stdout","time":66.826702795,"data":"\n"}
+,{"stream_name":"stdout","time":66.826736504,"data":"(d) all-zero weights: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]\n"}
+,{"stream_name":"stdout","time":66.826742301,"data":"    -\u003e argmax is always index 0, `if pred.item() \u003e 0` is never true, total stays 0\n"}
+,{"stream_name":"stdout","time":67.244205331,"data":"(a) prediction == target : 0/50 = 0.0000\n"}
+,{"stream_name":"stdout","time":67.244250506,"data":"    chance rate          : 1/vocab = 0.0020\n"}
+,{"stream_name":"stdout","time":69.444794091,"data":"\n"}
+,{"stream_name":"stdout","time":69.444856267,"data":"(b) ECE, 6 initialisations, as shipped : [0.002, 0.002, 0.002, 0.002, 0.002, 0.002]\n"}
+,{"stream_name":"stdout","time":69.444862729,"data":"    range: 0.0020 .. 0.0020\n"}
+,{"stream_name":"stdout","time":69.444867582,"data":"    ECE, same 6 models, de-zeroed       : [0.002, 0.002, 0.002, 0.002, 0.002, 0.002]\n"}
+,{"stream_name":"stdout","time":69.444890497,"data":"    range: 0.0020 .. 0.0020\n"}
+,{"stream_name":"stdout","time":69.444894356,"data":"\n"}
+,{"stream_name":"stdout","time":69.444897914,"data":"(c) ECE all-zero weights : 0.0020\n"}
+,{"stream_name":"stdout","time":69.444901535,"data":"    the model with no weights at all is indistinguishable from a trained one here\n"}
+,{"stream_name":"stdout","time":69.575180498,"data":"                                repo   unshifted   shifted\n"}
+,{"stream_name":"stdout","time":69.575210886,"data":"as shipped (blocks inert)     512.34      512.44    512.72\n"}
+,{"stream_name":"stdout","time":69.57521537,"data":"de-zeroed (blocks live)       512.30      512.57    512.72\n"}
+,{"stream_name":"stdout","time":69.575219158,"data":"\n"}
+,{"stream_name":"stdout","time":69.575222703,"data":"uniform-random reference: 512 (vocab size)\n"}
+,{"stream_name":"stdout","time":69.575226365,"data":"the repo's number tracks 'unshifted', not 'shifted'\n"}
+,{"stream_name":"stdout","time":69.703667627,"data":"Tokenizer loaded from models/tokenizer.json (vocab_size=867)\n"}
+,{"stream_name":"stdout","time":69.703733781,"data":"vocab size            : 867  (target was 8192)\n"}
+,{"stream_name":"stdout","time":69.703738404,"data":"BPE merges            : 592\n"}
+,{"stream_name":"stdout","time":69.703741293,"data":"stored compression    : 1.8056\n"}
+,{"stream_name":"stdout","time":69.703744194,"data":"measured compression  : 1.6709x on a fresh sample\n"}
+,{"stream_name":"stdout","time":69.703746896,"data":"nanochat reference    : 4.8x (65,536 vocab, Rust BPE)\n"}
+,{"stream_name":"stdout","time":69.703749544,"data":"-\u003e ~2.9x more tokens per unit of text than nanochat\n"}
+,{"stream_name":"stdout","time":69.77595483,"data":"prompt tokens: 85\n"}
+,{"stream_name":"stdout","time":79.162573202,"data":"\n"}
+,{"stream_name":"stdout","time":79.162611093,"data":"                               prefill   24 tokens   ms/token\n"}
+,{"stream_name":"stdout","time":79.16261564,"data":"as shipped (blocks inert)        167.0      3593.3      149.7\n"}
+,{"stream_name":"stdout","time":79.162619388,"data":"de-zeroed (real forward)         142.4      3601.1      150.0\n"}
+,{"stream_name":"stdout","time":79.162623066,"data":"\n"}
+,{"stream_name":"stdout","time":79.162626621,"data":"claimed in ARCHITECTURE.md: 15-35 ms\n"}
+,{"stream_name":"stdout","time":79.162630249,"data":"-\u003e the claim is short by ~103x (at 35 ms) to ~240x (at 15 ms)\n"}
+,{"stream_name":"stdout","time":79.162634911,"data":"\n"}
+,{"stream_name":"stdout","time":79.162638448,"data":"decoded so far: 'cerposirateregular��cer��\\x1aprincifollows��rqon\\x1bfruntimeoverf[/CONFIDENCE][SCORE]\u003c|mask|\u003e'\n"}
+,{"stream_name":"stdout","time":79.186944586,"data":"parseable as JSON: False\n"}
+,{"stream_name":"stdout","time":79.186971067,"data":"  JSONDecodeError: Expecting ',' delimiter: line 64 column 5 (char 2456)\n"}
+,{"stream_name":"stdout","time":79.186976753,"data":"    62|     \"    print(f'Using tokenizer from dry-run (vocab={meta[\\\"vocab_size\\\"]})')\\n\",\n"}
+,{"stream_name":"stdout","time":79.186981855,"data":"    63|     \"    print(f'  Compression ratio: {meta[\\\"compression_ratio\\\"]}')\"\n"}
+,{"stream_name":"stdout","time":79.186986578,"data":"    64|     \"    if meta['vocab_size'] \u003c 32768:\\n\",\n"}
+,{"stream_name":"stdout","time":79.186991408,"data":"    65|     \"        print('  NOTE: Using smaller vocab from dry-run. Run full training for 32768 vocab.')\\n\",\n"}
+,{"stream_name":"stdout","time":79.362545837,"data":"======================================================================\n"}
+,{"stream_name":"stdout","time":79.362601331,"data":"GATE A: --skip-tests --skip-dry-run  (cheap)\n"}
+,{"stream_name":"stdout","time":79.362607622,"data":"======================================================================\n"}
+,{"stream_name":"stdout","time":99.733658222,"data":"============================================================\n"}
+,{"stream_name":"stdout","time":99.733722159,"data":"NanoCore-S1 Quality Gate — Pre-Flight Check\n"}
+,{"stream_name":"stdout","time":99.733731348,"data":"============================================================\n"}
+,{"stream_name":"stdout","time":99.733736838,"data":"Hardware: t4_colab\n"}
+,{"stream_name":"stdout","time":99.7337428,"data":"Model depth: d12\n"}
+,{"stream_name":"stdout","time":99.733747804,"data":"Batch size: 16\n"}
+,{"stream_name":"stdout","time":99.733752779,"data":"\n"}
+,{"stream_name":"stdout","time":99.733757501,"data":"[1/6] Checking imports...\n"}
+,{"stream_name":"stdout","time":99.733763078,"data":"  ✓ torch\n"}
+,{"stream_name":"stdout","time":99.733768593,"data":"  ✓ torch.nn\n"}
+,{"stream_name":"stdout","time":99.733773668,"data":"  ✓ torch.nn.functional\n"}
+,{"stream_name":"stdout","time":99.733779949,"data":"  ✓ datasets\n"}
+,{"stream_name":"stdout","time":99.733785465,"data":"\n"}
+,{"stream_name":"stdout","time":99.733790741,"data":"[2/6] Checking model architecture (d12)...\n"}
+,{"stream_name":"stdout","time":99.73379581,"data":"  ✓ Model created successfully\n"}
+,{"stream_name":"stdout","time":99.73380095,"data":"  Parameters: 135,266,328 (135.3M)\n"}
+,{"stream_name":"stdout","time":99.733806018,"data":"  Layers: 12, Dim: 768, Heads: 6, Head dim: 128\n"}
+,{"stream_name":"stdout","time":99.733811789,"data":"  ✓ Architecture consistent (n_embd = n_head * head_dim)\n"}
+,{"stream_name":"stdout","time":99.733817998,"data":"  ✓ Forward pass: torch.Size([1, 128]) -\u003e torch.Size([1, 128, 32768])\n"}
+,{"stream_name":"stdout","time":99.733823939,"data":"  ✓ Gradient flow verified (loss=10.3964)\n"}
+,{"stream_name":"stdout","time":99.733829526,"data":"  ✓ Parameter count in expected range (110M-180M)\n"}
+,{"stream_name":"stdout","time":99.733834883,"data":"\n"}
+,{"stream_name":"stdout","time":99.733840109,"data":"[3/6] Checking memory budget (t4_colab)...\n"}
+,{"stream_name":"stdout","time":99.733845711,"data":"  Weights:     271 MB\n"}
+,{"stream_name":"stdout","time":99.733852092,"data":"  KV cache:    1208 MB (batch=16, seq=2048)\n"}
+,{"stream_name":"stdout","time":99.733858351,"data":"  Activations: 2597 MB\n"}
+,{"stream_name":"stdout","time":99.733863887,"data":"  Gradients:   271 MB\n"}
+,{"stream_name":"stdout","time":99.733868909,"data":"  Optimizer:   541 MB\n"}
+,{"stream_name":"stdout","time":99.733873766,"data":"  ─────────────────────────\n"}
+,{"stream_name":"stdout","time":99.733878973,"data":"  Total:       5911 MB\n"}
+,{"stream_name":"stdout","time":99.733883771,"data":"  Available:   15360 MB (t4_colab)\n"}
+,{"stream_name":"stdout","time":99.733888711,"data":"  ✓ Memory budget OK (38% utilization)\n"}
+,{"stream_name":"stdout","time":99.733895626,"data":"\n"}
+,{"stream_name":"stdout","time":99.733900373,"data":"[4/6] Dry-run check SKIPPED (--skip-dry-run)\n"}
+,{"stream_name":"stdout","time":99.733907198,"data":"\n"}
+,{"stream_name":"stdout","time":99.733912655,"data":"[5/6] Running evaluation suite...\n"}
+,{"stream_name":"stdout","time":99.73391825,"data":"\n"}
+,{"stream_name":"stdout","time":99.733923272,"data":"Evaluating on: perplexity\n"}
+,{"stream_name":"stdout","time":99.733927804,"data":"  Perplexity: 32772.59\n"}
+,{"stream_name":"stdout","time":99.733946718,"data":"\n"}
+,{"stream_name":"stdout","time":99.7339506,"data":"Evaluating on: calibration\n"}
+,{"stream_name":"stdout","time":99.733954286,"data":"  ECE (Expected Calibration Error): 0.0000\n"}
+,{"stream_name":"stdout","time":99.733959106,"data":"  perplexity: 32772.5888 (20480 samples)\n"}
+,{"stream_name":"stdout","time":99.733963777,"data":"  expected_calibration_error: 0.0000 (50 samples)\n"}
+,{"stream_name":"stdout","time":99.733968052,"data":"  ✓ All metrics valid\n"}
+,{"stream_name":"stdout","time":99.733972027,"data":"\n"}
+,{"stream_name":"stdout","time":99.73397561,"data":"[6/6] Test suite SKIPPED (--skip-tests)\n"}
+,{"stream_name":"stdout","time":99.733979575,"data":"\n"}
+,{"stream_name":"stdout","time":99.733983826,"data":"============================================================\n"}
+,{"stream_name":"stdout","time":99.733988528,"data":"QUALITY GATE REPORT\n"}
+,{"stream_name":"stdout","time":99.733992665,"data":"============================================================\n"}
+,{"stream_name":"stdout","time":99.733996598,"data":"  Imports              ✅ PASS\n"}
+,{"stream_name":"stdout","time":99.734000694,"data":"  Architecture         ✅ PASS\n"}
+,{"stream_name":"stdout","time":99.73400476,"data":"  Memory               ✅ PASS\n"}
+,{"stream_name":"stdout","time":99.734008641,"data":"  Dry Run              ⏭️ SKIP\n"}
+,{"stream_name":"stdout","time":99.734012556,"data":"  Evaluation           ✅ PASS\n"}
+,{"stream_name":"stdout","time":99.734016466,"data":"  Test Suite           ⏭️ SKIP\n"}
+,{"stream_name":"stdout","time":99.734020357,"data":"\n"}
+,{"stream_name":"stdout","time":99.734024203,"data":"Report saved to: /kaggle/working/gate_a.json\n"}
+,{"stream_name":"stdout","time":99.734028203,"data":"\n"}
+,{"stream_name":"stdout","time":99.734031892,"data":"✅ ALL CHECKS PASSED — Safe to launch training!\n"}
+,{"stream_name":"stdout","time":99.734036919,"data":"   Proceed with: python scripts/train_base.py --batch-size 16\n"}
+,{"stream_name":"stdout","time":99.734041175,"data":"\n"}
+,{"stream_name":"stdout","time":99.734044984,"data":"exit code: 0   (20.5s)\n"}
+,{"stream_name":"stdout","time":99.734048953,"data":"\n"}
+,{"stream_name":"stdout","time":99.734057403,"data":"committed report on record : [{'name': 'Imports', 'status': 'True'}, {'name': 'Architecture', 'status': 'True'}, {'name': 'Memory', 'status': 'True'}, {'name': 'Dry Run', 'status': 'True'}, {'name': 'Evaluation', 'status': 'True'}, {'name': 'Test Suite', 'status': 'skipped'}]\n"}
+,{"stream_name":"stdout","time":99.734063295,"data":"fresh report (gate A)      : [{'name': 'Imports', 'status': 'True'}, {'name': 'Architecture', 'status': 'True'}, {'name': 'Memory', 'status': 'True'}, {'name': 'Dry Run', 'status': 'skipped'}, {'name': 'Evaluation', 'status': 'True'}, {'name': 'Test Suite', 'status': 'skipped'}]\n"}
+,{"stream_name":"stdout","time":99.734068041,"data":"gate A all_passed          : True\n"}
+,{"stream_name":"stdout","time":99.734071818,"data":"skipped checks             : ['Dry Run', 'Test Suite']\n"}
+,{"stream_name":"stdout","time":99.734075806,"data":"-\u003e 'Safe to launch training' asserted while 2 checks never ran\n"}
+,{"stream_name":"stdout","time":99.933407383,"data":"======================================================================\n"}
+,{"stream_name":"stdout","time":99.933443443,"data":"GATE B: full run (dry run + test suite)\n"}
+,{"stream_name":"stdout","time":99.933449548,"data":"======================================================================\n"}
+,{"stream_name":"stdout","time":249.648775361,"data":"============================================================\n"}
+,{"stream_name":"stdout","time":249.648837586,"data":"NanoCore-S1 Quality Gate — Pre-Flight Check\n"}
+,{"stream_name":"stdout","time":249.648847034,"data":"============================================================\n"}
+,{"stream_name":"stdout","time":249.64885372,"data":"Hardware: t4_colab\n"}
+,{"stream_name":"stdout","time":249.648859223,"data":"Model depth: d12\n"}
+,{"stream_name":"stdout","time":249.64886476,"data":"Batch size: 16\n"}
+,{"stream_name":"stdout","time":249.648870072,"data":"\n"}
+,{"stream_name":"stdout","time":249.648887407,"data":"[1/6] Checking imports...\n"}
+,{"stream_name":"stdout","time":249.648892196,"data":"  ✓ torch\n"}
+,{"stream_name":"stdout","time":249.648896966,"data":"  ✓ torch.nn\n"}
+,{"stream_name":"stdout","time":249.64890171,"data":"  ✓ torch.nn.functional\n"}
+,{"stream_name":"stdout","time":249.648906436,"data":"  ✓ datasets\n"}
+,{"stream_name":"stdout","time":249.648911177,"data":"\n"}
+,{"stream_name":"stdout","time":249.648920527,"data":"[2/6] Checking model architecture (d12)...\n"}
+,{"stream_name":"stdout","time":249.648935259,"data":"  ✓ Model created successfully\n"}
+,{"stream_name":"stdout","time":249.648940933,"data":"  Parameters: 135,266,328 (135.3M)\n"}
+,{"stream_name":"stdout","time":249.64894622,"data":"  Layers: 12, Dim: 768, Heads: 6, Head dim: 128\n"}
+,{"stream_name":"stdout","time":249.648951305,"data":"  ✓ Architecture consistent (n_embd = n_head * head_dim)\n"}
+,{"stream_name":"stdout","time":249.648956905,"data":"  ✓ Forward pass: torch.Size([1, 128]) -\u003e torch.Size([1, 128, 32768])\n"}
+,{"stream_name":"stdout","time":249.648963434,"data":"  ✓ Gradient flow verified (loss=10.3996)\n"}
+,{"stream_name":"stdout","time":249.648968494,"data":"  ✓ Parameter count in expected range (110M-180M)\n"}
+,{"stream_name":"stdout","time":249.648973827,"data":"\n"}
+,{"stream_name":"stdout","time":249.648978659,"data":"[3/6] Checking memory budget (t4_colab)...\n"}
+,{"stream_name":"stdout","time":249.648984198,"data":"  Weights:     271 MB\n"}
+,{"stream_name":"stdout","time":249.64898933,"data":"  KV cache:    1208 MB (batch=16, seq=2048)\n"}
+,{"stream_name":"stdout","time":249.649001334,"data":"  Activations: 2597 MB\n"}
+,{"stream_name":"stdout","time":249.649007774,"data":"  Gradients:   271 MB\n"}
+,{"stream_name":"stdout","time":249.649013199,"data":"  Optimizer:   541 MB\n"}
+,{"stream_name":"stdout","time":249.649018428,"data":"  ─────────────────────────\n"}
+,{"stream_name":"stdout","time":249.649023659,"data":"  Total:       5911 MB\n"}
+,{"stream_name":"stdout","time":249.649028303,"data":"  Available:   15360 MB (t4_colab)\n"}
+,{"stream_name":"stdout","time":249.649033819,"data":"  ✓ Memory budget OK (38% utilization)\n"}
+,{"stream_name":"stdout","time":249.649039203,"data":"\n"}
+,{"stream_name":"stdout","time":249.649044238,"data":"[4/6] Running dry-run smoke test...\n"}
+,{"stream_name":"stdout","time":249.649049212,"data":"  ✓ Dry run completed in 15.5s\n"}
+,{"stream_name":"stdout","time":249.649054508,"data":"  ✓ Training loop executed successfully\n"}
+,{"stream_name":"stdout","time":249.649059797,"data":"  ✓ Checkpoint saved\n"}
+,{"stream_name":"stdout","time":249.649065082,"data":"\n"}
+,{"stream_name":"stdout","time":249.649070112,"data":"[5/6] Running evaluation suite...\n"}
+,{"stream_name":"stdout","time":249.649075757,"data":"\n"}
+,{"stream_name":"stdout","time":249.649081267,"data":"Evaluating on: perplexity\n"}
+,{"stream_name":"stdout","time":249.649095613,"data":"  Perplexity: 32782.34\n"}
+,{"stream_name":"stdout","time":249.649100609,"data":"\n"}
+,{"stream_name":"stdout","time":249.649104697,"data":"Evaluating on: calibration\n"}
+,{"stream_name":"stdout","time":249.649108978,"data":"  ECE (Expected Calibration Error): 0.0000\n"}
+,{"stream_name":"stdout","time":249.649112813,"data":"  perplexity: 32782.3353 (20480 samples)\n"}
+,{"stream_name":"stdout","time":249.649116147,"data":"  expected_calibration_error: 0.0000 (50 samples)\n"}
+,{"stream_name":"stdout","time":249.649120558,"data":"  ✓ All metrics valid\n"}
+,{"stream_name":"stdout","time":249.649124847,"data":"\n"}
+,{"stream_name":"stdout","time":249.649128946,"data":"[6/6] Running test suite (excluding dry-run tests)...\n"}
+,{"stream_name":"stdout","time":249.649133252,"data":"  ✓ All tests passed (48 tests, 119.6s)\n"}
+,{"stream_name":"stdout","time":249.649137054,"data":"\n"}
+,{"stream_name":"stdout","time":249.649140667,"data":"============================================================\n"}
+,{"stream_name":"stdout","time":249.649144486,"data":"QUALITY GATE REPORT\n"}
+,{"stream_name":"stdout","time":249.649148251,"data":"============================================================\n"}
+,{"stream_name":"stdout","time":249.649152158,"data":"  Imports              ✅ PASS\n"}
+,{"stream_name":"stdout","time":249.649155897,"data":"  Architecture         ✅ PASS\n"}
+,{"stream_name":"stdout","time":249.649159621,"data":"  Memory               ✅ PASS\n"}
+,{"stream_name":"stdout","time":249.649163364,"data":"  Dry Run              ✅ PASS\n"}
+,{"stream_name":"stdout","time":249.649167054,"data":"  Evaluation           ✅ PASS\n"}
+,{"stream_name":"stdout","time":249.649170677,"data":"  Test Suite           ✅ PASS\n"}
+,{"stream_name":"stdout","time":249.649174423,"data":"\n"}
+,{"stream_name":"stdout","time":249.649177987,"data":"Report saved to: /kaggle/working/gate_b.json\n"}
+,{"stream_name":"stdout","time":249.649181768,"data":"\n"}
+,{"stream_name":"stdout","time":249.649185435,"data":"✅ ALL CHECKS PASSED — Safe to launch training!\n"}
+,{"stream_name":"stdout","time":249.649195726,"data":"   Proceed with: python scripts/train_base.py --batch-size 16\n"}
+,{"stream_name":"stdout","time":249.649198749,"data":"\n"}
+,{"stream_name":"stdout","time":249.649201107,"data":"exit code: 0   (149.9s)\n"}
+,{"stream_name":"stdout","time":249.649203557,"data":"\n"}
+,{"stream_name":"stdout","time":249.649206197,"data":"checks: [{'name': 'Imports', 'status': 'True'}, {'name': 'Architecture', 'status': 'True'}, {'name': 'Memory', 'status': 'True'}, {'name': 'Dry Run', 'status': 'True'}, {'name': 'Evaluation', 'status': 'True'}, {'name': 'Test Suite', 'status': 'True'}]\n"}
+,{"stream_name":"stdout","time":249.649210094,"data":"all_passed: True\n"}
+,{"stream_name":"stdout","time":249.64921254,"data":"\n"}
+,{"stream_name":"stdout","time":249.649214926,"data":"dry-run checkpoint: 1.07 GB for a 20-step smoke test\n"}
+,{"stream_name":"stdout","time":249.72900687,"data":"artifacts.zip written with: ['audit_results.json', 'gate_a.json', 'gate_b.json']\n"}
+,{"stream_name":"stdout","time":249.72903862,"data":"{\n"}
+,{"stream_name":"stdout","time":249.729044589,"data":"  \"revision_under_test\": \"mauricew/nanocore-s1-worktree (uploaded working tree)\",\n"}
+,{"stream_name":"stdout","time":249.729048954,"data":"  \"accelerator\": \"Tesla T4, 15360 MiB\\nTesla T4, 15360 MiB\",\n"}
+,{"stream_name":"stdout","time":249.72905522,"data":"  \"torch\": \"2.11.0+cu128\",\n"}
+,{"stream_name":"stdout","time":249.729064619,"data":"  \"V0_blocks_identity_at_init\": {\n"}
+,{"stream_name":"stdout","time":249.729080048,"data":"    \"block_is_identity\": true,\n"}
+,{"stream_name":"stdout","time":249.729083012,"data":"    \"scramble_blocks_changes_logits\": 0.058083321899175644,\n"}
+,{"stream_name":"stdout","time":249.729085849,"data":"    \"attn_c_proj_zero\": true,\n"}
+,{"stream_name":"stdout","time":249.729088455,"data":"    \"mlp_c_proj_zero\": true\n"}
+,{"stream_name":"stdout","time":249.729091071,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729093687,"data":"  \"V5_parameter_count\": {\n"}
+,{"stream_name":"stdout","time":249.729096502,"data":"    \"counted_params\": 135266328,\n"}
+,{"stream_name":"stdout","time":249.729099147,"data":"    \"by_hand\": 135266328,\n"}
+,{"stream_name":"stdout","time":249.729109322,"data":"    \"doc_line60\": 157000000,\n"}
+,{"stream_name":"stdout","time":249.729112204,"data":"    \"doc_line74\": 137000000,\n"}
+,{"stream_name":"stdout","time":249.729114808,"data":"    \"head_dim_field_read\": false\n"}
+,{"stream_name":"stdout","time":249.729117474,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729120019,"data":"  \"V6_window_pattern_inert\": {\n"}
+,{"stream_name":"stdout","time":249.729122648,"data":"    \"identical_at_init\": true,\n"}
+,{"stream_name":"stdout","time":249.729125238,"data":"    \"identical_dezeroed\": true,\n"}
+,{"stream_name":"stdout","time":249.729127859,"data":"    \"token0_influences_last_position_dezeroed\": true,\n"}
+,{"stream_name":"stdout","time":249.729130658,"data":"    \"shift\": 0.00012576207518577576\n"}
+,{"stream_name":"stdout","time":249.729133282,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729135875,"data":"  \"V1_decision_accuracy_is_random\": {\n"}
+,{"stream_name":"stdout","time":249.729158328,"data":"    \"deterministic_on_same_input\": false,\n"}
+,{"stream_name":"stdout","time":249.729163069,"data":"    \"repeat_values\": [\n"}
+,{"stream_name":"stdout","time":249.729167415,"data":"      0.12,\n"}
+,{"stream_name":"stdout","time":249.729171612,"data":"      0.16,\n"}
+,{"stream_name":"stdout","time":249.729175749,"data":"      0.12,\n"}
+,{"stream_name":"stdout","time":249.729179568,"data":"      0.1,\n"}
+,{"stream_name":"stdout","time":249.729183289,"data":"      0.08,\n"}
+,{"stream_name":"stdout","time":249.729187117,"data":"      0.16,\n"}
+,{"stream_name":"stdout","time":249.729192757,"data":"      0.08,\n"}
+,{"stream_name":"stdout","time":249.729200197,"data":"      0.16\n"}
+,{"stream_name":"stdout","time":249.729203311,"data":"    ],\n"}
+,{"stream_name":"stdout","time":249.729206135,"data":"    \"d2_mean\": 0.10500000000000001,\n"}
+,{"stream_name":"stdout","time":249.729224308,"data":"    \"d4_mean\": 0.092,\n"}
+,{"stream_name":"stdout","time":249.72922928,"data":"    \"dezero_mean\": 0.098,\n"}
+,{"stream_name":"stdout","time":249.729233831,"data":"    \"hardcoded_p\": 0.1,\n"}
+,{"stream_name":"stdout","time":249.729238531,"data":"    \"zeros_input_mean\": 0.11100000000000002,\n"}
+,{"stream_name":"stdout","time":249.729242544,"data":"    \"zeroed_weights_mean\": 0.0\n"}
+,{"stream_name":"stdout","time":249.729247091,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729251918,"data":"  \"V2_ece_does_not_respond\": {\n"}
+,{"stream_name":"stdout","time":249.729256576,"data":"    \"hit_rate\": 0.0,\n"}
+,{"stream_name":"stdout","time":249.729260857,"data":"    \"chance_rate\": 0.001953125,\n"}
+,{"stream_name":"stdout","time":249.72928312,"data":"    \"ece_init_range\": [\n"}
+,{"stream_name":"stdout","time":249.729288642,"data":"      0.002019816618412733,\n"}
+,{"stream_name":"stdout","time":249.729293502,"data":"      0.0020226010493934153\n"}
+,{"stream_name":"stdout","time":249.729303036,"data":"    ],\n"}
+,{"stream_name":"stdout","time":249.729306904,"data":"    \"ece_dezero_range\": [\n"}
+,{"stream_name":"stdout","time":249.729310771,"data":"      0.002019700016826391,\n"}
+,{"stream_name":"stdout","time":249.729315288,"data":"      0.002022681748494506\n"}
+,{"stream_name":"stdout","time":249.729320308,"data":"    ],\n"}
+,{"stream_name":"stdout","time":249.729323849,"data":"    \"ece_zeroed\": 0.001953125\n"}
+,{"stream_name":"stdout","time":249.729327475,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729331163,"data":"  \"V3_perplexity_unshifted_targets\": {\n"}
+,{"stream_name":"stdout","time":249.729334976,"data":"    \"init\": {\n"}
+,{"stream_name":"stdout","time":249.729338767,"data":"      \"repo\": 512.3449247138072,\n"}
+,{"stream_name":"stdout","time":249.729342883,"data":"      \"unshifted\": 512.4445375846108,\n"}
+,{"stream_name":"stdout","time":249.729346839,"data":"      \"shifted\": 512.7185300685785\n"}
+,{"stream_name":"stdout","time":249.729350881,"data":"    },\n"}
+,{"stream_name":"stdout","time":249.72935459,"data":"    \"dezeroed\": {\n"}
+,{"stream_name":"stdout","time":249.729358773,"data":"      \"repo\": 512.304322815411,\n"}
+,{"stream_name":"stdout","time":249.729362713,"data":"      \"unshifted\": 512.5699057998937,\n"}
+,{"stream_name":"stdout","time":249.729366413,"data":"      \"shifted\": 512.7185300685785\n"}
+,{"stream_name":"stdout","time":249.729370254,"data":"    },\n"}
+,{"stream_name":"stdout","time":249.729373656,"data":"    \"vocab\": 512\n"}
+,{"stream_name":"stdout","time":249.729377423,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729380915,"data":"  \"V8_tokenizer\": {\n"}
+,{"stream_name":"stdout","time":249.729384853,"data":"    \"vocab_size\": 867,\n"}
+,{"stream_name":"stdout","time":249.729388644,"data":"    \"target_vocab\": 8192,\n"}
+,{"stream_name":"stdout","time":249.729392639,"data":"    \"merges\": 592,\n"}
+,{"stream_name":"stdout","time":249.729396867,"data":"    \"compression\": 1.6708860759493671,\n"}
+,{"stream_name":"stdout","time":249.729401025,"data":"    \"nanochat_compression\": 4.8\n"}
+,{"stream_name":"stdout","time":249.729405136,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729408831,"data":"  \"V7_latency_cpu\": {\n"}
+,{"stream_name":"stdout","time":249.72941274,"data":"    \"prefill_init_ms\": 167.04662199998666,\n"}
+,{"stream_name":"stdout","time":249.729419646,"data":"    \"generate_init_ms\": 3593.300023999973,\n"}
+,{"stream_name":"stdout","time":249.729423665,"data":"    \"prefill_dezero_ms\": 142.40456400000312,\n"}
+,{"stream_name":"stdout","time":249.729427736,"data":"    \"generate_dezero_ms\": 3601.0633209999696,\n"}
+,{"stream_name":"stdout","time":249.729431891,"data":"    \"ms_per_token_dezero\": 150.0443050416654,\n"}
+,{"stream_name":"stdout","time":249.729436116,"data":"    \"claimed_ms\": [\n"}
+,{"stream_name":"stdout","time":249.729440125,"data":"      15,\n"}
+,{"stream_name":"stdout","time":249.729443806,"data":"      35\n"}
+,{"stream_name":"stdout","time":249.729447732,"data":"    ]\n"}
+,{"stream_name":"stdout","time":249.729451455,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729455073,"data":"  \"V9_notebook_json\": {\n"}
+,{"stream_name":"stdout","time":249.729459065,"data":"    \"notebook_parses\": false,\n"}
+,{"stream_name":"stdout","time":249.729463291,"data":"    \"error\": \"JSONDecodeError: Expecting ',' delimiter: line 64 column 5 (char 2456)\"\n"}
+,{"stream_name":"stdout","time":249.729467851,"data":"  },\n"}
+,{"stream_name":"stdout","time":249.729477766,"data":"  \"V4a_gate_skipped\": {\n"}
+,{"stream_name":"stdout","time":249.729482073,"data":"    \"exit_code\": 0,\n"}
+,{"stream_name":"stdout","time":249.729486217,"data":"    \"all_passed\": true,\n"}
+,{"stream_name":"stdout","time":249.729490297,"data":"    \"checks\": [\n"}
+,{"stream_name":"stdout","time":249.729494288,"data":"      {\n"}
+,{"stream_name":"stdout","time":249.729498171,"data":"        \"name\": \"Imports\",\n"}
+,{"stream_name":"stdout","time":249.729502547,"data":"        \"status\": \"True\"\n"}
+,{"stream_name":"stdout","time":249.729506672,"data":"      },\n"}
+,{"stream_name":"stdout","time":249.729510403,"data":"      {\n"}
+,{"stream_name":"stdout","time":249.729514282,"data":"\n"}
+,{"stream_name":"stderr","time":253.015388713,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":253.015420267,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":253.20290346,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":253.202931993,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":254.029347625,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":254.138301779,"data":"[NbConvertApp] Writing 60926 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":256.870143346,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":257.544826192,"data":"[NbConvertApp] Writing 420987 bytes to __results__.html\n"}
+]

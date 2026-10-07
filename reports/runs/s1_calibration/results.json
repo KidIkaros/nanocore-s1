@@ -1,0 +1,33 @@
+{
+  "kernel": "mauricew/nanocore-s1-calibration",
+  "kernel_version": 2,
+  "status": "INCOMPLETE",
+  "status_note": "Kernel errored at the abstention step (a missing function definition caused by cell pruning in the generator). The baselines and head fits below completed and are valid. Abstention curves, order invariance, and the verdict block never ran.",
+  "compute": "Kaggle CPU-only kernel (no accelerator), zero GPU quota spent",
+  "input": "cached EmbeddingGemma 2 vectors, google/embeddinggemma-2, text+vision, bf16, 439M params, dim 768",
+  "protocol": {
+    "split": "90% of train fit / 10% held out for temperature fitting; test split untouched (3080 items)",
+    "fingerprint": {"epochs": 120, "seeds": [0, 1, 2]},
+    "interaction": {"epochs": 40, "seeds": [0, 1], "hidden": 32},
+    "note": "protocol chosen for CPU budget; not a tuned headline configuration"
+  },
+  "baselines": {
+    "cosine_tau": {"accuracy": 0.9292, "log_score": 3.800, "brier": 0.968, "ece_report_only": 0.907},
+    "knn1_tau": {"accuracy": 0.9360, "log_score": 2.659, "brier": 0.868, "ece_report_only": 0.857},
+    "knn5_tau": {"accuracy": 0.9364, "log_score": 0.429, "brier": 0.113, "ece_report_only": 0.038},
+    "knn20_tau": {"accuracy": 0.9354, "log_score": 0.443, "brier": 0.115, "ece_report_only": 0.043}
+  },
+  "heads": {
+    "fingerprint": {"accuracy": 0.9311, "accuracy_std": 0.0002, "log_score": 0.377,
+                    "brier": 0.116, "ece_report_only": 0.046, "seeds": 3},
+    "interaction": {"accuracy": 0.9248, "accuracy_std": 0.0002, "log_score": 0.383,
+                    "log_score_std": 0.012, "brier": 0.123, "ece_report_only": 0.045, "seeds": 2}
+  },
+  "missing": ["abstention curves", "coverage at 90%/95% precision", "order-invariance check", "verdict block"],
+  "interpretation": [
+    "Softmax over cosine, and over 1-NN, are badly miscalibrated even with a fitted temperature (log 3.800 / 2.659; ECE 0.907 / 0.857).",
+    "kNN-5 with a fitted temperature beats both trained heads on accuracy, Brier, and ECE; it loses only on log score (0.429 vs 0.377).",
+    "Seed variance is negligible (about +/-0.0002 accuracy), so the kNN-5 edge is not seed noise. Split-level variance is unmeasured.",
+    "The typed head is therefore NOT yet justified on this evidence; its remaining claims (abstention quality, order invariance) were never measured because the run failed."
+  ]
+}

@@ -1,0 +1,58 @@
+[{"stream_name":"stderr","time":7.296408216,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":7.296556086,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":8.376278543,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.376321408,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.376327773,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.376357692,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":9.162582289,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.162641161,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.162645472,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.162649209,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":11.731685036,"data":"GPU: none (expected: this analysis needs no accelerator)\n"}
+,{"stream_name":"stdout","time":13.934839023,"data":"numpy 2.1.3 | torch 2.11.0+cpu\n"}
+,{"stream_name":"stdout","time":20.458124621,"data":".............................................................            [100%]\n"}
+,{"stream_name":"stdout","time":20.458167002,"data":"61 passed in 3.50s\n"}
+,{"stream_name":"stdout","time":20.458173032,"data":"\n"}
+,{"stream_name":"stdout","time":20.890596877,"data":"train (10003, 768) | test (3080, 768) | options (77, 768) | classes 77\n"}
+,{"stream_name":"stdout","time":20.93344341,"data":"helpers ready | tau grid 0.001 .. 100.0 (51 values)\n"}
+,{"stream_name":"stdout","time":24.616629457,"data":"cosine_tau     acc=0.9292 log=0.380 brier=0.117 ece=0.045 tau=0.0126\n"}
+,{"stream_name":"stdout","time":24.616671038,"data":"knn1_tau       acc=0.9360 log=0.570 brier=0.126 ece=0.057 tau=0.1\n"}
+,{"stream_name":"stdout","time":24.616677794,"data":"knn5_tau       acc=0.9364 log=0.508 brier=0.117 ece=0.052 tau=0.3981\n"}
+,{"stream_name":"stdout","time":24.616682462,"data":"knn20_tau      acc=0.9354 log=0.480 brier=0.117 ece=0.048 tau=1.5849\n"}
+,{"stream_name":"stdout","time":464.985602548,"data":"random_init                  acc=0.9311+-0.0002 log=0.377 brier=0.116 ece=0.046 cov@95=0.966\n"}
+,{"stream_name":"stdout","time":471.245495482,"data":"init_norm_untrained          acc=0.9286+-0.0000 log=3.800 brier=0.968 ece=0.906 cov@95=0.938\n"}
+,{"stream_name":"stdout","time":940.289469964,"data":"init_norm_trained            acc=0.7966+-0.0018 log=3.441 brier=0.947 ece=0.761 cov@95=0.471\n"}
+,{"stream_name":"stdout","time":1230.5138205,"data":"init_unnormalized_trained    acc=0.9312+-0.0000 log=0.377 brier=0.116 ece=0.046 cov@95=0.966\n"}
+,{"stream_name":"stdout","time":1230.515014017,"data":"S3 check — untrained initialized head equals zero-shot: {'untrained_init_matches_zero_shot': False, 'zero_shot_accuracy': 0.9292207792207792, 'untrained_init_accuracy': 0.9285714285714286}\n"}
+,{"stream_name":"stderr","time":1231.479787499,"data":"Traceback (most recent call last):\n"}
+,{"stream_name":"stderr","time":1231.480560227,"data":"  File \"\u003cstring\u003e\", line 1, in \u003cmodule\u003e\n"}
+,{"stream_name":"stderr","time":1231.480574848,"data":"    import sys;import papermill as pm;pm.execute_notebook(\"__notebook__.ipynb\",\"__notebook__.ipynb\",progress_bar=False,log_output=True,stdout_file=sys.stdout,stderr_file=sys.stderr,allow_errors=False,timeout=43200)\n"}
+,{"stream_name":"stderr","time":1231.480582717,"data":"                                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":1231.480588452,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 131, in execute_notebook\n"}
+,{"stream_name":"stderr","time":1231.480593636,"data":"    raise_for_execution_errors(nb, output_path)\n"}
+,{"stream_name":"stderr","time":1231.480598352,"data":"    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":1231.480602957,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 251, in raise_for_execution_errors\n"}
+,{"stream_name":"stderr","time":1231.480608264,"data":"    raise error\n"}
+,{"stream_name":"stderr","time":1231.480613162,"data":"papermill.exceptions.PapermillExecutionError: \n"}
+,{"stream_name":"stderr","time":1231.480617827,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":1231.480622791,"data":"Exception encountered at \"In [7]\":\n"}
+,{"stream_name":"stderr","time":1231.480627821,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":1231.480632788,"data":"AttributeError                            Traceback (most recent call last)\n"}
+,{"stream_name":"stderr","time":1231.480637772,"data":"/tmp/ipykernel_16/2394939241.py in \u003ccell line: 0\u003e()\n"}
+,{"stream_name":"stderr","time":1231.480642401,"data":"      1 head_best, probs_best = kept_init_norm\n"}
+,{"stream_name":"stderr","time":1231.480646956,"data":"----\u003e 2 fp_labels, matrix = head_best.fingerprint_distance_matrix(\"choice\", labels)\n"}
+,{"stream_name":"stderr","time":1231.480652169,"data":"      3 norms = head_best.fingerprint_norms(\"choice\")\n"}
+,{"stream_name":"stderr","time":1231.480657062,"data":"      4 off_diag = matrix[~np.eye(len(fp_labels), dtype=bool)]\n"}
+,{"stream_name":"stderr","time":1231.48066199,"data":"      5 \n"}
+,{"stream_name":"stderr","time":1231.480666919,"data":"\n"}
+,{"stream_name":"stderr","time":1231.480671547,"data":"AttributeError: 'DecisionHead' object has no attribute 'fingerprint_distance_matrix'\n"}
+,{"stream_name":"stderr","time":1231.480676631,"data":"\n"}
+,{"stream_name":"stderr","time":1234.488436514,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":1234.488479106,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":1234.699791298,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":1234.699827213,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":1235.617655464,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":1235.731433502,"data":"[NbConvertApp] Writing 70282 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":1239.110471153,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":1239.89526211,"data":"[NbConvertApp] Writing 418333 bytes to __results__.html\n"}
+]
