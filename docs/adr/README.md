@@ -20,6 +20,7 @@ decoder was set aside).
 | [0010](0010-ordinal-score.md) | Ordinal `Score` is the only trained component; CORN/CORAL with RPS | accepted | 2026-10-07 |
 | [0011](0011-headroom-check.md) | Benchmark admission requires a headroom check | accepted | 2026-10-07 |
 | [0012](0012-input-length-cap.md) | The encoder enforces a hard input-length cap | accepted | 2026-10-07 |
+| [0013](0013-ambiguity-aware-policy.md) | Ambiguity-aware policy: `clarify` action + meta-routed heads | accepted | 2026-10-07 |
 
 ## Superseded, amended, or deprecated
 

@@ -1,0 +1,16 @@
+{
+  "id": "mauricew/nanocore-s1-clinc150-oos",
+  "title": "nanocore s1 clinc150 oos",
+  "code_file": "s1_clinc150_oos.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

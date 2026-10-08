@@ -123,7 +123,7 @@ spot of the category (Laya: Banking77 0.425).
                                ▼
         ┌─────────────────────────────────────────────────────┐
         │  Prediction{probabilities, prediction_set,          │
-        │   action ∈ {answer, escalate, abstain}, α}          │
+        │   action ∈ {answer, clarify, escalate, abstain}, α} │ ADR-0013
         └─────────────────────────────────────────────────────┘
                           Choice / Score / Noul
 
@@ -370,6 +370,7 @@ All decisions now live in `adr/`. Summary:
 | 0009 | Conformal abstention, asymmetric by domain | accepted |
 | 0010 | Ordinal `Score` is a trained component (was "the only"; joined by task-fitted heads per 0011) | accepted, rescoped |
 | 0011 | Benchmark admission requires a headroom check | **validated in practice** — gate admitted GoEmotions; the fitted head then won by +0.168 macro-F1 |
+| 0013 | Ambiguity-aware policy: `clarify` action + meta-routed heads | accepted — measurement prerequisite is the CLINC150 OOS run |
 | 0012 | The encoder enforces a hard input-length cap | accepted |
 
 ---
