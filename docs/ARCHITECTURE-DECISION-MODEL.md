@@ -297,7 +297,35 @@ not to this project** (ADR-0008).
 
 ---
 
-## 8. Open questions and risks
+## 8. Deployment and drift posture
+
+Written before deployment exists — deliberately. These are design commitments, not a launch plan.
+
+- **Prediction mode:** online, batch-1 decisions per request. The `DecisionCache` adds a
+  precomputed flavour for repeated states.
+- **Compute location:** edge via llama.cpp GGUF. **Measured only on a Kaggle Xeon and a T4** —
+  no ARM or consumer-hardware number exists, so "on-device" is currently one measurement short
+  of a claim.
+- **Release strategy: shadow first.** The conformal gate emits prediction sets on live traffic
+  and *logs* them without acting, until empirical coverage validates on the real distribution.
+  Zero-risk in-distribution validation before the gate gates anything.
+- **Fallback chain:** on llama.cpp load/serve failure — fail closed or fall back to the
+  `SentenceTransformerEncoder` backend; the choice must be explicit, consistent with the
+  `min_n` guard's fail-closed stance.
+- **Failure cost:** `α` is set by the domain's cost asymmetry (a misroute vs. an escalation),
+  not by convention. Per-domain, per ADR-0009.
+- **Drift detection — free with the mechanism:** the conformal **prediction-set size
+  distribution is a covariate-shift monitor**. Rising mean set size means inputs drifting from
+  calibration data — a warning that fires *before* accuracy degrades, at zero extra
+  instrumentation.
+- **Drift response = recalibrate, not retrain.** The entire learned state is one temperature
+  and one quantile — both refit on CPU in seconds. Concept drift in a trained-head design
+  means a training pipeline; here it means `gate.calibrate()` on recent traffic. The
+  minimal-learned-state property is an *operational* advantage, not just an elegance.
+
+---
+
+## 9. Open questions and risks
 
 1. **Both benchmarks are saturated** at ~93% zero-shot (ADR-0011). No architectural comparison
    is meaningful until a headroom-positive task is found — a scoped follow-up.
@@ -316,7 +344,7 @@ not to this project** (ADR-0008).
 
 ---
 
-## 9. Decisions
+## 10. Decisions
 
 All decisions now live in `adr/`. Summary:
 
@@ -337,7 +365,7 @@ All decisions now live in `adr/`. Summary:
 
 ---
 
-## 10. Staged implementation
+## 11. Staged implementation
 
 Specified in full in the approved plan; each stage gated on its own acceptance test.
 
@@ -345,7 +373,7 @@ Specified in full in the approved plan; each stage gated on its own acceptance t
 |---|---|---|
 | 1 | llama.cpp encoder backend | cosine ≥0.999 vs the ST backend; ≤100 ms CPU batch-1 |
 | 2 | Cosine scorer; deprecate the head | matches or beats the head on every proper metric |
-| 3 | Conformal gate | nominal coverage on BFCL **and** Banking77 |
+| 3 | Conformal gate | nominal coverage on BFCL **and** Banking77; **fit/calibrate/test on disjoint splits** |
 | 4 | Ordinal `Score` (CORN/CORAL) | CORN beats cross-entropy on **RPS**; monotonicity holds |
 | 5 | Input-length contract | published latency/quality curve at 128/256/512 tokens |
 
