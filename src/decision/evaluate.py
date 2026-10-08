@@ -11,6 +11,7 @@ Each function takes plain arrays/texts and returns JSON-able dicts.
 """
 from __future__ import annotations
 
+from numbers import Real
 from typing import Dict, List, Sequence
 
 import numpy as np
@@ -73,6 +74,28 @@ def rigor_block(P: np.ndarray, y_idx: np.ndarray,
         from sklearn.metrics import roc_auc_score, average_precision_score
         out["auroc"] = float(roc_auc_score(y_idx, P[:, 1]))
         out["auprc"] = float(average_precision_score(y_idx, P[:, 1]))
+    return out
+
+
+def seed_aggregate(runs: Sequence[Dict]) -> Dict:
+    """Mean and spread of every numeric leaf across seeds.
+
+    The verdicts are read off these means — one seed is luck. Leaves are
+    discovered from the data rather than listed, so a metric added to a run
+    cannot be silently left out of the aggregate.
+
+    Non-numeric leaves (a policy name, an unreached ``recovery_latency``) are
+    dropped: there is nothing to average.
+    """
+    if not runs:
+        raise ValueError("no runs to aggregate")
+    out: Dict = {}
+    for key, value in runs[0].items():
+        if isinstance(value, dict):
+            out[key] = seed_aggregate([run[key] for run in runs])
+        elif isinstance(value, Real) and not isinstance(value, bool):
+            values = [float(run[key]) for run in runs]
+            out[key] = {"mean": float(np.mean(values)), "sd": float(np.std(values))}
     return out
 
 

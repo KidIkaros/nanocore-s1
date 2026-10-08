@@ -5,7 +5,8 @@ import pytest
 from src.decision.policy import (GlialPolicy, Observation, PolicyThresholds,
                                  RecalibrateConfig, RecalibratePolicy,
                                  SlowState, SlowStateConfig, StaticPolicy,
-                                 Stream, StreamConfig, run_stream)
+                                 Stream, StreamConfig, observe_row,
+                                 run_stream)
 
 
 BASE = PolicyThresholds(tau_answer=0.60, k_clarify=3, tau_in_schema=0.70)
@@ -128,6 +129,23 @@ def test_slow_state_holds_through_a_single_quiet_window():
     for _ in range(8):
         state.observe(_obs(0.95, set_size=1))          # 0 anomalies → sustained calm
     assert state.thresholds() == BASE
+
+
+def test_calibrate_fails_closed_on_a_short_reference():
+    """A reference too short to form a window is a mistake, not a valid state."""
+    state = SlowState(BASE, SlowStateConfig(window=20, activate_at=14))
+    with pytest.raises(ValueError):
+        state.calibrate([_obs(0.95) for _ in range(19)])
+
+
+def test_observe_row_is_the_states_only_input():
+    """The reference stream is built with the same statistics the state sees."""
+    cfg = StreamConfig(t_prob=1.0, qhat=0.95, k_clarify=3)
+    row = np.array([2.0, 0.1, 0.1, 0.1])
+    obs, members = observe_row(row, cfg)
+    assert obs.pred == 0 and obs.max_score == 2.0
+    assert obs.set_size == len(members) >= 1
+    assert 0.0 <= obs.top_prob <= 1.0
 
 
 def test_calibrate_sets_the_bar_above_the_worst_healthy_window():

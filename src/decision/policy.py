@@ -36,6 +36,8 @@ from src.decision import metrics as M
 from src.decision.gate import fit_answer_threshold, fit_in_schema_threshold
 from src.decision.scoring import aps_members, softmax_rows
 
+TAU_CEILING = 0.999   # a probability threshold never reaches certainty
+
 
 @dataclass(frozen=True)
 class Observation:
@@ -107,8 +109,11 @@ class SlowState:
         anomalous window seen while healthy, plus one.
         """
         counts = [sum(self._anomalous(o) for o in w) for w in _windows(reference, self._cfg.window)]
-        if counts:
-            self._activate_at = min(self._cfg.window, max(counts) + 1)
+        if not counts:
+            raise ValueError(
+                f"reference stream of {len(reference)} is shorter than the "
+                f"{self._cfg.window}-window it must calibrate")
+        self._activate_at = min(self._cfg.window, max(counts) + 1)
         self._release_at = min(self._cfg.release_at, self._activate_at - 1)
         return self._activate_at
 
@@ -162,9 +167,9 @@ class SlowState:
         if self._base.tau_in_schema is None or reference is None:
             schema_bar = self._base.tau_in_schema
         else:
-            schema_bar = min(0.999, self._base.tau_in_schema + shift * reference)
+            schema_bar = min(TAU_CEILING, self._base.tau_in_schema + shift * reference)
         return PolicyThresholds(
-            tau_answer=min(0.999, self._base.tau_answer + shift),
+            tau_answer=min(TAU_CEILING, self._base.tau_answer + shift),
             k_clarify=max(1, self._base.k_clarify - int(self._streak > 0)),
             tau_in_schema=schema_bar)
 

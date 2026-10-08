@@ -35,6 +35,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.decision.evaluate import seed_aggregate
 from src.decision.gate import ConformalGate, fit_in_schema_threshold
 from src.decision.policy import (GlialPolicy, PolicyThresholds,
                                  RecalibrateConfig, RecalibratePolicy,
@@ -200,32 +201,11 @@ def sweep(arrays: dict, gate: ConformalGate, per_phase: int, seeds: int) -> dict
             stream = Stream(S, y, per_phase)
             runs.append({"mixed": {p.name: run_stream(p, stream, cfg)
                                    for p in arms(base, cfg, reference)}})
-        rows[f"{novelty:.2f}"] = aggregate(runs)["mixed"]
+        rows[f"{novelty:.2f}"] = seed_aggregate(runs)["mixed"]
     return rows
 
 
-AGGREGATED_METRICS = ("accuracy", "escalation_rate", "wrong_answer_rate",
-                      "selective_acc", "tau_in_schema_max")
 
-
-def aggregate(runs: list) -> dict:
-    """Mean and spread of the deciding metrics across seeds.
-
-    One seed is luck; the A/B verdict is read off these means.
-    """
-    streams, policies = runs[0].keys(), runs[0][list(runs[0])[0]].keys()
-    out = {}
-    for stream in streams:
-        out[stream] = {}
-        for policy in policies:
-            out[stream][policy] = {
-                phase: {k: {"mean": float(np.mean([r[stream][policy][phase][k]
-                                                   for r in runs])),
-                            "sd": float(np.std([r[stream][policy][phase][k]
-                                                for r in runs]))}
-                        for k in AGGREGATED_METRICS}
-                for phase in ("phase1", "phase2")}
-    return out
 
 
 def main() -> None:
@@ -265,7 +245,7 @@ def main() -> None:
         return
 
     runs = [run_streams(arrays, gate, args.per_phase, s) for s in range(args.seeds)]
-    agg = aggregate(runs)
+    agg = seed_aggregate(runs)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "ab_results.json").write_text(json.dumps(

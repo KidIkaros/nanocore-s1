@@ -552,50 +552,92 @@ try:
     import datasets as _ds
     from src.decision.adapt import split_indices
     from src.decision.evaluate import dataset_suite
+
+    # Parquet-only ids, verified loadable locally: Kaggle's older datasets
+    # tolerates script-based datasets (PolyAI/banking77, CogComp/trec) while a
+    # current one refuses them, so a script id makes local and Kaggle runs
+    # disagree about what exists.
     BREADTH = [
-        {"name": "banking77", "hf": "PolyAI/banking77",
-         "text": "text", "label": "label"},
-        {"name": "emotion", "hf": "dair-ai/emotion",
-         "text": "text", "label": "label"},
+        {"name": "banking77", "hf": "mteb/banking77", "names_field": "label_text"},
+        {"name": "emotion", "hf": "dair-ai/emotion", "config": "split"},
+        {"name": "tweet_emotion", "hf": "cardiffnlp/tweet_eval", "config": "emotion"},
+        {"name": "tweet_sentiment", "hf": "cardiffnlp/tweet_eval", "config": "sentiment"},
+        {"name": "tweet_hate", "hf": "cardiffnlp/tweet_eval", "config": "hate"},
         {"name": "sst2", "hf": "stanfordnlp/sst2", "text": "sentence",
-         "label": "label", "test_split": "validation",
-         "names": ["negative", "positive"]},
-        {"name": "sst5", "hf": "SetFit/sst5", "text": "text",
-         "label": "label",
-         "names": ["very negative", "negative", "neutral",
-                   "positive", "very positive"]},
-        {"name": "ag_news", "hf": "fancyzhx/ag_news",
-         "text": "text", "label": "label"},
-        {"name": "trec", "hf": "CogComp/trec", "text": "text",
-         "label": None},
+         "test_split": "validation", "names": ["negative", "positive"]},
+        {"name": "ag_news", "hf": "fancyzhx/ag_news"},
+        {"name": "dbpedia_14", "hf": "fancyzhx/dbpedia_14", "config": "dbpedia_14",
+         "text": "content"},
+        {"name": "mnli", "hf": "nyu-mll/glue", "config": "mnli", "text": "premise",
+         "pair": "hypothesis", "test_split": "validation_matched"},
     ]
-    CAP_TR, CAP_TE = 3000, 1500
+    CAP_TR, CAP_TE = 2000, 1000
+
+    def label_field(feats, wanted):
+        if wanted in feats:
+            return wanted
+        cands = [k for k, f in feats.items()
+                 if f.__class__.__name__ == "ClassLabel" and f.num_classes > 1]
+        return min(cands, key=lambda k: feats[k].num_classes)
+
+    def label_names(split, field, cfg):
+        """Names from the whole column: a capped slice can miss classes."""
+        if cfg.get("names"):
+            return cfg["names"]
+        feature = split.features[field]
+        if feature.__class__.__name__ == "ClassLabel":
+            raw = list(feature.names)
+        elif cfg.get("names_field"):
+            pairs = zip(split[field], split[cfg["names_field"]])
+            raw = [t for _, t in sorted({int(i): t for i, t in pairs}.items())]
+        else:
+            raw = sorted(set(split[field]))
+        return [str(n).replace("_", " ") for n in raw]
+
+    def sample_rows(split, cap, field):
+        """Per-class quota, not a head-of-file or strided cap.
+
+        These datasets are class-ordered and some classes are rare, so a head
+        slice yields one class (banking77: 17 of 77 in the first 2000) and a
+        stride drops the classes shorter than the stride (62 of 77). A quota
+        keeps every class the dataset actually has.
+        """
+        y = np.asarray(split[field])
+        classes = np.unique(y)
+        per = max(3, cap // len(classes))
+        picked: list = []
+        for cls in classes:
+            picked += np.flatnonzero(y == cls)[:per].tolist()
+        return picked
+
+    def texts_of(split, cfg):
+        """One text field, or a premise/hypothesis pair joined into one string."""
+        texts = split[cfg.get("text", "text")]
+        if cfg.get("pair"):
+            texts = [f"{a} {b}" for a, b in zip(texts, split[cfg["pair"]])]
+        return list(texts)
+
     ran = 0
     for cfg in BREADTH:
         name = cfg["name"]
         try:
-            d = _ds.load_dataset(cfg["hf"])
-            feats = d["train"].features
-            lf = cfg["label"]
-            if lf is None or lf not in feats:
-                cands = [k for k, f in feats.items()
-                         if f.__class__.__name__ == "ClassLabel"
-                         and f.num_classes > 1]
-                lf = min(cands, key=lambda k: feats[k].num_classes)
-            names = cfg.get("names")
-            if names is None:
-                f = feats[lf]
-                raw = (f.names if f.__class__.__name__ == "ClassLabel"
-                       else sorted(set(d["train"][lf][:CAP_TR])))
-                names = [str(n).replace("_", " ") for n in raw]
+            d = _ds.load_dataset(cfg["hf"], cfg.get("config"))
+            tr = d["train"]
             te = d[cfg.get("test_split", "test")]
-            Xtr_all = d["train"][cfg["text"]][:CAP_TR]
-            ytr_all = np.array(d["train"][lf][:CAP_TR])
-            Xte = te[cfg["text"]][:CAP_TE]
-            yte = np.array(te[lf][:CAP_TE])
+            lf = label_field(tr.features, cfg.get("label", "label"))
+            names = label_names(tr, lf, cfg)
+            tr_s = tr.select(sample_rows(tr, CAP_TR, lf))
+            te_s = te.select(sample_rows(te, CAP_TE, lf))
+            Xtr_all = texts_of(tr_s, cfg)
+            ytr_all = np.array(tr_s[lf])
+            Xte = texts_of(te_s, cfg)
+            yte = np.array(te_s[lf])
             if int(yte.max()) >= len(names) or int(ytr_all.max()) >= len(names):
                 raise ValueError("label id exceeds label names")
             fi, ci, _ = split_indices(len(Xtr_all), 0.6, 0.3, 0, y=ytr_all)
+            absent = sorted(set(range(len(names))) - set(ytr_all[fi].tolist()))
+            if absent:
+                raise ValueError(f"fit split is missing {len(absent)} classes: {absent[:6]}")
             kw = {"prompt_name": "Classification", "batch_size": 64}
             E_fit = to_numpy(encoder.encode([Xtr_all[i] for i in fi], **kw))
             E_cal = to_numpy(encoder.encode([Xtr_all[i] for i in ci], **kw))
@@ -611,14 +653,14 @@ try:
                 "n_test": len(Xte), **r}
             ran += 1
             b = r["blocks"]
-            print(f"{name:10} k={len(names):3} "
+            print(f"{name:16} k={len(names):3} "
                   f"head={b['taskhead']['acc']['point']:.3f} "
                   f"cos={b['cosine']['acc']['point']:.3f} "
                   f"tfidf={b['tfidf_lr']['acc']['point']:.3f}")
         except Exception as e:
             RESULTS["breadth"]["datasets"][name] = {
                 "status": "failed", "error": repr(e)[:200]}
-            print(f"{name:10} failed: {repr(e)[:140]}")
+            print(f"{name:16} failed: {repr(e)[:140]}")
     RESULTS["breadth"]["status"] = "ran" if ran >= 3 else "partial"
     RESULTS["breadth"]["n_ran"] = ran
 except Exception as e:

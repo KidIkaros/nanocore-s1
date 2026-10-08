@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from src.decision.evaluate import (dataset_suite, rigor_block,
+from src.decision.evaluate import (dataset_suite, rigor_block, seed_aggregate,
                                    similarity_bands, tfidf_baseline)
 
 
@@ -98,3 +98,22 @@ def test_dataset_suite_end_to_end():
     assert blocks["cosine"]["acc"]["point"] > 0.8
     assert out["calibration"]["cosine_t"] is not None
     assert "memorization" in out
+
+
+def test_seed_aggregate_covers_every_numeric_leaf():
+    """A metric added to a run must not be silently left out of the aggregate."""
+    runs = [{"a": {"acc": 0.4, "n": 10, "latency": None, "name": "glial"},
+             "ci": {"lo": 0.1}},
+            {"a": {"acc": 0.6, "n": 10, "latency": None, "name": "glial"},
+             "ci": {"lo": 0.3}}]
+    agg = seed_aggregate(runs)
+    assert agg["a"]["acc"] == {"mean": pytest.approx(0.5), "sd": pytest.approx(0.1)}
+    assert agg["a"]["n"]["mean"] == 10
+    assert agg["ci"]["lo"]["mean"] == pytest.approx(0.2)
+    assert "latency" not in agg["a"]      # nothing to average
+    assert "name" not in agg["a"]         # not numeric
+
+
+def test_seed_aggregate_rejects_no_runs():
+    with pytest.raises(ValueError):
+        seed_aggregate([])
