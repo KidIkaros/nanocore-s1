@@ -48,15 +48,17 @@ def rigor_block(P: np.ndarray, y_idx: np.ndarray,
     """The reference-eval metric block with uncertainty on it.
 
     Bootstrap CIs on accuracy and log score, AURC, selective accuracy at
-    50%/80% coverage, ECE over 15 bins, Brier. Every number the comparison
-    tables print comes from here so columns stay comparable across scorers.
+    50%/80% coverage, ECE over 15 bins, Brier. Binary tasks additionally
+    report AUROC and AUPRC (threshold-free, per the eval standard). Every
+    number the comparison tables print comes from here so columns stay
+    comparable across scorers.
     """
     P = np.asarray(P, dtype=np.float64)
     y_idx = np.asarray(y_idx, dtype=int)
     onehot = np.eye(P.shape[1])[y_idx]
     conf = P.max(axis=1)
     correct = (P.argmax(axis=1) == y_idx).astype(float)
-    return {
+    out = {
         "acc": M.bootstrap_ci(lambda a: a.mean(), correct,
                               resamples=resamples, seed=seed),
         "log": M.bootstrap_ci(lambda p, y: M.log_score(p, np.eye(p.shape[1])[y]),
@@ -67,6 +69,11 @@ def rigor_block(P: np.ndarray, y_idx: np.ndarray,
         "ece15": M.expected_calibration_error(P, onehot, n_bins=15),
         "brier": M.brier_score(P, onehot),
     }
+    if P.shape[1] == 2:
+        from sklearn.metrics import roc_auc_score, average_precision_score
+        out["auroc"] = float(roc_auc_score(y_idx, P[:, 1]))
+        out["auprc"] = float(average_precision_score(y_idx, P[:, 1]))
+    return out
 
 
 def similarity_bands(test_vecs: np.ndarray, train_vecs: np.ndarray,
@@ -87,3 +94,54 @@ def similarity_bands(test_vecs: np.ndarray, train_vecs: np.ndarray,
             out[f"[{lo},{hi})"] = {"n": int(m.sum()),
                                    "acc": float((preds[m] == targets[m]).mean())}
     return out
+
+
+def dataset_suite(train_vecs: np.ndarray, y_tr: np.ndarray,
+                  cal_vecs: np.ndarray, y_cal: np.ndarray,
+                  test_vecs: np.ndarray, y_te: np.ndarray,
+                  train_texts: Sequence[str], test_texts: Sequence[str],
+                  label_vecs: np.ndarray, n_classes: int,
+                  alpha: float = 0.10, seed: int = 0,
+                  resamples: int = 200) -> Dict:
+    """One breadth dataset through the full comparison.
+
+    Three probability matrices on the identical test split —
+    zero-shot cosine (``label_vecs``), a fitted linear ``TaskHead``, and
+    TF-IDF+LR — each wrapped in a ``rigor_block``, plus the head's
+    memorization bands. Gate temperatures are calibrated on ``cal_*``,
+    disjoint from fit and test, matching the three-way-split rule.
+
+    Embeddings are injected precomputed: encoding happens in the kernel
+    (encoder lives there); this function is pure array math and is what
+    the local test suite exercises.
+    """
+    from src.decision.gate import ConformalGate
+    from src.decision.scoring import TaskHead
+
+    X_tr, X_cal, X_te = map(lambda a: np.asarray(a, dtype=np.float64),
+                            (train_vecs, cal_vecs, test_vecs))
+    y_tr, y_cal, y_te = (np.asarray(y, dtype=int) for y in (y_tr, y_cal, y_te))
+    LV = np.asarray(label_vecs, dtype=np.float64)
+
+    g_cos = ConformalGate(alpha=alpha, min_n=100)
+    g_cos.calibrate(X_cal @ LV.T, y_cal, seed=seed)
+    P_cos = softmax_rows(X_te @ LV.T, g_cos.t_prob)
+
+    head = TaskHead(kind="linear")
+    head.fit(X_tr, y_tr, labels=[str(i) for i in range(n_classes)], seed=seed)
+    g_head = ConformalGate(alpha=alpha, min_n=100)
+    g_head.calibrate(head.logits(X_cal), y_cal, seed=seed)
+    head.temperature = g_head.t_prob
+    P_head = softmax_rows(head.logits(X_te), g_head.t_prob)
+
+    P_tfidf = tfidf_baseline(train_texts, y_tr, test_texts, n_classes)
+
+    blocks = {"cosine": rigor_block(P_cos, y_te, resamples, seed),
+              "taskhead": rigor_block(P_head, y_te, resamples, seed),
+              "tfidf_lr": rigor_block(P_tfidf, y_te, resamples, seed)}
+    return {
+        "blocks": blocks,
+        "memorization": similarity_bands(X_te, X_tr,
+                                         P_head.argmax(axis=1), y_te),
+        "calibration": {"cosine_t": g_cos.t_prob, "head_t": g_head.t_prob},
+    }

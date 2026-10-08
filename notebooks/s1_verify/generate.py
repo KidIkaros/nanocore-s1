@@ -537,6 +537,96 @@ except Exception as e:
 write_status("memorization")
 '''),
 
+    md('''## 5i. Breadth — the same protocol across datasets
+
+Phase 7 breadth leg: several public classification datasets, each through the
+identical pipeline — zero-shot cosine vs fitted head vs TF-IDF+LR, every block
+with bootstrap CIs, AURC, ECE15, Brier (AUROC/AUPRC on binary tasks). All
+computation lives in `src.decision.evaluate.dataset_suite` (unit-tested);
+this cell is load → encode → call → record. Per-dataset failures are recorded
+and skipped rather than aborting the leg.
+'''),
+    code('''
+RESULTS["breadth"] = {"status": "skipped", "datasets": {}}
+try:
+    import datasets as _ds
+    from src.decision.adapt import split_indices
+    from src.decision.evaluate import dataset_suite
+    BREADTH = [
+        {"name": "banking77", "hf": "PolyAI/banking77",
+         "text": "text", "label": "label"},
+        {"name": "emotion", "hf": "dair-ai/emotion",
+         "text": "text", "label": "label"},
+        {"name": "sst2", "hf": "stanfordnlp/sst2", "text": "sentence",
+         "label": "label", "test_split": "validation",
+         "names": ["negative", "positive"]},
+        {"name": "sst5", "hf": "SetFit/sst5", "text": "text",
+         "label": "label",
+         "names": ["very negative", "negative", "neutral",
+                   "positive", "very positive"]},
+        {"name": "ag_news", "hf": "fancyzhx/ag_news",
+         "text": "text", "label": "label"},
+        {"name": "trec", "hf": "CogComp/trec", "text": "text",
+         "label": None},
+    ]
+    CAP_TR, CAP_TE = 3000, 1500
+    ran = 0
+    for cfg in BREADTH:
+        name = cfg["name"]
+        try:
+            d = _ds.load_dataset(cfg["hf"])
+            feats = d["train"].features
+            lf = cfg["label"]
+            if lf is None or lf not in feats:
+                cands = [k for k, f in feats.items()
+                         if f.__class__.__name__ == "ClassLabel"
+                         and f.num_classes > 1]
+                lf = min(cands, key=lambda k: feats[k].num_classes)
+            names = cfg.get("names")
+            if names is None:
+                f = feats[lf]
+                raw = (f.names if f.__class__.__name__ == "ClassLabel"
+                       else sorted(set(d["train"][lf][:CAP_TR])))
+                names = [str(n).replace("_", " ") for n in raw]
+            te = d[cfg.get("test_split", "test")]
+            Xtr_all = d["train"][cfg["text"]][:CAP_TR]
+            ytr_all = np.array(d["train"][lf][:CAP_TR])
+            Xte = te[cfg["text"]][:CAP_TE]
+            yte = np.array(te[lf][:CAP_TE])
+            if int(yte.max()) >= len(names) or int(ytr_all.max()) >= len(names):
+                raise ValueError("label id exceeds label names")
+            fi, ci, _ = split_indices(len(Xtr_all), 0.6, 0.3, 0, y=ytr_all)
+            kw = {"prompt_name": "Classification", "batch_size": 64}
+            E_fit = to_numpy(encoder.encode([Xtr_all[i] for i in fi], **kw))
+            E_cal = to_numpy(encoder.encode([Xtr_all[i] for i in ci], **kw))
+            E_te = to_numpy(encoder.encode(Xte, **kw))
+            LVb = to_numpy(encoder.encode(names, prompt_name="Document",
+                                          batch_size=32))
+            LVb = LVb / np.linalg.norm(LVb, axis=1, keepdims=True)
+            r = dataset_suite(E_fit, ytr_all[fi], E_cal, ytr_all[ci],
+                              E_te, yte, [Xtr_all[i] for i in fi], Xte,
+                              LVb, len(names))
+            RESULTS["breadth"]["datasets"][name] = {
+                "status": "ran", "n_classes": len(names),
+                "n_test": len(Xte), **r}
+            ran += 1
+            b = r["blocks"]
+            print(f"{name:10} k={len(names):3} "
+                  f"head={b['taskhead']['acc']['point']:.3f} "
+                  f"cos={b['cosine']['acc']['point']:.3f} "
+                  f"tfidf={b['tfidf_lr']['acc']['point']:.3f}")
+        except Exception as e:
+            RESULTS["breadth"]["datasets"][name] = {
+                "status": "failed", "error": repr(e)[:200]}
+            print(f"{name:10} failed: {repr(e)[:140]}")
+    RESULTS["breadth"]["status"] = "ran" if ran >= 3 else "partial"
+    RESULTS["breadth"]["n_ran"] = ran
+except Exception as e:
+    RESULTS["breadth"] = {"status": "failed", "error": repr(e)[:300]}
+    print("breadth leg failed:", repr(e)[:200])
+write_status("breadth")
+'''),
+
     md('''## 6. Live `decide()` — the typed interface on real input
 
 Full stack: encoder → scorer → gate → Prediction{probabilities, prediction_set,
@@ -596,6 +686,13 @@ verdict = {
                            .get("tfidf_lr", {}).get("accuracy", 1)),
     "rigor_ran": RESULTS["rigor"]["status"] == "ran",
     "memorization_ran": RESULTS["memorization"]["status"] == "ran",
+    "breadth_ran": RESULTS["breadth"].get("status") in ("ran", "partial"),
+    "breadth_datasets": RESULTS["breadth"].get("n_ran", 0),
+    "breadth_head_ge_tfidf": all(
+        r["blocks"]["taskhead"]["acc"]["point"]
+        >= r["blocks"]["tfidf_lr"]["acc"]["point"]
+        for r in RESULTS["breadth"].get("datasets", {}).values()
+        if r.get("status") == "ran"),
 }
 RESULTS["verdict"] = verdict
 print(json.dumps(verdict, indent=2))
