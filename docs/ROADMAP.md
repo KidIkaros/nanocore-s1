@@ -65,10 +65,10 @@ The full stack. Everything not marked `DONE` is roadmap work.
 | 6 | `DecisionCache` | no repeat encodes | DONE | — |
 | 7 | `DecisionModel` | orchestrator | DONE | — |
 | 8 | Bundle save/load | shippable artifact | DONE | — |
-| 9 | CLI | entry point | PARTIAL (never executed) | 1 |
-| 10 | **Adaptation harness** | labeled data → head + gate → bundle | TODO | 2 |
-| 11 | **Escalation handler** | what `escalate` does | TODO | 3 |
-| 12 | **Clarify presenter** | set → question payload | TODO | 3 |
+| 9 | CLI | entry point | DONE (v5: 12 inputs, subprocess) | 1 |
+| 10 | **Adaptation harness** | labeled data → head + gate → bundle | DONE (s1_adapt v3, Banking77) | 2 |
+| 11 | **Escalation handler** | what `escalate` does | DONE (unit-tested; kernel leg pending) | 3 |
+| 12 | **Clarify presenter** | set → question payload | DONE (unit-tested) | 3 |
 | 13 | **Serving layer** | model server + prediction endpoint | TODO | 4 |
 | 14 | **Prediction log** | inputs/outputs/version/latency | TODO | 4 |
 | 15 | **Cost accounting** | tokens, USD, throughput | TODO | 4 |
@@ -268,3 +268,7 @@ The project is complete when:
 | 2026-10-08 | — | Roadmap created. Phases 0–11 defined, component inventory complete (33 items). |
 | 2026-10-08 | 0 | Boundary hardened in `AGENTS.md` (R1 verbatim); local GGUF artifact removed; `llama_cpp` confirmed absent from venv. **Phase 0 done.** |
 | 2026-10-08 | 1 | CLI made backend-pluggable (`--backend st\|llamacpp`, `--inputs` batch). s1_verify v5 pushed: llama.cpp leg replaced with a CLI leg (subprocess, 12 real inputs, calibrated bundle). Awaiting run. |
+| 2026-10-08 | 1 | **DONE** — s1_verify v5 all green; CLI ran end-to-end in a subprocess on 12 inputs (5 answered ≥0.997, 7 escalated incl. all OOS/ambiguous). Session 5.5 min. |
+| 2026-10-08 | 2 | `src/decision/adapt.py` — `adapt(texts, labels, encoder)` → head + calibrated gate + bundle + `adapt_report.json`. 6 tests (158 total green). |
+| 2026-10-08 | 2 | **DONE** — s1_adapt v3 all 8 verdicts green on Banking77 (never calibrated before): head 0.995 vs zeroshot 0.975, no undercoverage, τ_in_schema fitted on 20 held-out OOS classes, reload identical 400/400, CLI leg ran. |
+| 2026-10-08 | 3 | `src/decision/handlers.py` — CallableEscalation/QueuedEscalation/clarify_payload/handle dispatch; escalate falls back to a JSONL queue on System-Two failure; abstain returns a reason. 8 tests. In-kernel exercise pending next s1_verify rev. |
