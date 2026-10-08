@@ -18,9 +18,18 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional, Protocol, Sequence, runtime_checkable
 
 from src.decision.schema import Prediction, Question
+
+
+@runtime_checkable
+class EscalationHandler(Protocol):
+    """Anything that can receive an escalation: a callable wrapper, a queue,
+    a human handoff. Contract: ``resolved_by`` attr + ``handle()``."""
+    resolved_by: str
+
+    def handle(self, state, question: Question, pred: Prediction) -> dict: ...
 
 
 # ── payloads ─────────────────────────────────────────────────────────────────
@@ -109,7 +118,7 @@ class QueuedEscalation:
 # ── dispatch ─────────────────────────────────────────────────────────────────
 
 def handle(pred: Prediction, state, question: Question,
-           escalate_to: Optional[CallableEscalation] = None,
+           escalate_to: Optional[EscalationHandler] = None,
            max_clarify_options: int = 3) -> DispatchResult:
     """Execute the gated action. ``escalate_to`` is required for ``escalate``
     to reach a real destination; without one, escalation falls back to an

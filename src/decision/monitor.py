@@ -156,7 +156,7 @@ def detect_drift(reference: List[dict], recent: List[dict],
         rep.alerts.append(f"set_size KS={k_set:.3f} > {ks_threshold}")
     for a, d in delta.items():
         if abs(d) > action_delta:
-            rep.shift_types.append("label" if a in ("answer", "escalate") else a)
+            rep.shift_types.append("label")
             rep.alerts.append(f"action '{a}' rate moved {d:+.2f}")
     rep.shift_types = sorted(set(rep.shift_types))
     return rep
@@ -164,8 +164,7 @@ def detect_drift(reference: List[dict], recent: List[dict],
 
 # ── shadow comparison (Phase 6 release) ──────────────────────────────────────
 
-def shadow_compare(records: List[dict], candidate_model,
-                   encoder_encode=None) -> Dict:
+def shadow_compare(records: List[dict], candidate_model) -> Dict:
     """Replay logged inputs through a candidate model; report agreement with
     the logged (live) decisions.
 

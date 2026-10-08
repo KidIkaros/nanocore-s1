@@ -40,7 +40,8 @@ class AdaptConfig:
     seed: int = 0
     time_ordered: bool = False    # contiguous splits for time-correlated data
     min_cal: int = 200            # gate calibration floor (ConformalGate.min_n)
-    head_kwargs: Dict = field(default_factory=dict)  # epochs, lr, hidden, ...
+    hidden: int = 256             # MLP width when head_kind="mlp"
+    head_kwargs: Dict = field(default_factory=dict)  # epochs, lr, ... (fit args)
     policy: str = "full"
     answer_precision: float = 0.90
 
@@ -155,10 +156,9 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
     headroom = {"zeroshot_test_acc": float((zs_pred == y_idx[ti]).mean())}
 
     # ── fit the head on the fit split only
-    head = TaskHead(kind=cfg.head_kind,
-                    hidden=cfg.head_kwargs.get("hidden", 256))
-    hk = {k: v for k, v in cfg.head_kwargs.items() if k != "hidden"}
-    train_rec = head.fit(X[fi], y_idx[fi], labels=classes, seed=cfg.seed, **hk)
+    head = TaskHead(kind=cfg.head_kind, hidden=cfg.hidden)
+    train_rec = head.fit(X[fi], y_idx[fi], labels=classes, seed=cfg.seed,
+                         **cfg.head_kwargs)
 
     # ── calibrate the gate on the cal split only (gate sub-splits A/B)
     gate = ConformalGate(alpha=cfg.alpha, policy=cfg.policy,

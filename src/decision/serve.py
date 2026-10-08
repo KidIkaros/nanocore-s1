@@ -25,6 +25,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from src.decision.schema import Question
 
 
@@ -68,7 +70,6 @@ class _Stats:
         self.actions[action] = self.actions.get(action, 0) + 1
 
     def summary(self) -> dict:
-        import numpy as np
         lat = np.asarray(self.latencies) if self.latencies else np.zeros(1)
         return {"requests": self.n, "uptime_s": round(time.time() - self.t0, 1),
                 "actions": dict(sorted(self.actions.items())),

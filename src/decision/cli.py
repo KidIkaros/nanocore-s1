@@ -32,6 +32,9 @@ def _build(args):
     if args.backend == "st":
         from src.decision.encoder import StateEncoder
         encoder = StateEncoder(modalities=("text",), device=args.device or None)
+    elif args.backend == "stub":
+        from src.decision.backends import StubEncoder
+        encoder = StubEncoder()                     # dry-runs/tests, no weights
     else:
         from src.decision.backends import LlamaCppEncoder
         if not Path(args.model).exists():
@@ -116,7 +119,7 @@ def main(argv=None):
     d.add_argument("--qtype", default="choice", choices=["choice", "score", "noul"])
     d.add_argument("--scale", help="numeric scale for score questions")
     d.add_argument("--policy", default=None, choices=["full", "escalate", "answer"])
-    d.add_argument("--backend", default="st", choices=["st", "llamacpp"])
+    d.add_argument("--backend", default="st", choices=["st", "llamacpp", "stub"])
     d.add_argument("--device", help="torch device for --backend st (default: auto)")
     d.add_argument("--model", default=DEFAULT_MODEL, help="GGUF path for --backend llamacpp")
     d.add_argument("--bundle", help="calibrated bundle dir (enables the gate)")
@@ -128,7 +131,7 @@ def main(argv=None):
 
     s = sub.add_parser("serve", help="serve decisions over HTTP")
     s.add_argument("--bundle", help="calibrated bundle dir (enables the gate)")
-    s.add_argument("--backend", default="st", choices=["st", "llamacpp"])
+    s.add_argument("--backend", default="st", choices=["st", "llamacpp", "stub"])
     s.add_argument("--device", help="torch device for --backend st")
     s.add_argument("--model", default=DEFAULT_MODEL, help="GGUF for llamacpp")
     s.add_argument("--host", default="127.0.0.1")

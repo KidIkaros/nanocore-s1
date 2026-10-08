@@ -79,3 +79,40 @@ class LlamaCppEncoder:
                        prompt_name: str | None = "Document") -> torch.Tensor:
         rows = [self._embed_text(self._prep(t, prompt_name)) for t in option_texts]
         return torch.from_numpy(np.stack(rows))
+
+
+class StubEncoder:
+    """Deterministic weightless encoder for dry-runs and tests.
+
+    The last whitespace token seeds a class center; the full text adds small
+    jitter — texts sharing a last token cluster together, so the entire
+    CLI/serve/adapt path can be exercised locally (no weights, no torch at
+    import) with a *learnable* signal rather than noise.
+
+    Never use for a real decision: ``model_name`` is ``"stub"`` so bundles
+    produced through it cannot masquerade as encoder-backed.
+    """
+    model_name = "stub"
+
+    def __init__(self, dim: int = 64):
+        self.dim = dim
+
+    def _vec(self, text: str) -> np.ndarray:
+        key = str(text).split()[-1] if str(text).split() else "empty"
+        rng = np.random.default_rng(abs(hash(key)) % (2**31))
+        center = rng.standard_normal(self.dim)
+        center /= np.linalg.norm(center)
+        jitter = 0.05 * np.random.default_rng(
+            abs(hash(text)) % (2**31)).standard_normal(self.dim)
+        v = center + jitter
+        return v / np.linalg.norm(v)
+
+    def encode(self, texts: Sequence[str], **kw) -> np.ndarray:
+        return np.stack([self._vec(t) for t in texts])
+
+    def encode_state(self, items, prompt_name=None):
+        return self.encode(
+            [i if isinstance(i, str) else str(i.get("text", "")) for i in items])
+
+    def encode_options(self, option_texts, prompt_name=None):
+        return self.encode(list(option_texts))

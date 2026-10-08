@@ -459,23 +459,13 @@ candidate against the best baseline per metric.
     code('''
 RESULTS["baselines"] = {"status": "skipped"}
 try:
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from sklearn.linear_model import LogisticRegression
+    from src.decision.evaluate import tfidf_baseline
     from src.decision.protocol import metric_block, compare_to_best
     from src.decision.scoring import softmax_rows
 
-    tf = TfidfVectorizer(ngram_range=(1, 2), min_df=2).fit(X_tr_i)
-    y_tr_cols = to_cols(y_tr_i)          # column ids 0..149, not dataset ids
-    lr = LogisticRegression(max_iter=1000, C=4.0).fit(
-        tf.transform(X_tr_i), y_tr_cols)
     Xte_in = [t for t, m in zip(X_te, te_in) if m]  # X_te is a list
-    raw = lr.predict_proba(tf.transform(Xte_in))
-    # predict_proba columns follow lr.classes_ — scatter into the 150-col frame
-    lr_classes = list(lr.classes_)
-    P_lr = np.full((len(Xte_in), len(INTENT_TEXTS)), 1e-9)
-    for col, cid in enumerate(lr_classes):
-        P_lr[:, cid] = raw[:, col]
-    P_lr /= P_lr.sum(axis=1, keepdims=True)
+    # label-space check: fit LR on column ids (0..149), not dataset ids
+    P_lr = tfidf_baseline(X_tr_i, to_cols(y_tr_i), Xte_in, len(INTENT_TEXTS))
 
     onehot = np.eye(len(INTENT_TEXTS))[yt_c[te_in]]
     P_cos = softmax_rows(SC_te[te_in], gate.t_prob)
@@ -504,32 +494,16 @@ coverage (50%/80%) are the selective-prediction standard. ECE over 15 bins.
     code('''
 RESULTS["rigor"] = {"status": "skipped"}
 try:
-    from src.decision import metrics as M
+    from src.decision.evaluate import rigor_block
     from src.decision.scoring import softmax_rows
 
     P_cos = softmax_rows(SC_te[te_in], gate.t_prob)
     P_head = softmax_rows(head.logits(S_te[te_in]), gate_h.t_prob)
-
-    def rigor_leg(name, P, y_idx):
-        conf = P.max(axis=1)
-        correct = (P.argmax(axis=1) == y_idx).astype(float)
-        acc_ci = M.bootstrap_ci(lambda a: a.mean(), correct, resamples=500)
-        log_ci = M.bootstrap_ci(
-            lambda p, y: M.log_score(p, np.eye(P.shape[1])[y]),
-            P, y_idx, resamples=500)
-        return {"acc": acc_ci, "log": log_ci,
-                "aurc": M.aurc(conf, correct),
-                "acc_at_50": M.selective_at_coverage(conf, correct, 0.5),
-                "acc_at_80": M.selective_at_coverage(conf, correct, 0.8),
-                "ece15": M.expected_calibration_error(
-                    P, np.eye(P.shape[1])[y_idx], n_bins=15),
-                "brier": M.brier_score(P, np.eye(P.shape[1])[y_idx])}
-
     yt_in = yt_c[te_in]
-    legs = {"cosine": rigor_leg("cosine", P_cos, yt_in),
-            "taskhead": rigor_leg("taskhead", P_head, yt_in)}
-    if "P_lr" in dir():
-        legs["tfidf_lr"] = rigor_leg("tfidf_lr", P_lr, yt_in)
+    legs = {"cosine": rigor_block(P_cos, yt_in),
+            "taskhead": rigor_block(P_head, yt_in)}
+    if RESULTS["baselines"].get("status") == "ran":
+        legs["tfidf_lr"] = rigor_block(P_lr, yt_in)
     RESULTS["rigor"] = {"status": "ran", **legs}
     for name, r in legs.items():
         print(f"{name:10} acc={r['acc']['point']:.3f} "
@@ -551,14 +525,9 @@ any train embedding; report accuracy per band.
     code('''
 RESULTS["memorization"] = {"status": "skipped"}
 try:
-    sims = (S_te[te_in] @ S_tr.T).max(axis=1)   # nearest train neighbour
-    acc_by_band, bands = {}, [(-1, .8), (.8, .9), (.9, .95), (.95, 1.01)]
+    from src.decision.evaluate import similarity_bands
     hpred = head.logits(S_te[te_in]).argmax(1)
-    for lo, hi in bands:
-        m = (sims >= lo) & (sims < hi)
-        if m.sum() >= 10:
-            acc_by_band[f"[{lo},{hi})"] = {"n": int(m.sum()),
-                "acc": float((hpred[m] == yt_c[te_in][m]).mean())}
+    acc_by_band = similarity_bands(S_te[te_in], S_tr, hpred, yt_c[te_in])
     RESULTS["memorization"] = {"status": "ran", "acc_by_sim_band": acc_by_band}
     print("acc by nearest-train-similarity band:",
           json.dumps(acc_by_band, indent=1))
