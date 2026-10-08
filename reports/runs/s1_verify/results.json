@@ -25,6 +25,18 @@
     "set_coverage_in_scope": 0.9995555555555555
   },
   "head_in_scope_acc": 0.9693333333333334,
+  "bundle_roundtrip": {
+    "n": 200,
+    "identical": 200
+  },
+  "ordinal": {
+    "status": "failed",
+    "error": "AttributeError(\"'Value' object has no attribute 'names'\")"
+  },
+  "llamacpp": {
+    "status": "failed",
+    "error": "RemoteEntryNotFoundError('404 Client Error. (Request ID: Root=1-6ac7b6f9-05a2602a6d95f2a370d5c8ee;358516e5-041b-43cd-a6a8-01e6139eb7c9)\\n\\nEntry Not Found for url: https://huggingface.co/ggml-org/embeddinggemma-300m-qat-q8_0-GGUF/resolve/main/embeddinggemma-300M-QAT-Q8_0.gguf.')"
+  },
   "demos": [
     {
       "input": "i need to cancel my flight tomorrow",
@@ -65,6 +77,11 @@
     "head_resolved_in_band": true,
     "coverage_in_band": true,
     "head_coverage_reported": 0.9995555555555555,
-    "head_acc_in_band": true
+    "head_acc_in_band": true,
+    "bundle_roundtrip_identical": true,
+    "ordinal_ran": false,
+    "ordinal_beats_zeroshot": false,
+    "llamacpp_ran": false,
+    "llamacpp_agreement": null
   }
 }

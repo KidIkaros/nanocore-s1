@@ -190,8 +190,57 @@ The measuring apparatus is now in better shape than the model.
 |---|---|
 | `src/decision/protocol.py` | one temperature fitter (two-stage, edge-safe), one metric block, ragged support for variable option sets, headroom check, dispatch metrics, best-baseline verdicts |
 | `tests/test_decision_protocol.py` | 26 tests, including regression tests for both published errors and the residual grid-edge defect |
-| **87 tests** | pass on Kaggle in ~6 s |
+| **149 tests** | pass locally; suite re-run inside `s1_verify` on the Kaggle image |
 | `notebooks/s1_tests` | reusable CPU fast-fail harness — no GPU, no internet, no quota |
 | Execution boundary | ADR-0006; local is reading/writing/static checks only. Violated once, structurally fixed |
 
 Every number in this document comes from a Kaggle run with artifacts in `reports/runs/`.
+
+---
+
+## 8. Quality control, benchmarking, and evaluation
+
+Added after the fact — the experiment log had evidence but no standing harness.
+This section defines what "checked" means going forward.
+
+### The QC harness
+
+`notebooks/s1_verify/` is the single verification kernel — one GPU session that runs,
+in order: the full test suite on the Kaggle image → real encoder load → CLINC150
+end-to-end through the shipped classes → policy evaluation in both scorer modes →
+deployable-bundle round-trip → the live typed interface. It asserts against the
+measured bands below; a regression in shipped code fails the run, not a discussion.
+
+**One kernel per concern, iterated by version** (AGENTS.md) — `s1_verify` is the
+recurring QC run; experiment families keep their own notebooks; no per-revision
+kernels.
+
+### The standing benchmark suite
+
+| Dataset | What it establishes | Status |
+|---|---|---|
+| Banking77, BFCL | saturated zero-shot routing (~0.93) — the "no head needed" regime | measured |
+| GoEmotions | headroom-positive multilabel; head ladder + data-scaling curve | measured |
+| CLINC150 | OOS detection + ambiguity policy + the degenerate-set trap | measured |
+| SST-5 | ordered `score` — CORN vs zero-shot level names | wired into s1_verify |
+| Audio/vision | the multimodal differentiator | **gap — smoke test only** |
+| Device latency | the on-device claim (llama.cpp, real hardware) | **gap — Kaggle-measured only** |
+
+### Regression bands (fail the verify run if missed)
+
+- resolved fraction: cosine leg 0.48±0.05, head leg 0.92±0.06 (CLINC150)
+- in-scope set coverage: 0.85–0.95 at α=0.10 — **a band, not a floor**
+  (≥0.99 means degenerate sets, the fourth sharpening sighting)
+- bundle round-trip: 200/200 identical decisions post save→load
+- calibration gates on proper scoring rules (log/Brier); ECE is report-only
+
+### Coverage gaps (ranked)
+
+1. **Multimodal eval on real data** — the capability no competitor has, still
+   unproven on a scored task.
+2. **True-device latency** — llama.cpp numbers are from a Kaggle Xeon, not a
+   consumer device.
+3. **A deployment soak** — every number is an offline split; nothing has run
+   under real call patterns.
+4. **Ambiguous-phrasing eval** — `clarify` fired on 1% of CLINC items; it needs
+   a dataset with genuine in-schema ambiguity to be judged.

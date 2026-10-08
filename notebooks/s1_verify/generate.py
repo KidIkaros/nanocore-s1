@@ -295,7 +295,11 @@ RESULTS["ordinal"] = {"status": "skipped"}
 try:
     import datasets
     sst = datasets.load_dataset("SetFit/sst5")
-    LEVELS = sst["train"].features["label"].names
+    # label is a plain Value on SetFit/sst5 — build the ordered name map from rows
+    lut = {}
+    for t, l in zip(sst["train"]["label_text"], sst["train"]["label"]):
+        lut[int(l)] = t
+    LEVELS = [lut[i] for i in range(max(lut) + 1)]
     def rows(split, n=None):
         xs = split["text"][:n]; ys = np.array(split["label"][:n])
         return xs, ys
@@ -338,9 +342,10 @@ RESULTS["llamacpp"] = {"status": "skipped"}
 try:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q",
                     "llama-cpp-python>=0.3.2"], check=True)
-    from huggingface_hub import hf_hub_download
-    gguf = hf_hub_download("ggml-org/embeddinggemma-300m-qat-q8_0-gguf",
-                           "embeddinggemma-300M-QAT-Q8_0.gguf")
+    from huggingface_hub import hf_hub_download, list_repo_files
+    files = [f for f in list_repo_files("ggml-org/embeddinggemma-300m-qat-q8_0-gguf")
+             if f.endswith(".gguf")]
+    gguf = hf_hub_download("ggml-org/embeddinggemma-300m-qat-q8_0-gguf", files[0])
     from src.decision.backends import LlamaCppEncoder
     lenc = LlamaCppEncoder(gguf)
     # probe: do rankings agree with the reference encoder on the same texts?

@@ -138,13 +138,13 @@ boundaries: everything loading weights runs on Kaggle      ADR-0006
 
 | Component | File | Params | Trained? | Status |
 |---|---|---|---|---|
-| `LlamaCppEncoder` | `src/decision/backends.py` (Stage 1) | 271M (frozen) | no | **decided**, not yet implemented |
+| `LlamaCppEncoder` | `src/decision/backends.py` (Stage 1) | 271M (frozen) | no | **implemented**; agreement probe in s1_verify |
 | `SentenceTransformerEncoder` | `src/decision/encoder.py` | 271M / 439M | no | reference backend, works today |
-| `CosineScorer` | `src/decision/scoring.py` (Stage 2) | **1** | one temperature | **decided**, not yet implemented |
-| `OrdinalScorer` (CORN) | `src/decision/scoring.py` (Stage 4) | ordinal head | **yes** | decided, not yet implemented |
-| `TaskHead` | `src/decision/scoring.py` (post-Stage-3) | ~200k (768→256→k) | **yes**, per deployment | **evidence-backed** (s1_goemotions_head); not yet implemented |
-| `ConformalGate` | `src/decision/gate.py` (Stage 3) | — | calibrated + `min_n` guard | decided, not yet implemented |
-| `DecisionCache` | `src/decision/cache.py` (Stage 1) | — | stores, never trains | decided, not yet implemented |
+| `CosineScorer` | `src/decision/scoring.py` (Stage 2) | **1** | one temperature | **implemented + verified** (s1_verify) |
+| `OrdinalScorer` (CORN) | `src/decision/scoring.py` (Stage 4) | ordinal head | **yes** | implemented; SST-5 eval in s1_verify |
+| `TaskHead` | `src/decision/scoring.py` (post-Stage-3) | ~200k (768→256→k) | **yes**, per deployment | **implemented + verified** (0.969 CLINC150 in-scope) |
+| `ConformalGate` | `src/decision/gate.py` (Stage 3) | — | calibrated + `min_n` guard | **implemented + verified** (coverage 0.914 in-band) |
+| `DecisionCache` | `src/decision/cache.py` (Stage 1) | — | stores, never trains | **implemented + verified** (live hits in s1_verify) |
 | `DecisionHead` | `src/decision/head.py` | 59,136 / ~148k | yes | **deprecated for Choice** (ADR-0008); retained as the ablation |
 | `EmbeddingComposer` | `src/decision/composer.py` | 28,315,392 | never | **deprecated, parked** (ADR-0003) |
 | `protocol` | `src/decision/protocol.py` | — | — | the shared evaluation instrument; 87 tests green |
@@ -384,13 +384,13 @@ All decisions now live in `adr/`. Summary:
 
 Specified in full in the approved plan; each stage gated on its own acceptance test.
 
-| Stage | Change | Acceptance |
-|---|---|---|
-| 1 | llama.cpp encoder backend | cosine ≥0.999 vs the ST backend; ≤100 ms CPU batch-1 |
-| 2 | Cosine scorer; deprecate the head | matches or beats the head on every proper metric |
-| 3 | Conformal gate | nominal coverage on BFCL **and** Banking77; **fit/calibrate/test on disjoint splits** |
-| 4 | Ordinal `Score` (CORN/CORAL) | CORN beats cross-entropy on **RPS**; monotonicity holds |
-| 5 | Input-length contract | published latency/quality curve at 128/256/512 tokens |
+| Stage | Change | Acceptance | Status |
+|---|---|---|---|
+| 1 | llama.cpp encoder backend | cosine ≥0.999 vs the ST backend; ≤100 ms CPU batch-1 | implemented; agreement probe pending in verify |
+| 2 | Cosine scorer; deprecate the head | matches or beats the head on every proper metric | **done** — implemented + verified (s1_verify) |
+| 3 | Conformal gate | nominal coverage on BFCL **and** Banking77; **fit/calibrate/test on disjoint splits** | **done** — coverage 0.914 in-band on CLINC150 (s1_verify) |
+| 4 | Ordinal `Score` (CORN/CORAL) | CORN beats cross-entropy on **RPS**; monotonicity holds | implemented; SST-5 eval in verify |
+| 5 | Input-length contract | published latency/quality curve at 128/256/512 tokens | cap enforced in backends; curve unmeasured |
 
 **Rule enforced throughout:** every number in an ADR must cite a `reports/runs/` artifact, or be
 re-measured or removed.
