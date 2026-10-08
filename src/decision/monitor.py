@@ -181,7 +181,7 @@ def shadow_compare(records: List[dict], candidate_model) -> Dict:
     from src.decision.schema import Question
     agree, act_shift, per = 0, {}, []
     failed, first_error = 0, None
-    for r in records:
+    for i, r in enumerate(records):
         q = Question(qtype=r.get("qtype", "choice"),
                      options=r.get("labels", []))
         try:
@@ -195,7 +195,10 @@ def shadow_compare(records: List[dict], candidate_model) -> Dict:
         agree += int(same)
         key = (r.get("action"), p.action)
         act_shift[key] = act_shift.get(key, 0) + 1
-        per.append({"input": r["input"], "live_action": r.get("action"),
+        # ``i`` is carried so a caller pairing shadow results back to the log
+        # (the causal readout does) is not relying on failed records being
+        # absent — a single failure would shift every later index.
+        per.append({"i": i, "input": r["input"], "live_action": r.get("action"),
                     "shadow_action": p.action, "agree": same})
     n = max(len(per), 1)
     return {"n": len(per), "n_failed": failed, "first_error": first_error,
@@ -221,6 +224,10 @@ class Monitor:
         self.latency_p99_ms = latency_p99_ms
         self.escalate_rate_max = escalate_rate_max
         self.ks_threshold = ks_threshold
+        #: The typed report from the last ``check()``, or ``None`` when the log
+        #: was too short to compare windows. The retraining cadence consumes
+        #: this rather than recomputing drift, so one window split feeds both.
+        self.last_drift: Optional[DriftReport] = None
 
     def check(self, slice_key: Optional[str] = None) -> Dict:
         records = read_log(self.log_path)
@@ -246,6 +253,7 @@ class Monitor:
         if len(records) >= 2 * n_ref:
             drift = detect_drift(records[:n_ref], records[-n_ref:],
                                  ks_threshold=self.ks_threshold)
+            self.last_drift = drift
             status["drift"] = {"covariate_ks": drift.covariate_ks,
                                "set_size_ks": drift.set_size_ks,
                                "shift_types": drift.shift_types,

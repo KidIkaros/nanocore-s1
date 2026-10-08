@@ -736,6 +736,9 @@ RESULTS["operate"] = {"status": "skipped"}
 try:
     import time as _time
     from src.decision.adapt import AdaptConfig, adapt
+    from src.decision.cadence import CadenceConfig, should_retrain
+    from src.decision.canary import GuardrailConfig, arm_for, canary_verdict
+    from src.decision.causal import escalations, paired_readout, unsafe_answers
     from src.decision.datasets import class_halves
     from src.decision.handlers import QueuedEscalation, handle
     from src.decision.monitor import Monitor, read_log, shadow_compare
@@ -762,7 +765,8 @@ try:
     print(f"logged {len(records)} real decisions")
 
     # 2. is it still working?
-    status = Monitor(log_path).check()
+    mon = Monitor(log_path)
+    status = mon.check()
     agg = status.get("ml", {}).get("aggregate", {})
     RESULTS["operate"] = {"status": "ran",
                           "logged": len(records),
@@ -837,6 +841,80 @@ try:
           f"failed={shadow.get('n_failed')} {shadow['action_transitions']}")
     if shadow.get("first_error"):
         print(f"  first_error: {shadow['first_error']}")
+
+    # 6. cadence: is a retrain due, and why? The monitor's own drift report
+    #    feeds it, so the window split is computed once and both consumers see
+    #    the same comparison. The held case is the anti-thrash property: an
+    #    alert below the sample floor must NOT retrain.
+    cad_cfg = CadenceConfig(scheduled_every=1000, drift_min_samples=500)
+    fired = should_retrain(N_RT, mon.last_drift, cad_cfg)
+    held = should_retrain(120, mon.last_drift, cad_cfg)
+    RESULTS["operate"]["cadence"] = {
+        "drift_alerts": (mon.last_drift.alerts if mon.last_drift else []),
+        "fired": {"retrain": fired.retrain, "cadence": fired.cadence,
+                  "reason": fired.reason},
+        "held": {"retrain": held.retrain, "cadence": held.cadence,
+                 "reason": held.reason}}
+    print(f"cadence: fired={fired.retrain} via {fired.cadence} "
+          f"({fired.reason[:70]})")
+    print(f"cadence: held={not held.retrain} ({held.reason[:70]})")
+
+    # 7-8. canary + causal. Both models decide the same 300 items — the paired
+    #      design the causal readout needs. The canary additionally routes by a
+    #      stable hash of the input: *which* arm is a decision, moving bytes to
+    #      it is the deployer's transport. Latency is timed per model so the
+    #      arm comparison is genuinely per-arm, not the incumbent's numbers.
+    gold = ["oos" if int(c) == OOS else text_by_id[int(c)]
+            for c in y_te[:N_LOG]]
+    inc_preds, cand_preds, inc_ms, cand_ms = [], [], [], []
+    for r in records:
+        qq = Question(qtype=r.get("qtype", "choice"), options=r["labels"])
+        t0 = _time.perf_counter()
+        inc_preds.append(model.decide(r["input"], qq))
+        inc_ms.append((_time.perf_counter() - t0) * 1000)
+        t0 = _time.perf_counter()
+        cand_preds.append(candidate.decide(r["input"], qq))
+        cand_ms.append((_time.perf_counter() - t0) * 1000)
+
+    inc_unsafe = unsafe_answers(inc_preds, gold, oos_label="oos")
+    cand_unsafe = unsafe_answers(cand_preds, gold, oos_label="oos")
+    inc_esc, cand_esc = escalations(inc_preds), escalations(cand_preds)
+
+    is_canary = np.array([arm_for(r["input"], 0.3, salt="v18") == "canary"
+                          for r in records])
+
+    def arm_stats(mask, unsafe, esc, ms):
+        idx = np.flatnonzero(mask)
+        if not len(idx):
+            return {"n": 0}
+        return {"n": int(len(idx)),
+                "unsafe_rate": float(unsafe[idx].mean()),
+                "escalate_rate": float(esc[idx].mean()),
+                "latency_p95": float(np.percentile(np.asarray(ms)[idx], 95))}
+
+    control = arm_stats(~is_canary, inc_unsafe, inc_esc, inc_ms)
+    canary = arm_stats(is_canary, cand_unsafe, cand_esc, cand_ms)
+    cv = canary_verdict(control, canary, GuardrailConfig(min_n=30))
+    RESULTS["operate"]["canary"] = {
+        "fraction": 0.3, "control": control, "canary": canary,
+        "verdict": cv.decision, "reason": cv.reason, "deltas": cv.deltas,
+        "checked": cv.checked, "unchecked": cv.unchecked}
+    print(f"canary: control n={control['n']} unsafe={control['unsafe_rate']:.3f} "
+          f"| canary n={canary['n']} unsafe={canary['unsafe_rate']:.3f} "
+          f"-> {cv.decision} ({cv.reason[:60]})")
+
+    causal = {"unsafe": paired_readout("unsafe_rate", inc_unsafe, cand_unsafe),
+              "escalate": paired_readout("escalate_rate", inc_esc, cand_esc)}
+    RESULTS["operate"]["causal"] = {
+        "n": causal["unsafe"]["n"],
+        "gold_oos": int(sum(1 for g in gold if g == "oos")),
+        "incumbent_unsafe": float(inc_unsafe.mean()),
+        "candidate_unsafe": float(cand_unsafe.mean()),
+        "unsafe": causal["unsafe"], "escalate": causal["escalate"]}
+    for name in ("unsafe", "escalate"):
+        d = causal[name]["delta"]
+        print(f"causal {name}: delta={d['point']:+.3f} "
+              f"[{d['lo']:+.3f}, {d['hi']:+.3f}] -> {causal[name]['verdict']}")
 except Exception as e:
     RESULTS["operate"] = {"status": "failed", "error": repr(e)[:300]}
     print("operate leg failed:", repr(e)[:200])
@@ -877,6 +955,20 @@ verdict = {
                           .get("current_after_rollback")
                           == RESULTS["operate"].get("registry", {}).get("rolled_back_to")),
     "shadow_ran": RESULTS["operate"].get("registry", {}).get("shadow", {}).get("n", 0) > 0,
+    # Phase 6, the three remaining pieces. Cadence needs BOTH behaviours on the
+    # real drift report: fires when the floor is cleared, holds when it is not.
+    "cadence_ran": RESULTS["operate"].get("cadence", {}).get("fired", {}).get("retrain") is True,
+    "cadence_floored": RESULTS["operate"].get("cadence", {}).get("held", {}).get("retrain") is False,
+    "canary_ran": (RESULTS["operate"].get("canary", {}).get("verdict")
+                   in ("promote", "hold", "rollback")),
+    "canary_arms_nonempty": min(RESULTS["operate"].get("canary", {})
+                                .get("control", {}).get("n", 0),
+                                RESULTS["operate"].get("canary", {})
+                                .get("canary", {}).get("n", 0)) > 0,
+    "causal_ran": (RESULTS["operate"].get("causal", {}).get("n", 0)
+                   == RESULTS["operate"].get("logged", 0) > 0),
+    "causal_ci_reported": "lo" in (RESULTS["operate"].get("causal", {})
+                                   .get("unsafe", {}).get("delta", {})),
     "cross_task_ran": RESULTS["cross_task"].get("status") == "ran",
     "cross_task_glial_safer": (
         RESULTS["cross_task"].get("arms", {}).get("glial", {})

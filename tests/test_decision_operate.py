@@ -182,6 +182,32 @@ def test_shadow_run_counts_a_candidate_that_cannot_decide(tmp_path):
     assert "option space" in shadow["first_error"]
 
 
+def test_shadow_per_record_carries_the_log_index(tmp_path):
+    """A caller pairing shadow results back to the log must not rely on failed
+    records being absent — one failure would shift every later index."""
+    class FlakyModel:
+        def __init__(self):
+            self.n = 0
+
+        def decide(self, text, question):
+            self.n += 1
+            if self.n == 3:
+                raise ValueError("boom")
+            return stub_decision(text, question)
+
+    question = Question(qtype="choice", options=LABELS)
+    texts, _ = corpus()
+    records = log_traffic(tmp_path / "preds.jsonl", question, texts)
+
+    shadow = shadow_compare(records, FlakyModel())
+    assert shadow["n_failed"] == 1
+    indices = [r["i"] for r in shadow["per_record"]]
+    assert 2 not in indices
+    assert indices == sorted(indices)
+    assert shadow["per_record"][0]["input"] == records[0]["input"]
+    assert shadow["per_record"][2]["input"] == records[3]["input"]
+
+
 def test_retrain_labels_are_texts_not_raw_class_ids(tmp_path):
     """The v15 failure: ``adapt`` was handed raw class ids, so the bundle's
     option labels were "11"/"42" and nothing that knows the task could serve it.
