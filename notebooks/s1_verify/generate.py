@@ -450,6 +450,115 @@ except Exception as e:
 write_status("serve")
 '''),
 
+    md('''## 5f. Baselines — TF-IDF+LR on identical splits (roadmap Phase 7)
+
+Cross-paper claims die here: a real baseline run on the *same* splits. If
+TF-IDF+LR beats our scorers, we say so — `compare_to_best` compares every
+candidate against the best baseline per metric.
+'''),
+    code('''
+RESULTS["baselines"] = {"status": "skipped"}
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from src.decision.protocol import metric_block, compare_to_best
+    from src.decision.metrics import softmax_rows
+
+    tf = TfidfVectorizer(ngram_range=(1, 2), min_df=2).fit(X_tr_i)
+    lr = LogisticRegression(max_iter=1000, C=4.0).fit(
+        tf.transform(X_tr_i), y_tr_i)
+    P_lr = lr.predict_proba(tf.transform(X_te[te_in]))
+
+    onehot = np.eye(len(INTENT_TEXTS))[yt_c[te_in]]
+    P_cos = softmax_rows(SC_te[te_in], gate.t_prob)
+    P_head = softmax_rows(head.logits(S_te[te_in]), gate_h.t_prob)
+    # TF-IDF probs come in lr.classes_ order; align to INTENT_TEXTS
+    lr_order = np.array([list(lr.classes_).index(i) for i in range(len(INTENT_TEXTS))])
+    P_lr = P_lr[:, lr_order]
+
+    blocks = {"cosine": metric_block(P_cos, onehot),
+              "taskhead": metric_block(P_head, onehot),
+              "tfidf_lr": metric_block(P_lr, onehot)}
+    verdict_cmp = compare_to_best(blocks, baselines=["tfidf_lr"])
+    RESULTS["baselines"] = {"status": "ran", "blocks": blocks,
+                            "comparison": verdict_cmp}
+    for n, b in blocks.items():
+        print(f"{n:10} acc={b['accuracy']:.3f} log={b['log_score']:.3f} "
+              f"brier={b['brier']:.3f} ece={b['ece_report_only']:.3f}")
+except Exception as e:
+    RESULTS["baselines"] = {"status": "failed", "error": repr(e)[:300]}
+    print("baselines leg failed:", repr(e)[:200])
+write_status("baselines")
+'''),
+
+    md('''## 5g. Evaluation rigor — CIs, AURC, selective prediction
+
+Every primary metric carries a bootstrap 95% CI. AURC + accuracy at fixed
+coverage (50%/80%) are the selective-prediction standard. ECE over 15 bins.
+'''),
+    code('''
+RESULTS["rigor"] = {"status": "skipped"}
+try:
+    from src.decision import metrics as M
+
+    def rigor_leg(name, P, y_idx):
+        conf = P.max(axis=1)
+        correct = (P.argmax(axis=1) == y_idx).astype(float)
+        acc_ci = M.bootstrap_ci(lambda a: a.mean(), correct, resamples=500)
+        log_ci = M.bootstrap_ci(
+            lambda p, y: M.log_score(p, np.eye(P.shape[1])[y]),
+            P, y_idx, resamples=500)
+        return {"acc": acc_ci, "log": log_ci,
+                "aurc": M.aurc(conf, correct),
+                "acc_at_50": M.selective_at_coverage(conf, correct, 0.5),
+                "acc_at_80": M.selective_at_coverage(conf, correct, 0.8),
+                "ece15": M.expected_calibration_error(
+                    P, np.eye(P.shape[1])[y_idx], n_bins=15),
+                "brier": M.brier_score(P, np.eye(P.shape[1])[y_idx])}
+
+    yt_in = yt_c[te_in]
+    RESULTS["rigor"] = {"status": "ran",
+        "cosine": rigor_leg("cosine", P_cos, yt_in),
+        "taskhead": rigor_leg("taskhead", P_head, yt_in),
+        "tfidf_lr": rigor_leg("tfidf_lr", P_lr, yt_in)}
+    for name in ("cosine", "taskhead", "tfidf_lr"):
+        r = RESULTS["rigor"][name]
+        print(f"{name:10} acc={r['acc']['point']:.3f} "
+              f"[{r['acc']['lo']:.3f},{r['acc']['hi']:.3f}] "
+              f"aurc={r['aurc']:.4f} ece15={r['ece15']:.3f} "
+              f"acc@80={r['acc_at_80']:.3f}")
+except Exception as e:
+    RESULTS["rigor"] = {"status": "failed", "error": repr(e)[:300]}
+    print("rigor leg failed:", repr(e)[:200])
+write_status("rigor")
+'''),
+
+    md('''## 5h. Memorization probe — similarity-band accuracy
+
+If the head only memorized near-duplicates, accuracy collapses on test items
+distant from the train set. Bucket test items by max cosine similarity to
+any train embedding; report accuracy per band.
+'''),
+    code('''
+RESULTS["memorization"] = {"status": "skipped"}
+try:
+    sims = (S_te[te_in] @ S_tr.T).max(axis=1)   # nearest train neighbour
+    acc_by_band, bands = {}, [(-1, .8), (.8, .9), (.9, .95), (.95, 1.01)]
+    hpred = head.logits(S_te[te_in]).argmax(1)
+    for lo, hi in bands:
+        m = (sims >= lo) & (sims < hi)
+        if m.sum() >= 10:
+            acc_by_band[f"[{lo},{hi})"] = {"n": int(m.sum()),
+                "acc": float((hpred[m] == yt_c[te_in][m]).mean())}
+    RESULTS["memorization"] = {"status": "ran", "acc_by_sim_band": acc_by_band}
+    print("acc by nearest-train-similarity band:",
+          json.dumps(acc_by_band, indent=1))
+except Exception as e:
+    RESULTS["memorization"] = {"status": "failed", "error": repr(e)[:300]}
+    print("memorization leg failed:", repr(e)[:200])
+write_status("memorization")
+'''),
+
     md('''## 6. Live `decide()` — the typed interface on real input
 
 Full stack: encoder → scorer → gate → Prediction{probabilities, prediction_set,
@@ -502,6 +611,13 @@ verdict = {
     "cli_ran": RESULTS["cli"]["status"] == "ran",
     "cli_inputs": RESULTS["cli"].get("n"),
     "serve_ran": RESULTS["serve"]["status"] == "ran",
+    "baselines_ran": RESULTS["baselines"]["status"] == "ran",
+    "head_beats_tfidf_acc": (RESULTS["baselines"].get("blocks", {})
+                           .get("taskhead", {}).get("accuracy", 0)
+                           > RESULTS["baselines"].get("blocks", {})
+                           .get("tfidf_lr", {}).get("accuracy", 1)),
+    "rigor_ran": RESULTS["rigor"]["status"] == "ran",
+    "memorization_ran": RESULTS["memorization"]["status"] == "ran",
 }
 RESULTS["verdict"] = verdict
 print(json.dumps(verdict, indent=2))

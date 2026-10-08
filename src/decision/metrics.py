@@ -219,3 +219,68 @@ def selective_accuracy(confidences, correct, threshold: float) -> Tuple[float, f
     if not mask.any():
         return float("nan"), 0.0
     return float(hit[mask].mean()), float(mask.mean())
+
+
+# ── uncertainty on the metrics themselves ────────────────────────────────────
+
+def bootstrap_ci(metric_fn, *arrays, resamples: int = 500,
+                 confidence: float = 0.95, seed: int = 0) -> Dict[str, float]:
+    """Percentile bootstrap CI for a metric over aligned arrays.
+
+    ``metric_fn(*sliced_arrays) -> float``. Resamples the index axis; each
+    replicate calls ``metric_fn`` on the same resample of every array, so the
+    CI is on *this* data's variation, not a normal approximation.
+
+    Standard here: 500 resamples, 95% — matching the category's reference
+    evaluation protocol (bootstrap CIs on every primary metric).
+    """
+    arrays = [np.asarray(a) for a in arrays]
+    n = len(arrays[0])
+    if any(len(a) != n for a in arrays):
+        raise ValueError("all arrays must share the first dimension")
+    rng = np.random.default_rng(seed)
+    vals = np.empty(resamples)
+    for b in range(resamples):
+        idx = rng.integers(0, n, n)
+        vals[b] = metric_fn(*[a[idx] for a in arrays])
+    lo = (1 - confidence) / 2
+    return {"point": float(metric_fn(*arrays)),
+            "lo": float(np.quantile(vals, lo)),
+            "hi": float(np.quantile(vals, 1 - lo)),
+            "resamples": resamples, "confidence": confidence}
+
+
+def risk_coverage_curve(confidences, correct) -> List[Dict[str, float]]:
+    """Selective-risk vs coverage — sort by confidence, report risk at each
+    coverage fraction. The full curve; the points at 50%/80% are the standard
+    headline numbers.
+    """
+    conf = np.asarray(confidences, dtype=np.float64).reshape(-1)
+    hit = np.asarray(correct, dtype=np.float64).reshape(-1)
+    if conf.shape != hit.shape:
+        raise ValueError("confidences and correct must have the same length")
+    order = np.argsort(-conf)
+    hit_sorted = hit[order]
+    out = []
+    for i in range(1, len(hit_sorted) + 1):
+        out.append({"coverage": i / len(hit_sorted),
+                    "risk": float(1.0 - hit_sorted[:i].mean())})
+    return out
+
+
+def aurc(confidences, correct) -> float:
+    """Area under the risk-coverage curve — lower is better. The single
+    scalar summary of selective-prediction quality."""
+    curve = risk_coverage_curve(confidences, correct)
+    cov = np.array([p["coverage"] for p in curve])
+    risk = np.array([p["risk"] for p in curve])
+    return float(np.trapezoid(risk, cov))
+
+
+def selective_at_coverage(confidences, correct, coverage: float) -> float:
+    """Accuracy on the top-``coverage`` fraction by confidence (e.g. 0.5, 0.8)."""
+    conf = np.asarray(confidences, dtype=np.float64).reshape(-1)
+    hit = np.asarray(correct, dtype=np.float64).reshape(-1)
+    n = max(1, int(round(coverage * len(hit))))
+    order = np.argsort(-conf)
+    return float(hit[order[:n]].mean())
