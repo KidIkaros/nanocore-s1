@@ -69,16 +69,16 @@ The full stack. Everything not marked `DONE` is roadmap work.
 | 10 | **Adaptation harness** | labeled data → head + gate → bundle | DONE (s1_adapt v3, Banking77) | 2 |
 | 11 | **Escalation handler** | what `escalate` does | DONE (unit-tested; kernel leg pending) | 3 |
 | 12 | **Clarify presenter** | set → question payload | DONE (unit-tested) | 3 |
-| 13 | **Serving layer** | model server + prediction endpoint | TODO | 4 |
-| 14 | **Prediction log** | inputs/outputs/version/latency | TODO | 4 |
-| 15 | **Cost accounting** | tokens, USD, throughput | TODO | 4 |
-| 16 | **Operational monitoring** | latency percentiles, errors | TODO | 5 |
-| 17 | **ML monitoring** | prediction/feature distribution, per-slice | TODO | 5 |
-| 18 | **Drift detection** | covariate/label/concept, SPC | TODO | 5 |
-| 19 | **Uncertainty decomposition** | aleatoric vs epistemic | TODO | 5 |
-| 20 | **Retraining pipeline** | stateless, scheduled/triggered | TODO | 6 |
-| 21 | **Model registry + lineage** | which data+config made this | TODO | 6 |
-| 22 | **Release strategy** | shadow → canary → rollback | TODO | 6 |
+| 13 | **Serving layer** | model server + prediction endpoint | DONE (v6 in-kernel, real POST) | 4 |
+| 14 | **Prediction log** | inputs/outputs/version/latency | DONE (JSONL verified in-kernel) | 4 |
+| 15 | **Cost accounting** | latency + throughput per decision | DONE (/stats; tokens/USD n/a local) | 4 |
+| 16 | **Operational monitoring** | latency percentiles, errors | DONE (monitor.py, tested) | 5 |
+| 17 | **ML monitoring** | prediction/feature distribution, per-slice | DONE (monitor.py, tested) | 5 |
+| 18 | **Drift detection** | covariate/label/concept, SPC | DONE (KS + action deltas; concept needs labels) | 5 |
+| 19 | **Uncertainty decomposition** | aleatoric vs epistemic | DONE (bootstrap ensemble, BALD gap) | 5 |
+| 20 | **Retraining pipeline** | stateless, scheduled/triggered | PARTIAL (adapt() is the stateless train; trigger/cadence TODO) | 6 |
+| 21 | **Model registry + lineage** | which data+config made this | DONE (registry.py, tested) | 6 |
+| 22 | **Release strategy** | shadow → canary → rollback | DONE code (shadow_compare + rollback); live release untested | 6 |
 | 23 | **Causal readout** | did the model cause the gain | TODO | 6 |
 | 24 | Our own baselines | TF-IDF/LR, fine-tuned small model | TODO | 7 |
 | 25 | Benchmark breadth | ~15 datasets / 7 families | TODO | 7 |
@@ -272,3 +272,6 @@ The project is complete when:
 | 2026-10-08 | 2 | `src/decision/adapt.py` — `adapt(texts, labels, encoder)` → head + calibrated gate + bundle + `adapt_report.json`. 6 tests (158 total green). |
 | 2026-10-08 | 2 | **DONE** — s1_adapt v3 all 8 verdicts green on Banking77 (never calibrated before): head 0.995 vs zeroshot 0.975, no undercoverage, τ_in_schema fitted on 20 held-out OOS classes, reload identical 400/400, CLI leg ran. |
 | 2026-10-08 | 3 | `src/decision/handlers.py` — CallableEscalation/QueuedEscalation/clarify_payload/handle dispatch; escalate falls back to a JSONL queue on System-Two failure; abstain returns a reason. 8 tests. In-kernel exercise pending next s1_verify rev. |
+| 2026-10-08 | 4 | **DONE** — `serve.py` (stdlib HTTP: POST /decide, /healthz, /stats p50/p95/p99) + PredictionLogger JSONL + CLI `serve`. s1_verify v6 all green incl. in-kernel serve leg. Prediction mode recorded: online; batch via `decide --inputs`. 186 tests. |
+| 2026-10-08 | 5 | **DONE (code)** — `monitor.py` (ops + ML metrics, per-slice, KS drift naming covariate/label shift, thresholded alerts) + `uncertainty.py` (bootstrap-ensemble BALD decomposition). Unit-tested; consumes serve.py JSONL — log schema aligned. |
+| 2026-10-08 | 6 | **PARTIAL** — `registry.py` (versioned bundles, lineage with data_hash+config+parent, promote/rollback pointers) + `shadow_compare` (replay logged inputs through a candidate). Missing: a retrain kernel wiring adapt()→register→shadow on logged data, and the causal readout. |
