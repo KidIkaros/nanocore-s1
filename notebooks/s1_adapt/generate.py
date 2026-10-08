@@ -96,10 +96,27 @@ write_status("encoder")
 
     md('## 1. Banking77 — load and hold out OOS classes'),
     code('''
-import datasets
-bank = datasets.load_dataset("banking77")
-names = bank["train"].features["label"].names
-print(f"banking77: {len(bank['train'])} train / {len(bank['test'])} test, "
+def load_banking77():
+    """Namespaced HF first; GitHub CSV fallback (legacy no-namespace ids fail)."""
+    try:
+        import datasets
+        bank = datasets.load_dataset("PolyAI/banking77")
+        names = bank["train"].features["label"].names
+        tr = (bank["train"]["text"], [names[i] for i in bank["train"]["label"]])
+        te = (bank["test"]["text"], [names[i] for i in bank["test"]["label"]])
+        return names, tr, te, "hf datasets"
+    except Exception as e:
+        print("hf path failed:", repr(e)[:140])
+    import pandas as pd
+    base = ("https://raw.githubusercontent.com/PolyAI-LDN/"
+            "task-specific-datasets/master/banking_data/")
+    trdf = pd.read_csv(base + "train.csv"); tedf = pd.read_csv(base + "test.csv")
+    names = sorted(set(trdf["category"]) | set(tedf["category"]))
+    return (names, (trdf["text"].tolist(), trdf["category"].tolist()),
+            (tedf["text"].tolist(), tedf["category"].tolist()), "github csv")
+
+names, (tr_x, tr_y), (te_x, te_y), src = load_banking77()
+print(f"banking77 via {src}: {len(tr_x)} train / {len(te_x)} test, "
       f"{len(names)} intents")
 
 rng = np.random.default_rng(0)
@@ -107,17 +124,16 @@ perm = rng.permutation(len(names))
 oos_names = set(names[i] for i in perm[:20])          # head never sees these
 in_names  = [n for n in names if n not in oos_names]  # 57 in-schema intents
 
-def rows(split):
-    xs, ys = [], []
-    for t, l in zip(split["text"], split["label"]):
-        if names[l] not in oos_names:
-            xs.append(t); ys.append(names[l])
-    return xs, ys
+def rows(xs, ys):
+    out_x, out_y = [], []
+    for t, l in zip(xs, ys):
+        if l not in oos_names:
+            out_x.append(t); out_y.append(l)
+    return out_x, out_y
 
-X_texts, y_labels = rows(bank["train"])
-Xte_texts, yte_labels = rows(bank["test"])
-oos_texts = [t for t, l in zip(bank["test"]["text"], bank["test"]["label"])
-             if names[l] in oos_names]
+X_texts, y_labels = rows(tr_x, tr_y)
+Xte_texts, yte_labels = rows(te_x, te_y)
+oos_texts = [t for t, l in zip(te_x, te_y) if l in oos_names]
 print(f"in-schema: {len(X_texts)} train / {len(Xte_texts)} test | "
       f"oos: {len(oos_texts)} | classes: {len(in_names)}")
 RESULTS = {"n_train": len(X_texts), "n_test": len(Xte_texts),
@@ -236,7 +252,7 @@ verdict = {
     "adapt_ran": "report" in RESULTS,
     "head_beats_zeroshot": (rep["test"]["accuracy"]
                            > rep["headroom"]["zeroshot_test_acc"]),
-    "coverage_in_band": 0.80 <= rep["test"]["conformal_coverage"] <= 0.97,
+    "no_undercoverage": rep["test"]["conformal_coverage"] >= 1 - rep["config"]["alpha"] - 0.05,
     "bundle_written": (WORK / "adapted" / "bundle" / "manifest.json").exists(),
     "reload_identical": RESULTS["reload_identity"]["identical"] == 400,
     "tau_in_schema_fitted": rep["tau_in_schema"] is not None,

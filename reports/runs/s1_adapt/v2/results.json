@@ -1,0 +1,201 @@
+{
+  "n_train": 7441,
+  "n_test": 2280,
+  "n_oos": 800,
+  "n_classes": 57,
+  "report": {
+    "n_total": 7441,
+    "n_classes": 57,
+    "splits": {
+      "fit": 3704,
+      "cal": 1840,
+      "test": 1897,
+      "time_ordered": false,
+      "seed": 0
+    },
+    "headroom": {
+      "zeroshot_test_acc": 0.9752240379546653
+    },
+    "head": {
+      "kind": "linear",
+      "best_val_loss": 0.016119906678795815,
+      "epochs_run": 60,
+      "n_train": 3334,
+      "n_classes": 57
+    },
+    "calibration": {
+      "t_prob": 0.7338709677419355,
+      "tau_answer": 0.45447709466696146,
+      "qhat": 0.999920662049363,
+      "t_set": 1.0,
+      "n_A": 920,
+      "n_B": 920,
+      "tau_in_schema": 10.607391357421875,
+      "in_schema_j": 0.8872282608695652
+    },
+    "tau_in_schema": 10.607391357421875,
+    "test": {
+      "n": 1897,
+      "accuracy": 0.9952556668423828,
+      "brier": 0.006980439780633415,
+      "resolved_at_tau": 0.9994728518713759,
+      "conformal_coverage": 1.0,
+      "mean_set_size": 11.21138639957828,
+      "median_set_size": 7.0
+    },
+    "config": {
+      "head_kind": "linear",
+      "alpha": 0.1,
+      "fit_frac": 0.5,
+      "cal_frac": 0.25,
+      "seed": 0,
+      "time_ordered": false,
+      "policy": "full",
+      "answer_precision": 0.9
+    }
+  },
+  "reload_identity": {
+    "n": 400,
+    "identical": 400
+  },
+  "external_test_acc": 0.9375,
+  "cli": {
+    "status": "ran",
+    "n": 12,
+    "transcript": [
+      {
+        "input": "how do i activate my new card",
+        "action": "answer",
+        "top_prob": 1.0,
+        "set": [
+          "activate_my_card",
+          "order_physical_card"
+        ]
+      },
+      {
+        "input": "my card was swallowed by the atm",
+        "action": "escalate",
+        "top_prob": 0.6448,
+        "set": [
+          "declined_cash_withdrawal",
+          "wrong_amount_of_cash_received",
+          "cash_withdrawal_not_recognised",
+          "lost_or_stolen_card"
+        ]
+      },
+      {
+        "input": "i want to change my pin",
+        "action": "answer",
+        "top_prob": 1.0,
+        "set": [
+          "change_pin",
+          "edit_personal_details"
+        ]
+      },
+      {
+        "input": "when does my transfer arrive",
+        "action": "answer",
+        "top_prob": 0.982,
+        "set": [
+          "transfer_not_received_by_recipient",
+          "transfer_timing",
+          "balance_not_updated_after_bank_transfer",
+          "card_arrival"
+        ]
+      },
+      {
+        "input": "tell me about my savings account",
+        "action": "escalate",
+        "top_prob": 0.5781,
+        "set": [
+          "balance_not_updated_after_cheque_or_cash_deposit",
+          "verify_source_of_funds",
+          "balance_not_updated_after_bank_transfer",
+          "card_linking"
+        ]
+      },
+      {
+        "input": "i got charged twice for the same thing",
+        "action": "answer",
+        "top_prob": 1.0,
+        "set": [
+          "transaction_charged_twice"
+        ]
+      },
+      {
+        "input": "what is this fee on my statement",
+        "action": "escalate",
+        "top_prob": 0.8847,
+        "set": [
+          "card_payment_not_recognised",
+          "transaction_charged_twice",
+          "card_payment_wrong_exchange_rate",
+          "top_up_by_card_charge"
+        ]
+      },
+      {
+        "input": "the atm ate my card this morning",
+        "action": "escalate",
+        "top_prob": 0.7141,
+        "set": [
+          "lost_or_stolen_card",
+          "cash_withdrawal_not_recognised",
+          "wrong_amount_of_cash_received",
+          "declined_cash_withdrawal"
+        ]
+      },
+      {
+        "input": "how do i top up my account",
+        "action": "escalate",
+        "top_prob": 0.9891,
+        "set": [
+          "top_up_by_cash_or_cheque",
+          "verify_source_of_funds",
+          "supported_cards_and_currencies",
+          "verify_my_identity"
+        ]
+      },
+      {
+        "input": "i want to close my account",
+        "action": "answer",
+        "top_prob": 1.0,
+        "set": [
+          "terminate_account",
+          "request_refund"
+        ]
+      },
+      {
+        "input": "blorple snizzle wumpus quack",
+        "action": "escalate",
+        "top_prob": 0.3259,
+        "set": [
+          "order_physical_card",
+          "card_not_working",
+          "card_delivery_estimate",
+          "age_limit"
+        ]
+      },
+      {
+        "input": "what is the meaning of life",
+        "action": "escalate",
+        "top_prob": 0.7297,
+        "set": [
+          "why_verify_identity",
+          "age_limit",
+          "terminate_account",
+          "edit_personal_details"
+        ]
+      }
+    ]
+  },
+  "verdict": {
+    "suite_green": true,
+    "adapt_ran": true,
+    "head_beats_zeroshot": true,
+    "coverage_in_band": false,
+    "bundle_written": true,
+    "reload_identical": true,
+    "tau_in_schema_fitted": true,
+    "cli_ran": true
+  }
+}

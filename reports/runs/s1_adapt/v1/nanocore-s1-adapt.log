@@ -1,0 +1,122 @@
+[{"stream_name":"stderr","time":7.43278864,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":7.432836542,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":8.5146598,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.514686968,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.514692728,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.51469739,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":9.24354538,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.243601719,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.243608562,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.243613496,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":10.56934991,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":10.569378605,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":10.569390215,"data":"\n"}
+,{"stream_name":"stdout","time":162.634478499,"data":"........................................................................ [ 45%]\n"}
+,{"stream_name":"stdout","time":162.634519598,"data":"....ss.................................................................. [ 91%]\n"}
+,{"stream_name":"stdout","time":162.634524403,"data":"..............                                                           [100%]\n"}
+,{"stream_name":"stdout","time":162.634528029,"data":"156 passed, 2 skipped in 148.23s (0:02:28)\n"}
+,{"stream_name":"stdout","time":162.634531533,"data":"\n"}
+,{"stream_name":"stdout","time":166.465553566,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 12.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":166.621855955,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 92.8 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":166.667460034,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 12.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":166.667490534,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 92.8 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":166.675412155,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 23.6 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":166.877891568,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 23.6 MB/s eta 0:00:00\n"}
+,{"stream_name":"stderr","time":212.083338745,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":212.083381928,"data":"\n"}
+,{"stream_name":"stderr","time":212.083386921,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":233.895936808,"data":"Traceback (most recent call last):\n"}
+,{"stream_name":"stderr","time":233.896681886,"data":"  File \"\u003cstring\u003e\", line 1, in \u003cmodule\u003e\n"}
+,{"stream_name":"stderr","time":233.896706831,"data":"    import sys;import papermill as pm;pm.execute_notebook(\"__notebook__.ipynb\",\"__notebook__.ipynb\",progress_bar=False,log_output=True,stdout_file=sys.stdout,stderr_file=sys.stderr,allow_errors=False,timeout=43200)\n"}
+,{"stream_name":"stderr","time":233.896734956,"data":"                                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":233.896740541,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 131, in execute_notebook\n"}
+,{"stream_name":"stderr","time":233.896745647,"data":"    raise_for_execution_errors(nb, output_path)\n"}
+,{"stream_name":"stderr","time":233.896749846,"data":"    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":233.896754322,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 251, in raise_for_execution_errors\n"}
+,{"stream_name":"stderr","time":233.896759271,"data":"    raise error\n"}
+,{"stream_name":"stderr","time":233.896808025,"data":"papermill.exceptions.PapermillExecutionError: \n"}
+,{"stream_name":"stderr","time":233.896824419,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":233.896829531,"data":"Exception encountered at \"In [4]\":\n"}
+,{"stream_name":"stderr","time":233.896834605,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":233.896838949,"data":"HfUriError                                Traceback (most recent call last)\n"}
+,{"stream_name":"stderr","time":233.896843709,"data":"/tmp/ipykernel_24/2574984761.py in \u003ccell line: 0\u003e()\n"}
+,{"stream_name":"stderr","time":233.896848289,"data":"      1 import datasets\n"}
+,{"stream_name":"stderr","time":233.896852681,"data":"----\u003e 2 bank = datasets.load_dataset(\"banking77\")\n"}
+,{"stream_name":"stderr","time":233.896857375,"data":"      3 names = bank[\"train\"].features[\"label\"].names\n"}
+,{"stream_name":"stderr","time":233.896861949,"data":"      4 print(f\"banking77: {len(bank['train'])} train / {len(bank['test'])} test, \"\n"}
+,{"stream_name":"stderr","time":233.896866441,"data":"      5       f\"{len(names)} intents\")\n"}
+,{"stream_name":"stderr","time":233.896870676,"data":"\n"}
+,{"stream_name":"stderr","time":233.896874984,"data":"/usr/local/lib/python3.13/dist-packages/datasets/load.py in load_dataset(path, name, data_dir, data_files, split, cache_dir, features, download_config, download_mode, verification_mode, keep_in_memory, save_infos, revision, token, streaming, num_proc, storage_options, **config_kwargs)\n"}
+,{"stream_name":"stderr","time":233.896879837,"data":"   1686 \n"}
+,{"stream_name":"stderr","time":233.896883919,"data":"   1687     # Create a dataset builder\n"}
+,{"stream_name":"stderr","time":233.896887769,"data":"-\u003e 1688     builder_instance = load_dataset_builder(\n"}
+,{"stream_name":"stderr","time":233.89689259,"data":"   1689         path=path,\n"}
+,{"stream_name":"stderr","time":233.896909228,"data":"   1690         name=name,\n"}
+,{"stream_name":"stderr","time":233.896913107,"data":"\n"}
+,{"stream_name":"stderr","time":233.896917131,"data":"/usr/local/lib/python3.13/dist-packages/datasets/load.py in load_dataset_builder(path, name, data_dir, data_files, cache_dir, features, download_config, download_mode, revision, token, storage_options, **config_kwargs)\n"}
+,{"stream_name":"stderr","time":233.896922144,"data":"   1313     if features is not None:\n"}
+,{"stream_name":"stderr","time":233.896927264,"data":"   1314         features = _fix_for_backward_compatible_features(features)\n"}
+,{"stream_name":"stderr","time":233.896933333,"data":"-\u003e 1315     dataset_module = dataset_module_factory(\n"}
+,{"stream_name":"stderr","time":233.896937776,"data":"   1316         path,\n"}
+,{"stream_name":"stderr","time":233.896942006,"data":"   1317         revision=revision,\n"}
+,{"stream_name":"stderr","time":233.896945885,"data":"\n"}
+,{"stream_name":"stderr","time":233.896949689,"data":"/usr/local/lib/python3.13/dist-packages/datasets/load.py in dataset_module_factory(path, revision, download_config, download_mode, data_dir, data_files, cache_dir, **download_kwargs)\n"}
+,{"stream_name":"stderr","time":233.896953988,"data":"   1205                         f\"Couldn't find '{path}' on the Hugging Face Hub either: {type(e1).__name__}: {e1}\"\n"}
+,{"stream_name":"stderr","time":233.896958456,"data":"   1206                     ) from None\n"}
+,{"stream_name":"stderr","time":233.896962179,"data":"-\u003e 1207                 raise e1 from None\n"}
+,{"stream_name":"stderr","time":233.896966599,"data":"   1208     else:\n"}
+,{"stream_name":"stderr","time":233.896970596,"data":"   1209         raise FileNotFoundError(f\"Couldn't find any data file at {relative_to_absolute_path(path)}.\")\n"}
+,{"stream_name":"stderr","time":233.896975,"data":"\n"}
+,{"stream_name":"stderr","time":233.896980487,"data":"/usr/local/lib/python3.13/dist-packages/datasets/load.py in dataset_module_factory(path, revision, download_config, download_mode, data_dir, data_files, cache_dir, **download_kwargs)\n"}
+,{"stream_name":"stderr","time":233.896985185,"data":"   1180                     download_mode=download_mode,\n"}
+,{"stream_name":"stderr","time":233.896989458,"data":"   1181                     use_exported_dataset_infos=use_exported_dataset_infos,\n"}
+,{"stream_name":"stderr","time":233.896993613,"data":"-\u003e 1182                 ).get_module()\n"}
+,{"stream_name":"stderr","time":233.896998816,"data":"   1183             except GatedRepoError as e:\n"}
+,{"stream_name":"stderr","time":233.89700288,"data":"   1184                 message = f\"Dataset '{path}' is a gated dataset on the Hub.\"\n"}
+,{"stream_name":"stderr","time":233.897006837,"data":"\n"}
+,{"stream_name":"stderr","time":233.897010573,"data":"/usr/local/lib/python3.13/dist-packages/datasets/load.py in get_module(self)\n"}
+,{"stream_name":"stderr","time":233.8970147,"data":"    596             download_config.download_desc = \"Downloading standalone yaml\"\n"}
+,{"stream_name":"stderr","time":233.897019252,"data":"    597         try:\n"}
+,{"stream_name":"stderr","time":233.897023644,"data":"--\u003e 598             standalone_yaml_path = cached_path(\n"}
+,{"stream_name":"stderr","time":233.897028361,"data":"    599                 hf_dataset_url(self.name, config.REPOYAML_FILENAME, revision=self.commit_hash),\n"}
+,{"stream_name":"stderr","time":233.89703348,"data":"    600                 download_config=download_config,\n"}
+,{"stream_name":"stderr","time":233.897037955,"data":"\n"}
+,{"stream_name":"stderr","time":233.897041817,"data":"/usr/local/lib/python3.13/dist-packages/datasets/utils/file_utils.py in cached_path(url_or_filename, download_config, **download_kwargs)\n"}
+,{"stream_name":"stderr","time":233.897052142,"data":"    178             resolved_path = huggingface_hub.HfFileSystem(\n"}
+,{"stream_name":"stderr","time":233.897056637,"data":"    179                 endpoint=config.HF_ENDPOINT, token=download_config.token\n"}
+,{"stream_name":"stderr","time":233.897061311,"data":"--\u003e 180             ).resolve_path(url_or_filename)\n"}
+,{"stream_name":"stderr","time":233.897066145,"data":"    181             try:\n"}
+,{"stream_name":"stderr","time":233.897070233,"data":"    182                 output_path = huggingface_hub.HfApi(\n"}
+,{"stream_name":"stderr","time":233.89707534,"data":"\n"}
+,{"stream_name":"stderr","time":233.897080016,"data":"/usr/local/lib/python3.13/dist-packages/huggingface_hub/hf_file_system.py in resolve_path(self, path, revision)\n"}
+,{"stream_name":"stderr","time":233.897085254,"data":"    305             )\n"}
+,{"stream_name":"stderr","time":233.897089735,"data":"    306 \n"}
+,{"stream_name":"stderr","time":233.897113954,"data":"--\u003e 307         parsed = parse_hf_uri(f\"{constants.HF_PROTOCOL}{path}\")\n"}
+,{"stream_name":"stderr","time":233.897127806,"data":"    308 \n"}
+,{"stream_name":"stderr","time":233.89713291,"data":"    309         # --- Buckets ---\n"}
+,{"stream_name":"stderr","time":233.897137114,"data":"\n"}
+,{"stream_name":"stderr","time":233.897141062,"data":"/usr/local/lib/python3.13/dist-packages/huggingface_hub/utils/_hf_uris.py in parse_hf_uri(uri, endpoint)\n"}
+,{"stream_name":"stderr","time":233.897259265,"data":"    317     if type_ == \"bucket\":\n"}
+,{"stream_name":"stderr","time":233.897269161,"data":"    318         return _parse_bucket_body(location, type_, raw=raw)\n"}
+,{"stream_name":"stderr","time":233.897273799,"data":"--\u003e 319     return _parse_repo_body(location, type_, raw=raw)\n"}
+,{"stream_name":"stderr","time":233.897278424,"data":"    320 \n"}
+,{"stream_name":"stderr","time":233.897282442,"data":"    321 \n"}
+,{"stream_name":"stderr","time":233.897287237,"data":"\n"}
+,{"stream_name":"stderr","time":233.897291127,"data":"/usr/local/lib/python3.13/dist-packages/huggingface_hub/utils/_hf_uris.py in _parse_repo_body(location, type_, raw)\n"}
+,{"stream_name":"stderr","time":233.897295226,"data":"    615             raise HfUriError(uri=raw, msg=\"Missing repository id before '@'.\")\n"}
+,{"stream_name":"stderr","time":233.897305503,"data":"    616         if repo_id.count(\"/\") != 1:\n"}
+,{"stream_name":"stderr","time":233.89731008,"data":"--\u003e 617             raise HfUriError(uri=raw, msg=f\"Repository id must be 'namespace/name', got '{repo_id}'.\")\n"}
+,{"stream_name":"stderr","time":233.89731406800001,"data":"    618         # Special refs like 'refs/pr/10' contain '/' and must be matched eagerly,\n"}
+,{"stream_name":"stderr","time":233.897317658,"data":"    619         # otherwise we would split them at the first '/' and treat the rest as a path.\n"}
+,{"stream_name":"stderr","time":233.897321195,"data":"\n"}
+,{"stream_name":"stderr","time":233.897324793,"data":"HfUriError: Invalid HF URI 'hf://datasets/banking77@f54121560de48f2852f90be299010d1d6dc612ec/.huggingface.yaml'. Repository id must be 'namespace/name', got 'banking77'.\n"}
+,{"stream_name":"stderr","time":233.897329264,"data":"\n"}
+,{"stream_name":"stderr","time":236.413683751,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":236.413716133,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":236.609847132,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":236.609888545,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":237.487653567,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":237.604364733,"data":"[NbConvertApp] Writing 358132 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":240.543515898,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":241.214933908,"data":"[NbConvertApp] Writing 624893 bytes to __results__.html\n"}
+]

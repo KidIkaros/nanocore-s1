@@ -1,0 +1,67 @@
+[{"stream_name":"stderr","time":6.967976932,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":6.968032222,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":8.007035764,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.007061633,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.007067104,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.007071178,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":8.67464779,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.674711668,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.67471633,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.674719851,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":9.952204662,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":9.952233071,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":9.952236456,"data":"\n"}
+,{"stream_name":"stdout","time":147.729363012,"data":"........................................................................ [ 45%]\n"}
+,{"stream_name":"stdout","time":147.729397345,"data":"....ss.................................................................. [ 91%]\n"}
+,{"stream_name":"stdout","time":147.729403292,"data":"..............                                                           [100%]\n"}
+,{"stream_name":"stdout","time":147.729408115,"data":"156 passed, 2 skipped in 134.38s (0:02:14)\n"}
+,{"stream_name":"stdout","time":147.729412694,"data":"\n"}
+,{"stream_name":"stdout","time":151.108184759,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 17.5 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":151.241857314,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 96.7 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":151.289859902,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 26.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":151.310595335,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 17.5 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":151.310628122,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 96.7 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":151.310634604,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 26.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stderr","time":191.319457072,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":191.319492428,"data":"\n"}
+,{"stream_name":"stderr","time":191.319496887,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":212.288315612,"data":"hf path failed: RuntimeError('Dataset scripts are no longer supported, but found banking77.py')\n"}
+,{"stream_name":"stdout","time":212.512685371,"data":"banking77 via github csv: 10003 train / 3080 test, 77 intents\n"}
+,{"stream_name":"stdout","time":212.512721926,"data":"in-schema: 7441 train / 2280 test | oos: 800 | classes: 57\n"}
+,{"stream_name":"stdout","time":243.625518178,"data":"{\n"}
+,{"stream_name":"stdout","time":243.62554726,"data":" \"zeroshot_test_acc\": 0.9752240379546653\n"}
+,{"stream_name":"stdout","time":243.625552727,"data":"}\n"}
+,{"stream_name":"stdout","time":243.625557359,"data":"head: linear acc=0.995 brier=0.007 coverage=1.000 resolved=0.999 set=11.2\n"}
+,{"stream_name":"stdout","time":243.625562147,"data":"tau_answer=0.4545 t_prob=0.734 qhat=1.000 tau_in_schema=10.607391357421875\n"}
+,{"stream_name":"stdout","time":245.225214382,"data":"reload identity: 400/400 | external test acc: 0.938\n"}
+,{"stream_name":"stdout","time":263.082111914,"data":"'how do i activate my new card'                         -\u003e answer    1.000 ['activate_my_card', 'order_physical_card']\n"}
+,{"stream_name":"stdout","time":263.082142024,"data":"'my card was swallowed by the atm'                      -\u003e escalate  0.645 ['declined_cash_withdrawal', 'wrong_amount_of_cash_received', 'cash_withdrawal_not_recognised']\n"}
+,{"stream_name":"stdout","time":263.082148967,"data":"'i want to change my pin'                               -\u003e answer    1.000 ['change_pin', 'edit_personal_details']\n"}
+,{"stream_name":"stdout","time":263.082153973,"data":"'when does my transfer arrive'                          -\u003e answer    0.982 ['transfer_not_received_by_recipient', 'transfer_timing', 'balance_not_updated_after_bank_transfer']\n"}
+,{"stream_name":"stdout","time":263.082158874,"data":"'tell me about my savings account'                      -\u003e escalate  0.578 ['balance_not_updated_after_cheque_or_cash_deposit', 'verify_source_of_funds', 'balance_not_updated_after_bank_transfer']\n"}
+,{"stream_name":"stdout","time":263.082164828,"data":"'i got charged twice for the same thing'                -\u003e answer    1.000 ['transaction_charged_twice']\n"}
+,{"stream_name":"stdout","time":263.082169624,"data":"'what is this fee on my statement'                      -\u003e escalate  0.885 ['card_payment_not_recognised', 'transaction_charged_twice', 'card_payment_wrong_exchange_rate']\n"}
+,{"stream_name":"stdout","time":263.082175121,"data":"'the atm ate my card this morning'                      -\u003e escalate  0.714 ['lost_or_stolen_card', 'cash_withdrawal_not_recognised', 'wrong_amount_of_cash_received']\n"}
+,{"stream_name":"stdout","time":263.082180314,"data":"'how do i top up my account'                            -\u003e escalate  0.989 ['top_up_by_cash_or_cheque', 'verify_source_of_funds', 'supported_cards_and_currencies']\n"}
+,{"stream_name":"stdout","time":263.082184924,"data":"'i want to close my account'                            -\u003e answer    1.000 ['terminate_account', 'request_refund']\n"}
+,{"stream_name":"stdout","time":263.08219055,"data":"'blorple snizzle wumpus quack'                          -\u003e escalate  0.326 ['order_physical_card', 'card_not_working', 'card_delivery_estimate']\n"}
+,{"stream_name":"stdout","time":263.08219572,"data":"'what is the meaning of life'                           -\u003e escalate  0.730 ['why_verify_identity', 'age_limit', 'terminate_account']\n"}
+,{"stream_name":"stdout","time":263.105819813,"data":"{\n"}
+,{"stream_name":"stdout","time":263.105845338,"data":"  \"suite_green\": true,\n"}
+,{"stream_name":"stdout","time":263.105850016,"data":"  \"adapt_ran\": true,\n"}
+,{"stream_name":"stdout","time":263.105853555,"data":"  \"head_beats_zeroshot\": true,\n"}
+,{"stream_name":"stdout","time":263.105856801,"data":"  \"coverage_in_band\": false,\n"}
+,{"stream_name":"stdout","time":263.10586068,"data":"  \"bundle_written\": true,\n"}
+,{"stream_name":"stdout","time":263.105864313,"data":"  \"reload_identical\": true,\n"}
+,{"stream_name":"stdout","time":263.105867874,"data":"  \"tau_in_schema_fitted\": true,\n"}
+,{"stream_name":"stdout","time":263.105871519,"data":"  \"cli_ran\": true\n"}
+,{"stream_name":"stdout","time":263.105875069,"data":"}\n"}
+,{"stream_name":"stderr","time":268.535734405,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":268.535762302,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":268.692903749,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":268.692926979,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":269.418476577,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":269.519904557,"data":"[NbConvertApp] Writing 363296 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":271.95672501,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":272.517179596,"data":"[NbConvertApp] Writing 629864 bytes to __results__.html\n"}
+]

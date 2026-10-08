@@ -1,0 +1,51 @@
+{
+  "n_total": 7441,
+  "n_classes": 57,
+  "splits": {
+    "fit": 3704,
+    "cal": 1840,
+    "test": 1897,
+    "time_ordered": false,
+    "seed": 0
+  },
+  "headroom": {
+    "zeroshot_test_acc": 0.9752240379546653
+  },
+  "head": {
+    "kind": "linear",
+    "best_val_loss": 0.016119906678795815,
+    "epochs_run": 60,
+    "n_train": 3334,
+    "n_classes": 57
+  },
+  "calibration": {
+    "t_prob": 0.7338709677419355,
+    "tau_answer": 0.45447709466696146,
+    "qhat": 0.999920662049363,
+    "t_set": 1.0,
+    "n_A": 920,
+    "n_B": 920,
+    "tau_in_schema": 10.607391357421875,
+    "in_schema_j": 0.8872282608695652
+  },
+  "tau_in_schema": 10.607391357421875,
+  "test": {
+    "n": 1897,
+    "accuracy": 0.9952556668423828,
+    "brier": 0.006980439780633415,
+    "resolved_at_tau": 0.9994728518713759,
+    "conformal_coverage": 1.0,
+    "mean_set_size": 11.21138639957828,
+    "median_set_size": 7.0
+  },
+  "config": {
+    "head_kind": "linear",
+    "alpha": 0.1,
+    "fit_frac": 0.5,
+    "cal_frac": 0.25,
+    "seed": 0,
+    "time_ordered": false,
+    "policy": "full",
+    "answer_precision": 0.9
+  }
+}
