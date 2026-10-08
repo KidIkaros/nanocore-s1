@@ -551,6 +551,8 @@ RESULTS["breadth"] = {"status": "skipped", "datasets": {}}
 try:
     import datasets as _ds
     from src.decision.adapt import split_indices
+    from src.decision.datasets import (class_quota, label_field, label_space,
+                                       texts_of)
     from src.decision.evaluate import dataset_suite
 
     # Parquet-only ids, verified loadable locally: Kaggle's older datasets
@@ -570,52 +572,10 @@ try:
          "text": "content"},
         {"name": "mnli", "hf": "nyu-mll/glue", "config": "mnli", "text": "premise",
          "pair": "hypothesis", "test_split": "validation_matched"},
+        {"name": "massive_intent_en", "hf": "mteb/amazon_massive_intent",
+         "config": "en", "names_field": "label_text"},
     ]
     CAP_TR, CAP_TE = 2000, 1000
-
-    def label_field(feats, wanted):
-        if wanted in feats:
-            return wanted
-        cands = [k for k, f in feats.items()
-                 if f.__class__.__name__ == "ClassLabel" and f.num_classes > 1]
-        return min(cands, key=lambda k: feats[k].num_classes)
-
-    def label_names(split, field, cfg):
-        """Names from the whole column: a capped slice can miss classes."""
-        if cfg.get("names"):
-            return cfg["names"]
-        feature = split.features[field]
-        if feature.__class__.__name__ == "ClassLabel":
-            raw = list(feature.names)
-        elif cfg.get("names_field"):
-            pairs = zip(split[field], split[cfg["names_field"]])
-            raw = [t for _, t in sorted({int(i): t for i, t in pairs}.items())]
-        else:
-            raw = sorted(set(split[field]))
-        return [str(n).replace("_", " ") for n in raw]
-
-    def sample_rows(split, cap, field):
-        """Per-class quota, not a head-of-file or strided cap.
-
-        These datasets are class-ordered and some classes are rare, so a head
-        slice yields one class (banking77: 17 of 77 in the first 2000) and a
-        stride drops the classes shorter than the stride (62 of 77). A quota
-        keeps every class the dataset actually has.
-        """
-        y = np.asarray(split[field])
-        classes = np.unique(y)
-        per = max(3, cap // len(classes))
-        picked: list = []
-        for cls in classes:
-            picked += np.flatnonzero(y == cls)[:per].tolist()
-        return picked
-
-    def texts_of(split, cfg):
-        """One text field, or a premise/hypothesis pair joined into one string."""
-        texts = split[cfg.get("text", "text")]
-        if cfg.get("pair"):
-            texts = [f"{a} {b}" for a, b in zip(texts, split[cfg["pair"]])]
-        return list(texts)
 
     ran = 0
     for cfg in BREADTH:
@@ -625,15 +585,14 @@ try:
             tr = d["train"]
             te = d[cfg.get("test_split", "test")]
             lf = label_field(tr.features, cfg.get("label", "label"))
-            names = label_names(tr, lf, cfg)
-            tr_s = tr.select(sample_rows(tr, CAP_TR, lf))
-            te_s = te.select(sample_rows(te, CAP_TE, lf))
-            Xtr_all = texts_of(tr_s, cfg)
-            ytr_all = np.array(tr_s[lf])
-            Xte = texts_of(te_s, cfg)
-            yte = np.array(te_s[lf])
-            if int(yte.max()) >= len(names) or int(ytr_all.max()) >= len(names):
-                raise ValueError("label id exceeds label names")
+            space = label_space(tr, lf, cfg.get("names"), cfg.get("names_field"))
+            names = list(space.names)
+            tr_s = tr.select(class_quota(tr, lf, CAP_TR))
+            te_s = te.select(class_quota(te, lf, CAP_TE))
+            Xtr_all = texts_of(tr_s, cfg.get("text", "text"), cfg.get("pair"))
+            ytr_all = space.ids(tr_s, lf)
+            Xte = texts_of(te_s, cfg.get("text", "text"), cfg.get("pair"))
+            yte = space.ids(te_s, lf)
             fi, ci, _ = split_indices(len(Xtr_all), 0.6, 0.3, 0, y=ytr_all)
             absent = sorted(set(range(len(names))) - set(ytr_all[fi].tolist()))
             if absent:
@@ -642,8 +601,8 @@ try:
             E_fit = to_numpy(encoder.encode([Xtr_all[i] for i in fi], **kw))
             E_cal = to_numpy(encoder.encode([Xtr_all[i] for i in ci], **kw))
             E_te = to_numpy(encoder.encode(Xte, **kw))
-            LVb = to_numpy(encoder.encode(names, prompt_name="Document",
-                                          batch_size=32))
+            LVb = to_numpy(encoder.encode(space.prompt_names(),
+                                          prompt_name="Document", batch_size=32))
             LVb = LVb / np.linalg.norm(LVb, axis=1, keepdims=True)
             r = dataset_suite(E_fit, ytr_all[fi], E_cal, ytr_all[ci],
                               E_te, yte, [Xtr_all[i] for i in fi], Xte,
@@ -758,7 +717,120 @@ for t in demos:
 write_status("live-decide")
 '''),
 
-    md('## 7. Verdict'),
+    md('''## 7. Operate the system — log, monitor, retrain, release
+
+The parts a *system* needs and a model does not, none of which had ever run on
+real traffic:
+
+- **logged traffic** — the same `PredictionLogger` the server writes, fed by
+  real utterances, so the monitor and the shadow run have something to read
+- **monitor** — "is it still working?" answered from that log, with named alerts
+- **handlers** — every action reaches a real destination (Phase 3's in-kernel
+  exercise, still outstanding)
+- **registry** — a retrain produces a versioned bundle with lineage; promote and
+  roll back are pointer flips; a **shadow run** compares the candidate on the
+  logged traffic *before* promotion touches `current`
+'''),
+    code('''
+RESULTS["operate"] = {"status": "skipped"}
+try:
+    import time as _time
+    from src.decision.adapt import AdaptConfig, adapt
+    from src.decision.handlers import QueuedEscalation, handle
+    from src.decision.monitor import Monitor, read_log, shadow_compare
+    from src.decision.registry import Registry, data_fingerprint
+    from src.decision.serve import PredictionLogger
+    from src.decision.schema import Question
+
+    N_LOG, N_RT = 300, 4000
+    ops = WORK / "ops"
+    ops.mkdir(parents=True, exist_ok=True)
+    q = Question(qtype="choice", options=INTENT_TEXTS)
+
+    # 1. real logged traffic
+    log_path = ops / "preds.jsonl"
+    if log_path.exists():
+        log_path.unlink()
+    logger = PredictionLogger(log_path, model_id="nanocore-s1-verify")
+    for text in X_te[:N_LOG]:
+        t0 = _time.perf_counter()
+        pred = model.decide(text, q)
+        logger.record(text=text, question=q, pred=pred,
+                      latency_ms=(_time.perf_counter() - t0) * 1000, policy=None)
+    records = read_log(log_path)
+    print(f"logged {len(records)} real decisions")
+
+    # 2. is it still working?
+    status = Monitor(log_path).check()
+    agg = status.get("ml", {}).get("aggregate", {})
+    RESULTS["operate"] = {"status": "ran",
+                          "logged": len(records),
+                          "monitor": {"alerts": status.get("alerts", []),
+                                      "escalate_rate": agg.get("escalate_rate"),
+                                      "p99_ms": status.get("operational", {})
+                                      .get("latency_ms", {}).get("p99")}}
+    print(f"monitor: alerts={status.get('alerts')} "
+          f"escalate={agg.get('escalate_rate')}")
+
+    # 3. every action reaches a destination
+    queue = ops / "escalations.jsonl"
+    dispatcher = QueuedEscalation(queue)
+    counts = {}
+    for text in X_te[:N_LOG]:
+        res = handle(model.decide(text, q), state=text, question=q,
+                     escalate_to=dispatcher)
+        counts[res.action] = counts.get(res.action, 0) + 1
+    queued = sum(1 for _ in queue.open()) if queue.exists() else 0
+    RESULTS["operate"]["handlers"] = {"counts": counts, "queued": queued}
+    print(f"handlers: {counts} | escalation queue lines {queued}")
+
+    # 4. a retrain, twice, so lineage has a parent. Per-class quota: CLINC's
+    #    train split is class-ordered, so head-of-file slices would give the two
+    #    bundles different label spaces and make the shadow run meaningless.
+    y_tr_arr = np.asarray(y_tr_i)
+    per_class = max(2, (2 * N_RT) // len(np.unique(y_tr_arr)))
+    idx = np.concatenate([np.flatnonzero(y_tr_arr == c)[:per_class]
+                          for c in np.unique(y_tr_arr)])
+    half = len(idx) // 2
+    slices = [([X_tr_i[i] for i in idx[:half]], y_tr_arr[idx[:half]]),
+              ([X_tr_i[i] for i in idx[half:]], y_tr_arr[idx[half:]])]
+    print(f"retrain slices: {len(idx[:half])} + {len(idx[half:])} items, "
+          f"{len(np.unique(y_tr_arr))} classes each")
+    bundles = []
+    for i, (texts, labels) in enumerate(slices, start=1):
+        out = adapt(texts, labels, encoder, cfg=AdaptConfig(min_cal=150),
+                    out_dir=ops / f"retrain{i}")
+        bundles.append((out.bundle_dir, out.report, data_fingerprint(texts, labels)))
+    reg = Registry(ops / "registry")
+    v1 = reg.register("clinc", bundles[0][0], bundles[0][1], bundles[0][2])
+    reg.promote("clinc", v1)
+    v2 = reg.register("clinc", bundles[1][0], bundles[1][1], bundles[1][2])
+    lineage = reg.lineage("clinc", v2)
+
+    # 5. shadow the candidate on logged traffic BEFORE promoting it
+    candidate = DecisionModel.load(bundles[1][0], encoder=_LV(encoder))
+    shadow = shadow_compare(records, candidate)
+    reg.promote("clinc", v2)
+    after_promote = reg.current("clinc")
+    restored = reg.rollback("clinc")
+    RESULTS["operate"]["registry"] = {
+        "versions": reg.versions("clinc"), "parent_of_v2": lineage.get("parent"),
+        "promoted": after_promote, "rolled_back_to": restored,
+        "current_after_rollback": reg.current("clinc"),
+        "shadow": {"n": shadow["n"], "agreement": shadow["agreement"],
+                   "transitions": shadow["action_transitions"]}}
+    print(f"registry: versions={reg.versions('clinc')} "
+          f"v2.parent={lineage.get('parent')} promote->{after_promote} "
+          f"rollback->{restored} now={reg.current('clinc')}")
+    print(f"shadow: n={shadow['n']} agreement={shadow['agreement']:.3f} "
+          f"{shadow['action_transitions']}")
+except Exception as e:
+    RESULTS["operate"] = {"status": "failed", "error": repr(e)[:300]}
+    print("operate leg failed:", repr(e)[:200])
+write_status("operate")
+'''),
+
+    md('## 8. Verdict'),
     code('''
 verdict = {
     "suite_green_on_kaggle": True,
@@ -783,6 +855,15 @@ verdict = {
     "memorization_ran": RESULTS["memorization"]["status"] == "ran",
     "breadth_ran": RESULTS["breadth"].get("status") in ("ran", "partial"),
     "breadth_datasets": RESULTS["breadth"].get("n_ran", 0),
+    "operate_ran": RESULTS["operate"].get("status") == "ran",
+    "monitor_ran": bool(RESULTS["operate"].get("monitor", {}).get("p99_ms")),
+    "handlers_ran": bool(RESULTS["operate"].get("handlers", {}).get("counts")),
+    "escalations_queued": RESULTS["operate"].get("handlers", {}).get("queued", 0) > 0,
+    "registry_lineage": RESULTS["operate"].get("registry", {}).get("parent_of_v2") is not None,
+    "registry_rollback": (RESULTS["operate"].get("registry", {})
+                          .get("current_after_rollback")
+                          == RESULTS["operate"].get("registry", {}).get("rolled_back_to")),
+    "shadow_ran": RESULTS["operate"].get("registry", {}).get("shadow", {}).get("n", 0) > 0,
     "cross_task_ran": RESULTS["cross_task"].get("status") == "ran",
     "cross_task_glial_safer": (
         RESULTS["cross_task"].get("arms", {}).get("glial", {})
