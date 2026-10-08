@@ -8,16 +8,22 @@ Guidance for agents and humans working in this repository.
 
 ## Compute boundary — where things run
 
+**Kaggle is the workspace. The local machine edits files, reads files, runs static
+checks, and does git operations — nothing else.** This is the roadmap's R1 and it is
+binding. The host has frozen once under a model load already; do not re-test it.
+
 | Work | Where |
 |---|---|
-| Unit suite, protocol tests, pure evaluation logic on cached arrays | local |
-| Head training on cached embeddings (~100MB) | local |
-| Anything that loads model weights (EG2, Laya) or encodes real text | **Kaggle** |
-| Full multimodal inference | **Kaggle** |
+| Code/document edits, file reads, `git` | local |
+| Static checks (pytest unit suite, syntax checks, no weights) | local |
+| **Anything that loads model weights or encodes real text** | **Kaggle only** |
+| Head/training on real embeddings, full inference | **Kaggle only** |
+| **Installing or running model runtimes (llama.cpp, GGUF inference)** | **Kaggle only, until the on-device phase** |
+| Multimodal inference | **Kaggle only** |
 
-Measured local/CPU throughput for planning (Kaggle 4-core Xeon, AVX2):
-PyTorch fp32 ≈ **2.4 texts/s**, llama.cpp Q8_0 ≈ **9.9 texts/s**; batching gives
-nothing on CPU. Encoding ~24k texts on CPU is ~2.7 h (PyTorch) / ~40 min (llama.cpp).
+Never `pip install` or build a model runtime on this host. Never run the CLI's encoder
+path locally. The on-device phase (roadmap Phase 8) is the only exception, and the
+owner triggers it explicitly.
 
 ## Kaggle hygiene — one session limit, two rules
 

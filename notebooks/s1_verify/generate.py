@@ -10,8 +10,12 @@ One GPU session that proves the shipped package end-to-end on real data:
   5. calibrate the gate via the package (A: T_prob+τ, B: q̂; in-schema τ)
   6. policy eval THROUGH the classes (not kernel-local math) — must reproduce
      the measured v2 numbers: cosine leg ~0.482 resolved, head leg ~0.918
-  7. live .decide() calls — the typed interface working on real utterances
-  8. artifacts: results.json, verify_scores.npz, run_status.json
+  7. CLI leg — `python -m src.decision.cli` subprocess on ≥10 real inputs
+  8. live .decide() calls — the typed interface + cache hit on real utterances
+  9. artifacts: results.json, verify_scores.npz, run_status.json, demos.txt
+
+llama.cpp/GGUF is deferred to the on-device phase (roadmap Phase 8): backend
+parity is measured on the target hardware, not on Kaggle.
 
 Run it with: python generate.py <path/to/notebook.ipynb>
 """
@@ -331,35 +335,62 @@ except Exception as e:
 write_status("ordinal")
 '''),
 
-    md('''## 5d. llama.cpp backend — the on-device path (ADR-0007)
+    md('''## 5d. CLI leg — the shipped entry point, end to end
 
-GGUF Q8_0 EmbeddingGemma through `LlamaCppEncoder`; we check the embeddings it
-produces agree with the reference encoder's rankings on the same items (not
-bitwise equality — same-ranked argmax on a probe).
+The runnable slice (roadmap Phase 1): `python -m src.decision.cli` in a real
+subprocess — loads the encoder, loads the calibrated bundle, returns typed
+decisions on ≥10 real inputs. This is the artifact a user would actually call.
+
+(llama.cpp/GGUF moved to the on-device phase — parity is measured on the
+target hardware, not on Kaggle.)
 '''),
     code('''
-RESULTS["llamacpp"] = {"status": "skipped"}
+RESULTS["cli"] = {"status": "skipped"}
 try:
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                    "llama-cpp-python>=0.3.2"], check=True)
-    from huggingface_hub import hf_hub_download, list_repo_files
-    files = [f for f in list_repo_files("ggml-org/embeddinggemma-300m-qat-q8_0-gguf")
-             if f.endswith(".gguf")]
-    gguf = hf_hub_download("ggml-org/embeddinggemma-300m-qat-q8_0-gguf", files[0])
-    from src.decision.backends import LlamaCppEncoder
-    lenc = LlamaCppEncoder(gguf)
-    # probe: do rankings agree with the reference encoder on the same texts?
-    probe_texts = X_te[:200]
-    lp = to_numpy(lenc.encode_state(probe_texts))
-    lv = to_numpy(lenc.encode_options(INTENT_TEXTS))
-    agree = float(((lp @ lv.T).argmax(1) == SC_te[:200].argmax(1)).mean())
-    RESULTS["llamacpp"] = {"status": "ran", "argmax_agreement": agree,
-                           "model": Path(gguf).name}
-    print(f"llama.cpp argmax agreement vs reference: {agree:.3f}")
+    demos = ["i need to cancel my flight tomorrow",
+             "what is the balance on my account",
+             "how do i activate my new card",
+             "i lost my wallet on the bus yesterday",
+             "when will my paycheck arrive",
+             "can you transfer two hundred dollars to my savings",
+             "why was my card declined at the store",
+             "i want to dispute this charge i never made",
+             "do you do currency exchange for euros",
+             "my phone was stolen and i need to freeze everything",
+             "tell me something completely unrelated to banking intents xyz",
+             "blorple snizzle wumpus quack"]
+    demo_file = WORK / "demos.txt"
+    demo_file.write_text("\\n".join(demos))
+
+    r = subprocess.run(
+        [sys.executable, "-m", "src.decision.cli", "decide",
+         "--inputs", str(demo_file),
+         "--options", ",".join(INTENT_TEXTS),
+         "--bundle", str(bundle),
+         "--cache", str(WORK / "cli-cache"),
+         "--json"],
+        cwd=REPO, capture_output=True, text=True, timeout=1800)
+    assert r.returncode == 0, f"CLI exit {r.returncode}: {r.stderr[-2000:]}"
+    cli_out = json.loads(r.stdout)
+    assert isinstance(cli_out, list) and len(cli_out) == len(demos), cli_out
+    valid = {"answer", "clarify", "escalate", "abstain"}
+    assert all(o["action"] in valid for o in cli_out), [o["action"] for o in cli_out]
+
+    for o in cli_out:
+        print(f"{o['input']!r}\\n  -> action={o['action']} "
+              f"top={o['top_prob']:.3f} set={o['prediction_set'][:4]}")
+
+    RESULTS["cli"] = {"status": "ran", "n": len(cli_out),
+                      "actions": {a: sum(o["action"] == a for o in cli_out)
+                                  for a in sorted(valid)},
+                      "transcript": [{"input": o["input"], "action": o["action"],
+                                      "top_prob": round(o["top_prob"], 4),
+                                      "set": o["prediction_set"][:4]}
+                                     for o in cli_out]}
 except Exception as e:
-    RESULTS["llamacpp"] = {"status": "failed", "error": repr(e)[:300]}
-    print("llamacpp leg failed:", repr(e)[:200])
-write_status("llamacpp")
+    RESULTS["cli"] = {"status": "failed", "error": repr(e)[:300]}
+    print("cli leg failed:", repr(e)[:200])
+write_status("cli")
 '''),
 
     md('''## 6. Live `decide()` — the typed interface on real input
@@ -411,8 +442,8 @@ verdict = {
     "ordinal_ran": RESULTS["ordinal"]["status"] == "ran",
     "ordinal_beats_zeroshot": (RESULTS["ordinal"].get("ordinal_acc", 0)
                              > RESULTS["ordinal"].get("zeroshot_acc", 1)),
-    "llamacpp_ran": RESULTS["llamacpp"]["status"] == "ran",
-    "llamacpp_agreement": RESULTS["llamacpp"].get("argmax_agreement"),
+    "cli_ran": RESULTS["cli"]["status"] == "ran",
+    "cli_inputs": RESULTS["cli"].get("n"),
 }
 RESULTS["verdict"] = verdict
 print(json.dumps(verdict, indent=2))
