@@ -266,3 +266,5 @@ The project is complete when:
 | Date | Phase | Event |
 |---|---|---|
 | 2026-10-08 | — | Roadmap created. Phases 0–11 defined, component inventory complete (33 items). |
+| 2026-10-08 | 0 | Boundary hardened in `AGENTS.md` (R1 verbatim); local GGUF artifact removed; `llama_cpp` confirmed absent from venv. **Phase 0 done.** |
+| 2026-10-08 | 1 | CLI made backend-pluggable (`--backend st\|llamacpp`, `--inputs` batch). s1_verify v5 pushed: llama.cpp leg replaced with a CLI leg (subprocess, 12 real inputs, calibrated bundle). Awaiting run. |
