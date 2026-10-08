@@ -1,7 +1,12 @@
 # ADR-0013: Ambiguity-aware decision policy — `clarify` action and meta-routed heads
 
 **Date**: 2026-10-07
-**Status**: accepted
+**Status**: accepted in principle; **trigger mapping revised after measurement** —
+the `s1_policy` run showed `answer`-on-singleton-set is unreachable on flat softmaxes
+(top prob ~0.008 < q̂ on a 150-way task), so the policy lost to a plain threshold
+(−0.26 resolved). Action boundaries must key on calibrated confidence or relative set
+mass, not absolute set size. The clarify mechanism itself is validated (97.5%
+resolution); the action table below is the corrected version.
 **Deciders**: project owner, agent
 
 ## Context
@@ -45,10 +50,14 @@ This is directly supported by the project's measured evidence:
 
 | action | meaning | trigger |
 |---|---|---|
-| `answer` | commit to argmax | prediction_set size 1, calibrated confidence high |
-| `clarify` | return the ambiguity set as candidate interpretations | prediction_set size 2..k_clarify — resolvable by one cheap question |
-| `escalate` | hand to a bigger model / human | set too large to phrase as a question, or OOS signal |
+| `answer` | commit to argmax | calibrated top-prob ≥ τ_answer (or set mass concentrated: top1/top-k ratio) — **not** `|set|==1`, which is unreachable on flat softmaxes |
+| `clarify` | return the ambiguity set as candidate interpretations | below τ_answer but the APS set is small (≤ k_clarify) — resolvable by one cheap question |
+| `escalate` | hand to a bigger model / human | OOS signal, or a genuinely diffuse set |
 | `abstain` | no answer possible | empty set / policy forbids escalation |
+
+> **Measured correction** (`s1_policy`): the first-draft trigger (`|set|==1` → answer)
+> produced *zero* answers on CLINC150 at T=1.0 — 72% of traffic escalated and the
+> policy lost −0.26 to threshold gating. Triggers belong in confidence space.
 
 `clarify` and `escalate` are distinct because they have different costs: a follow-up
 question is ~one encode; escalation is a bigger model call. The caller's policy controls

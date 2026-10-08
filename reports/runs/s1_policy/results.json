@@ -1,0 +1,73 @@
+{
+  "alpha": 0.1,
+  "t_set": 1.0,
+  "qhat": 0.023498263210058212,
+  "coverage_in_scope": {
+    "val": 0.9243333333333333,
+    "test": 0.9131111111111111
+  },
+  "tau": 0.7312370538711548,
+  "in_schema": {
+    "oos_caught_rate": 0.853,
+    "in_scope_false_reject": 0.14533333333333334
+  },
+  "policies": {
+    "always_answer": {
+      "n": 5500,
+      "actions": {
+        "answer": 5500
+      },
+      "resolved": 0.6187272727272727,
+      "encodes": 5500,
+      "encodes_per_item": 1.0
+    },
+    "threshold": {
+      "n": 5500,
+      "actions": {
+        "abstain": 1507,
+        "answer": 3993
+      },
+      "resolved": 0.7118181818181818,
+      "encodes": 5500,
+      "encodes_per_item": 1.0
+    },
+    "ambiguity_aware": {
+      "n": 5500,
+      "actions": {
+        "escalate": 3965,
+        "clarify": 1535
+      },
+      "resolved": 0.45236363636363636,
+      "encodes": 7035,
+      "encodes_per_item": 1.279090909090909
+    },
+    "ambiguity_aware_head": {
+      "n": 5500,
+      "actions": {
+        "escalate": 4335,
+        "clarify": 764,
+        "answer": 401
+      },
+      "resolved": 0.39290909090909093,
+      "encodes": 6264,
+      "encodes_per_item": 1.1389090909090909
+    }
+  },
+  "taskhead": {
+    "qhat": 0.9999316930770874,
+    "tau": 0.8880090713500977,
+    "in_scope_accuracy": 0.9704444444444444,
+    "coverage_in_scope": 0.9995555555555555,
+    "mean_set_in_scope": 29.736666666666668,
+    "oos_auroc_maxprob": 0.967730888888889
+  },
+  "verdict": {
+    "clarify_pays": false,
+    "gate_pays": true,
+    "deltas": {
+      "amb_vs_thr": -0.25945454545454544,
+      "amb_vs_base": -0.16636363636363632,
+      "head_vs_cosine": -0.05945454545454543
+    }
+  }
+}

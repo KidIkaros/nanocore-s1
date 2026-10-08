@@ -60,6 +60,8 @@ the first time, tying Jev's tuned micro-F1 (0.386 vs 0.387).
 | 28 | **Conformal coverage holds at the unsharpened temperature** | CLINC150: 0.913 @ α=0.10, T=1.0 | **high** |
 | 29 | **`clarify` resolves with measured precision** | P(true intent ∈ set \| \|set\|≤3) = 0.975, on 27.9% of in-scope inputs | **high** |
 | 30 | **Log-loss temperature fitting can destroy conformal sets** | kernel fit T=0.02 → q̂=0.9975, mean set 56.7, trivial 0.997 coverage; scorer and gate need separate temperature treatment | **high** — the sharpening trap in a new guise |
+| 31 | **Set-size action triggers fail on flat softmaxes** | `s1_policy`: `answer`-on-singleton unreachable at T=1.0 (top prob ~0.008 < q̂=0.0235); ambiguity policy lost −0.26 to threshold gating; triggers must key on calibrated confidence | **high** |
+| 32 | **A linear TaskHead nearly solves 150-way CLINC150** | 0.970 in-scope, OOS AUROC 0.968 via head max_prob; but degenerate conformal sets (q̂≈1.0, mean set 29.7) — overconfident heads need their own set calibration | **high** |
 
 ---
 
