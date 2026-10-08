@@ -19,7 +19,7 @@ def _run(policy, scores, y, shift_at):
 
 def _obs(top_prob: float, set_size: int = 1, max_score: float = 1.0) -> Observation:
     return Observation(top_prob=top_prob, set_size=set_size, entropy=0.5,
-                       pred=0, max_score=max_score)
+                       pred=0, max_score=max_score, margin=0.5)
 
 
 def _stream(n: int, shift_at: int, phase2_scale: float, k: int = 4,

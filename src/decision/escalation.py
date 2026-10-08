@@ -25,6 +25,12 @@ Two design notes that come from measurement:
   the policy that abstains most. ``unsafe_at_escalation`` reads the risk-
   coverage curve at a common operating point.
 
+**Authority.** ``gate.action_for`` remains the shipped action rule. This module
+is the expected-loss *alternative*: measured on cached CLINC150 it did not beat
+the frozen gate at a matched handoff rate, because the feature that won
+selection on the calibration target is not the one that wins on the shifted
+stream. Adopt it when it beats the gate on the same comparison, not before.
+
 Reference points: UCCI (2026) maps margin uncertainty to a per-query error
 probability by isotonic regression and picks the threshold by constrained cost
 minimisation, proving threshold policies on the calibrated score are
@@ -38,7 +44,7 @@ from typing import Dict, Optional, Sequence, Tuple
 
 import numpy as np
 
-from src.decision.scoring import aps_members, softmax_rows
+from src.decision.slow import observe_row
 
 FEATURE_NAMES = ("margin", "top_prob", "set_size", "entropy", "max_score")
 
@@ -76,20 +82,20 @@ class DecisionFeatures:
 
 def decision_features(scores: np.ndarray, t_prob: float,
                       qhat: float) -> DecisionFeatures:
-    """Every signal the escalation decision may use — none needs a label."""
+    """Every signal the escalation decision may use — none needs a label.
+
+    Built from ``slow.observe_row`` so each statistic has one definition. The
+    per-row loop costs little at these sizes and buys the guarantee that the
+    risk features and the slow state's inputs can never disagree.
+    """
     scores = np.asarray(scores, dtype=np.float64)
     if scores.ndim != 2:
         raise ValueError("scores must be a 2-D (n, n_options) matrix")
-    P = softmax_rows(scores, t_prob)
-    ordered = np.sort(P, axis=1)
-    margin = ordered[:, -1] - ordered[:, -2]
-    top_prob = P.max(axis=1)
-    set_size = np.array([len(aps_members(P[i:i + 1], qhat)[0])
-                         for i in range(len(P))], dtype=np.float64)
-    entropy = -(P * np.log(P + 1e-12)).sum(axis=1)
-    return DecisionFeatures(FEATURE_NAMES,
-                            np.column_stack([margin, top_prob, set_size,
-                                             entropy, scores.max(axis=1)]))
+    rows = [observe_row(row, t_prob, qhat)[0] for row in scores]
+    return DecisionFeatures(FEATURE_NAMES, np.column_stack([
+        [obs.margin for obs in rows], [obs.top_prob for obs in rows],
+        [obs.set_size for obs in rows], [obs.entropy for obs in rows],
+        [obs.max_score for obs in rows]]))
 
 
 def _auroc(score: np.ndarray, positive: np.ndarray) -> float:

@@ -20,7 +20,7 @@ Three measured traps are encoded as defaults:
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
@@ -31,6 +31,26 @@ from src.decision.slow import (Observation, PolicyThresholds, SlowState,
                                fit_in_schema_threshold, observe_row)
 
 ACTIONS = ("answer", "clarify", "escalate", "abstain")
+
+
+def action_for(top_prob: float, max_score: float, set_size: int,
+               thresholds: PolicyThresholds, policy: str = "full") -> str:
+    """The action rule, in its documented order (ADR-0013).
+
+    Out-of-schema first, then calibrated confidence, then set size. This is the
+    single implementation: ``ConformalGate._gate_action`` and the experiment's
+    ``policy.action_for`` both delegate here, so the contract cannot drift into
+    two copies of itself.
+    """
+    if policy == "answer":
+        return "answer"
+    if thresholds.tau_in_schema is not None and max_score < thresholds.tau_in_schema:
+        return "escalate"
+    if top_prob >= thresholds.tau_answer:
+        return "answer"
+    if set_size <= thresholds.k_clarify and policy == "full":
+        return "clarify"
+    return "escalate"
 
 
 @dataclass
@@ -205,21 +225,8 @@ class ConformalGate:
 
     def _gate_action(self, top_prob: float, max_score: float, set_size: int,
                      thresholds: PolicyThresholds) -> str:
-        """The action rule, in its documented order (ADR-0013).
-
-        Out-of-schema first, then calibrated confidence, then set size — the
-        order is the contract, so it lives in one testable place rather than
-        inline in ``decide``.
-        """
-        if self.policy == "answer":
-            return "answer"
-        if thresholds.tau_in_schema is not None and max_score < thresholds.tau_in_schema:
-            return "escalate"
-        if top_prob >= thresholds.tau_answer:
-            return "answer"
-        if set_size <= thresholds.k_clarify and self.policy == "full":
-            return "clarify"
-        return "escalate"
+        """This gate's action, from the one shared implementation."""
+        return action_for(top_prob, max_score, set_size, thresholds, self.policy)
 
     # ── persistence ──────────────────────────────────────────────────────
 

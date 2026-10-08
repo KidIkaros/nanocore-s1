@@ -32,6 +32,7 @@ from typing import Dict, List, Optional, Protocol, Sequence
 import numpy as np
 
 from src.decision import metrics as M
+from src.decision.gate import action_for as gate_action_for
 from src.decision.slow import (Observation, PolicyThresholds, SlowState,
                                SlowStateConfig, fit_answer_threshold,
                                fit_in_schema_threshold, observe_row)
@@ -235,12 +236,12 @@ def _step(policy: Policy, row: np.ndarray, label: int,
 
 
 def action_for(obs: Observation, thresholds: PolicyThresholds) -> str:
-    """``ConformalGate.decide`` order: in-schema, confidence, set size."""
-    if thresholds.tau_in_schema is not None and obs.max_score < thresholds.tau_in_schema:
-        return "escalate"
-    if obs.top_prob >= thresholds.tau_answer:
-        return "answer"
-    return "clarify" if obs.set_size <= thresholds.k_clarify else "escalate"
+    """The gate's action order, from the gate's own implementation.
+
+    An adapter, not a second copy: the stream must decide exactly as the
+    shipped gate does, or the A/B measures a policy nobody runs.
+    """
+    return gate_action_for(obs.top_prob, obs.max_score, obs.set_size, thresholds)
 
 
 def _phase_block(records: Sequence[Dict], coverage_target: float) -> Dict:

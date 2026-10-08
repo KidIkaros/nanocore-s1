@@ -71,12 +71,19 @@ def fit_in_schema_threshold(in_scores: np.ndarray, oos_scores: np.ndarray) -> fl
 
 @dataclass(frozen=True)
 class Observation:
-    """One decision's statistics. Everything here is computable without labels."""
+    """One decision's statistics. Everything here is computable without labels.
+
+    This is the *single* source for these numbers: the slow state consumes them,
+    and ``escalation.decision_features`` builds its risk features from the same
+    values rather than recomputing them. Two code paths for the same statistics
+    is how the calibration drifted out of agreement twice already.
+    """
     top_prob: float
     set_size: int
     entropy: float
     pred: int
     max_score: float
+    margin: float = 0.0     # top-1 minus top-2 probability; 0 when unknown
 
 
 @dataclass(frozen=True)
@@ -118,9 +125,11 @@ def observe_row(row: np.ndarray, t_prob: float, qhat: float) -> tuple:
     """
     P = softmax_rows(row, t_prob)[0]
     members = aps_members(P[None, :], qhat)[0]
+    top_two = np.sort(P)[-2:]
     obs = Observation(top_prob=float(P.max()), set_size=len(members),
                       entropy=float(-(P * np.log(P + 1e-12)).sum()),
-                      pred=int(P.argmax()), max_score=float(row.max()))
+                      pred=int(P.argmax()), max_score=float(row.max()),
+                      margin=float(top_two[-1] - top_two[-2]))
     return obs, members
 
 

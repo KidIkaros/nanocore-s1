@@ -62,19 +62,19 @@ def test_gate_escalates_more_once_anomalies_sustain():
 def test_gate_calibrates_the_bar_from_a_reference_stream():
     gate = _gate()
     gate.attach_slow_state(SlowStateConfig())
-    reference = [Observation(0.9, 1, 0.1, 0, 3.0) for _ in range(60)]
+    reference = [Observation(0.9, 1, 0.1, 0, 3.0, 0.5) for _ in range(60)]
     assert gate.calibrate_slow(reference) == 1
 
 
 def test_calibrating_without_a_state_fails_loudly():
     with pytest.raises(RuntimeError):
-        _gate().calibrate_slow([Observation(0.9, 1, 0.1, 0, 3.0)])
+        _gate().calibrate_slow([Observation(0.9, 1, 0.1, 0, 3.0, 0.5)])
 
 
 def test_bundle_roundtrip_preserves_the_slow_mode(tmp_path):
     gate = _gate()
     gate.attach_slow_state(SlowStateConfig(window=30, tau_step=0.05))
-    reference = [Observation(0.9, 1, 0.1, 0, 3.0) for _ in range(60)]
+    reference = [Observation(0.9, 1, 0.1, 0, 3.0, 0.5) for _ in range(60)]
     gate.calibrate_slow(reference)
     fitted = gate.slow.fitted_config().activate_at
 
@@ -118,6 +118,20 @@ def test_concurrent_decisions_run_clean():
     assert not errors
     # a healthy stream never activates, however the requests interleaved
     assert gate.slow.thresholds().tau_answer == pytest.approx(gate.tau_answer)
+
+
+def test_experiment_and_gate_share_one_action_rule():
+    """The stream must decide exactly as the shipped gate does."""
+    from src.decision.policy import action_for
+    from src.decision.slow import Observation, PolicyThresholds
+
+    gate = _gate()
+    thresholds = PolicyThresholds(tau_answer=0.30, k_clarify=2, tau_in_schema=0.70)
+    for top_prob, max_score, size in ((0.99, 0.20, 1), (0.99, 0.90, 1),
+                                      (0.10, 0.90, 1), (0.10, 0.90, 9)):
+        obs = Observation(top_prob, size, 0.5, 0, max_score, 0.1)
+        assert action_for(obs, thresholds) == gate._gate_action(
+            top_prob, max_score, size, thresholds)
 
 
 def test_action_rule_order_is_out_of_schema_first():

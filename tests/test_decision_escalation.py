@@ -21,6 +21,22 @@ def test_features_are_named_and_shaped():
     assert np.isfinite(f.values).all()
 
 
+def test_features_come_from_the_one_source_of_decision_statistics():
+    """A second code path for these numbers is how calibration drifted twice."""
+    from src.decision.slow import observe_row
+
+    rng = np.random.default_rng(4)
+    scores = rng.standard_normal((25, 5))
+    features = decision_features(scores, t_prob=0.7, qhat=0.9)
+    for i, row in enumerate(scores):
+        obs, members = observe_row(row, t_prob=0.7, qhat=0.9)
+        assert features.column("top_prob")[i] == pytest.approx(obs.top_prob)
+        assert features.column("set_size")[i] == len(members)
+        assert features.column("entropy")[i] == pytest.approx(obs.entropy)
+        assert features.column("margin")[i] == pytest.approx(obs.margin)
+        assert features.column("max_score")[i] == pytest.approx(obs.max_score)
+
+
 def test_features_reject_a_score_vector():
     with pytest.raises(ValueError):
         decision_features(np.array([1.0, 2.0]), t_prob=1.0, qhat=0.9)
