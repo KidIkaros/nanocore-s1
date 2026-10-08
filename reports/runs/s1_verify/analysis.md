@@ -16,16 +16,19 @@ measured v2 policy numbers, or was the earlier result an artifact of kernel-loca
 | in-scope coverage | **0.914** @ α=0.10 — non-degenerate band |
 | head in-scope accuracy | **0.969** |
 
-## What this establishes
+## v4 — production-surface checks added
 
-- `ConformalGate.calibrate` reproduces the kernel protocol: T_prob floored at 0.25,
-  τ_answer ≈ 0.0153, qhat ≈ 0.0239, τ_in_schema ≈ 0.70 — through the shipped class.
-- `DecisionModel.decide` produces the typed contract on real inputs: live calls show
-  `answer` on a clear in-scope intent and `escalate` with an interpretable candidate
-  set on both a borderline ambiguous input and an unrelated one.
-- `DecisionCache` exercised live (repeat `decide()` calls hit cache, zero re-encode).
-- `verify_scores.npz` kept local (redundant with `s1_policy_v2`'s matrix; regenerable
-  in ~5 min on T4).
+| check | result |
+|---|---|
+| bundle round-trip | **200/200 identical** decisions after save→load |
+| ordinal `score` (SST-5, real) | CORN acc **0.432** / MAE 0.732 vs zero-shot 0.318 / 0.875 — head wins |
+| llama.cpp backend | ran; argmax agreement **0.815** on the 150-way probe (QAT Q8_0 GGUF) |
+
+The llama.cpp number is honest but below the Stage-1 acceptance bar (≥0.999 argmax
+agreement): the **QAT** quant degrades fine-grained ranking on wide schemas. The
+non-QAT `embeddinggemma-300M-Q8_0.gguf` build is the follow-up to try before calling
+the backend accepted — cosine-agreement, not argmax parity, is the real gate anyway
+(argmax hides near-ties).
 
 ## The workable-model claim, now artifact-backed
 

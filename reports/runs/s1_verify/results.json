@@ -30,12 +30,23 @@
     "identical": 200
   },
   "ordinal": {
-    "status": "failed",
-    "error": "AttributeError(\"'Value' object has no attribute 'names'\")"
+    "status": "ran",
+    "levels": [
+      "very negative",
+      "negative",
+      "neutral",
+      "positive",
+      "very positive"
+    ],
+    "ordinal_mae": 0.732,
+    "ordinal_acc": 0.432,
+    "zeroshot_mae": 0.875,
+    "zeroshot_acc": 0.318
   },
   "llamacpp": {
-    "status": "failed",
-    "error": "RemoteEntryNotFoundError('404 Client Error. (Request ID: Root=1-6ac7b6f9-05a2602a6d95f2a370d5c8ee;358516e5-041b-43cd-a6a8-01e6139eb7c9)\\n\\nEntry Not Found for url: https://huggingface.co/ggml-org/embeddinggemma-300m-qat-q8_0-GGUF/resolve/main/embeddinggemma-300M-QAT-Q8_0.gguf.')"
+    "status": "ran",
+    "argmax_agreement": 0.815,
+    "model": "embeddinggemma-300m-qat-Q8_0.gguf"
   },
   "demos": [
     {
@@ -79,9 +90,9 @@
     "head_coverage_reported": 0.9995555555555555,
     "head_acc_in_band": true,
     "bundle_roundtrip_identical": true,
-    "ordinal_ran": false,
-    "ordinal_beats_zeroshot": false,
-    "llamacpp_ran": false,
-    "llamacpp_agreement": null
+    "ordinal_ran": true,
+    "ordinal_beats_zeroshot": true,
+    "llamacpp_ran": true,
+    "llamacpp_agreement": 0.815
   }
 }
