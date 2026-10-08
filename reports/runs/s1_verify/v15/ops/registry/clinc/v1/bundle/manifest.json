@@ -1,0 +1,8 @@
+{
+ "encoder_id": "google/embeddinggemma-2",
+ "scorer": {
+  "class": "TaskHead",
+  "path": "scorer.pt"
+ },
+ "gate": "gate.json"
+}

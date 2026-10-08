@@ -792,8 +792,14 @@ try:
     idx = np.concatenate([np.flatnonzero(y_tr_arr == c)[:per_class]
                           for c in np.unique(y_tr_arr)])
     half = len(idx) // 2
-    slices = [([X_tr_i[i] for i in idx[:half]], y_tr_arr[idx[:half]]),
-              ([X_tr_i[i] for i in idx[half:]], y_tr_arr[idx[half:]])]
+    # Option labels must be the intent *texts*, not the raw class ids: a bundle
+    # whose options read "11"/"42" cannot be served by anything that knows the
+    # task, and the incumbent's labels are the texts.
+    text_by_id = {int(i): t for i, t in zip(INTENT_IDS, INTENT_TEXTS)}
+    slices = [([X_tr_i[i] for i in idx[:half]],
+               [text_by_id[int(c)] for c in y_tr_arr[idx[:half]]]),
+              ([X_tr_i[i] for i in idx[half:]],
+               [text_by_id[int(c)] for c in y_tr_arr[idx[half:]]])]
     print(f"retrain slices: {len(idx[:half])} + {len(idx[half:])} items, "
           f"{len(np.unique(y_tr_arr))} classes each")
     bundles = []

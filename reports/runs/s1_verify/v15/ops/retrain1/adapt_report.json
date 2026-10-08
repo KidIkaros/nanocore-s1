@@ -1,0 +1,50 @@
+{
+  "n_total": 3975,
+  "n_classes": 75,
+  "splits": {
+    "fit": 1950,
+    "cal": 975,
+    "test": 1050,
+    "time_ordered": false,
+    "seed": 0
+  },
+  "headroom": {
+    "zeroshot_test_acc": 0.009523809523809525
+  },
+  "head": {
+    "kind": "linear",
+    "best_val_loss": 0.10895238816738129,
+    "epochs_run": 40,
+    "n_train": 1755,
+    "n_classes": 75
+  },
+  "calibration": {
+    "t_prob": 0.7338709677419355,
+    "tau_answer": 0.22925238443193305,
+    "qhat": 0.9991253928583916,
+    "t_set": 1.0,
+    "n_A": 487,
+    "n_B": 488
+  },
+  "tau_in_schema": null,
+  "glial": null,
+  "test": {
+    "n": 1050,
+    "accuracy": 0.9676190476190476,
+    "brier": 0.04850459362642098,
+    "resolved_at_tau": 0.9990476190476191,
+    "conformal_coverage": 1.0,
+    "mean_set_size": 16.174285714285713,
+    "median_set_size": 7.0
+  },
+  "config": {
+    "head_kind": "linear",
+    "alpha": 0.1,
+    "fit_frac": 0.5,
+    "cal_frac": 0.25,
+    "seed": 0,
+    "time_ordered": false,
+    "policy": "full",
+    "answer_precision": 0.9
+  }
+}

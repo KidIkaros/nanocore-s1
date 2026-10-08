@@ -5,6 +5,8 @@ registry) and nothing else in the suite exercises them together: each module has
 unit tests, but the *loop* an operator actually runs had no coverage. Stubs
 stand in for the model, so this runs in a second and needs no weights.
 """
+import json
+
 import numpy as np
 import pytest
 
@@ -124,6 +126,41 @@ def test_shadow_run_compares_a_candidate_on_logged_traffic(tmp_path):
     assert shadow["n"] == N_LOG
     assert 0.0 <= shadow["agreement"] <= 1.0
     assert sum(shadow["action_transitions"].values()) == N_LOG
+
+
+def test_shadow_run_counts_a_candidate_that_cannot_decide(tmp_path):
+    """A broken candidate must not look like an empty log.
+
+    Measured in the v15 kernel: a retrained bundle whose option labels were raw
+    class ids raised on every call, and the silent ``except`` reported
+    ``n = 0`` — indistinguishable from having no traffic to replay.
+    """
+    class BrokenModel:
+        def decide(self, text, question):
+            raise ValueError("labels not in the option space")
+
+    question = Question(qtype="choice", options=LABELS)
+    texts, _ = corpus()
+    records = log_traffic(tmp_path / "preds.jsonl", question, texts)
+
+    shadow = shadow_compare(records, BrokenModel())
+    assert shadow["n"] == 0
+    assert shadow["n_failed"] == N_LOG
+    assert "option space" in shadow["first_error"]
+
+
+def test_retrain_labels_are_texts_not_raw_class_ids(tmp_path):
+    """The v15 failure: ``adapt`` was handed raw class ids, so the bundle's
+    option labels were "11"/"42" and nothing that knows the task could serve it.
+
+    The end-to-end check for this is the kernel's ``shadow_ran`` verdict; this
+    asserts the shape of the contract at the boundary we control.
+    """
+    texts, labels = corpus()
+    result = adapt(texts, labels, StubEncoder(), cfg=AdaptConfig(min_cal=100),
+                   out_dir=tmp_path / "bundle")
+    assert result.report["n_classes"] == N_CLASSES
+    assert all(not str(label).isdigit() for label in set(labels))
 
 
 def test_registry_refuses_to_promote_a_version_with_no_bundle(tmp_path):
