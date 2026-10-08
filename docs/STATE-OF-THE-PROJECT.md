@@ -39,6 +39,12 @@ architectural claim is **benchmark saturation**, not model quality.
 | 9 | The abstention gate's relevance signal is weak | separation 0.097; 3.46% auto-handled at 90% precision | **medium** (single split) |
 | 10 | The legacy decoder path is not viable | 20 steps at loss 6.7661 vs `ln(867)=6.7650`; inert `window_pattern`; decorative `head_dim`; synthetic decision accuracy; ~150 ms/token vs a claimed 15–35 ms | **high** |
 | 11 | The fingerprint head ignores option text entirely | two option prompts produced byte-identical head results; `_scores_batch` never reads `option_embeddings` | **high** |
+| 12 | **"Extremely lightweight" holds on a T4 (56.9 ms/decision, inside Jev's 236–276 ms cloud p50) and fails on CPU (420 ms)** | same harness, one variable: the device. Encoder is 86.5% (CPU) / 97% (T4) of the decision | **high** |
+| 13 | Batching gives 137× on GPU and nothing on CPU; long states cost 102× more on CPU | 53.6→2.95 ms/text vs a flat ~400 ms; 6,595 ms vs 64.6 ms for a ~500-token state | **high** |
+| 14 | Matryoshka buys nothing for decision latency | scoring 77 options costs 0.94 ms against a 420 ms decision — 0.2% | **high** |
+| 15 | **llama.cpp is 4.08× faster than PyTorch on CPU, with quality preserved** | 89.2 ms vs 363.5 ms short; 1,754.8 vs 6,595 ms long; 9.9 vs 2.4 texts/s; Banking77 zero-shot **93.41%** under Q8_0 vs 92.92% | **high** |
+| 16 | The Python bindings cannot load these GGUFs | `llama-cpp-python` 0.3.36 (PyPI *and* git master) fails; `ggml-org/llama.cpp` master (`bd4eeaa`) loads them | **high** |
+| 17 | Weight traffic is **not** the binding constraint at batch 1 | Q8_0 (0.31 GB) 89.2 ms vs BF16 (0.56 GB) 92.3 ms — 1.8× less traffic, 3% faster | **high** |
 
 ---
 
@@ -68,7 +74,6 @@ protocol now exists as tested code with regression tests rather than as repeated
 | `Score` (ordinal) | schema tested, **never run on real data**; currently uses cross-entropy, the loss the ordinal literature says discards ordering |
 | `Noul` | exercised only as the relevance signal in §1 row 9, not as a trained primitive |
 | Multimodality | vision: 100-image smoke test. audio/video: **untested** |
-| Latency | **never measured** at batch 1, despite "extremely lightweight" being the design's central claim |
 | End-to-end deployment | never attempted; every number comes from an offline split |
 
 ---
@@ -109,6 +114,12 @@ versus ~2 s to generate) survives intact.
 **Not supported:** the trained head for `Choice` and for routing. Three experiments, no win
 over the best baseline on any proper metric.
 
+**Newly qualified by measurement:** the latency claim holds **only with an accelerator**
+(56.9 ms on a T4 versus 420 ms on CPU). The design is accelerator-requiring, which weakens
+"on-device" unless the device has an NPU. And a *larger* competitor is faster on the same
+hardware — Laya's 421M ModernBERT does typed decisions in 33–40 ms on a T4 against our
+270M's 56.9 ms — which makes **encoder efficiency a design axis we have never examined**.
+
 **Still open, and the only places a trained component could earn its place:**
 
 1. **Ordinal `Score`** — temperature-scaled cosine has no notion of order at all. This is the
@@ -118,17 +129,23 @@ over the best baseline on any proper metric.
 
 ---
 
-## 6. Decision options
+## 6. Decisions taken
 
-| Option | What it means | Evidence position |
+The four options below were the open question when this document was first written. **They have
+since been decided and recorded** in `adr/`:
+
+| Option | Outcome | ADR |
 |---|---|---|
-| **A. Ship the interface, not a model** | EG2 + typed interface + calibrated scoring + abstention. Drop the trained head for Choice/routing. | Directly supported; the only option with no unsupported claims |
-| **B. Build the ordinal `Score` track** | CORN/CORAL + RPS + monotonicity, on a rubric dataset with ordinal labels | The one categorically different capability; needs new data |
-| **C. Find harder tasks** | Deliberately seek domains where zero-shot is well below ceiling, where a head or composer could matter | Addresses the binding constraint; unbounded search |
-| **D. Test the composer** | Composer vs mean pooling at equal information, both regimes | Decisive for ADR-0003; pre-register the null |
+| **A. Ship the interface, not a model** | **Taken** — cosine scoring replaces the head for `Choice`; the encoder is served through llama.cpp | [0007](../docs/adr/0007-llamacpp-runtime.md), [0008](../docs/adr/0008-cosine-scoring.md) |
+| **B. Build the ordinal `Score` track** | **Taken** — `Score` is the only trained component, with CORN/CORAL + RPS | [0010](../docs/adr/0010-ordinal-score.md) |
+| **C. Find harder tasks** | **Scoped as a follow-up**, and made mandatory by the headroom rule | [0011](../docs/adr/0011-headroom-check.md) |
+| **D. Test the composer** | **Deferred** — parked with an explicit revisit condition | [0003](../docs/adr/0003-bidirectional-composer.md) (deprecated) |
 
-Options are not exclusive. A is available now; B and D are the only remaining paths to a
-trained component; C is the only path that makes B or D *measurable*.
+Abstention moved from a fitted threshold to conformal prediction sets
+([0009](../docs/adr/0009-conformal-abstention.md)), superseding ADR-0005, and the encoder now
+enforces a hard input-length cap ([0012](../docs/adr/0012-input-length-cap.md)).
+
+The revised architecture is described in `ARCHITECTURE-DECISION-MODEL.md` §2.
 
 ---
 

@@ -1,0 +1,15 @@
+{
+  "id": "mauricew/nanocore-s1-latency",
+  "title": "nanocore s1 latency",
+  "code_file": "s1_latency.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

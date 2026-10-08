@@ -1,0 +1,92 @@
+[{"stream_name":"stderr","time":6.895058454,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":6.89511552,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":7.924197081,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":7.924230868,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":7.924237681,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":7.924242737,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":8.672660148,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.672720994,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.672728213,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.672733156,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":9.938163667,"data":"CPU: x86_64\n"}
+,{"stream_name":"stdout","time":9.938195166,"data":"   model name\t: Intel(R) Xeon(R) CPU @ 2.20GHz\n"}
+,{"stream_name":"stdout","time":9.938201088,"data":"   cores: 4\n"}
+,{"stream_name":"stdout","time":9.938211112,"data":"numpy 2.1.3\n"}
+,{"stream_name":"stdout","time":16.721320438,"data":"..........................                                               [100%]\n"}
+,{"stream_name":"stdout","time":16.721362594,"data":"26 passed in 3.70s\n"}
+,{"stream_name":"stdout","time":16.721366766,"data":"\n"}
+,{"stream_name":"stdout","time":25.735530901,"data":"llama.cpp commit: bd4eeaa\n"}
+,{"stream_name":"stdout","time":28.857083589,"data":"cmake configure rc: 0\n"}
+,{"stream_name":"stdout","time":411.816604285,"data":"build: 395 s | rc 0\n"}
+,{"stream_name":"stdout","time":411.816670173,"data":"binaries: ['libggml-base.so', 'libggml-base.so.0', 'libggml-base.so.0.26.0', 'libggml-cpu.so', 'libggml-cpu.so.0', 'libggml-cpu.so.0.26.0', 'libggml.so', 'libggml.so.0', 'libggml.so.0.26.0', 'libllama-common.so', 'libllama-common.so.0', 'libllama-common.so.0.6.0']\n"}
+,{"stream_name":"stderr","time":413.127476063,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":413.127531506,"data":"\n"}
+,{"stream_name":"stderr","time":413.127539662,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":416.161505966,"data":"embeddinggemma-2-Q8_0.gguf            309.9 MB\n"}
+,{"stream_name":"stdout","time":418.451288799,"data":"embeddinggemma-2-BF16.gguf            558.0 MB\n"}
+,{"stream_name":"stdout","time":418.651656926,"data":"using: /tmp/llama.cpp/build/bin/llama-embedding | exists: True\n"}
+,{"stream_name":"stdout","time":424.049555559,"data":"rc: 0\n"}
+,{"stream_name":"stdout","time":424.049593978,"data":" 0.001145 -0.005568 -0.002224  0.022820 -0.000614  0.007570 -0.005435 -0.008503 -0.004116  0.006146  0.009132 -0.005757 -0.045001  0.032142  0.021705  0.014024  0.024775 -0.053737 -0.002954 -0.014488  0.016018  0.028297  0.022003  0.015555  0.016755 -0.000175  0.021172 -0.020575 -0.011627 -0.018283 -0.019581  0.009958 -0.004333 -0.006173  0.012868 -0.010176  0.030189  0.018087 -0.001805  0.026040 -0.022599  0.017882 -0.007754  0.001032  0.004939 -0.018743  0.019449 -0.042158  0.007993  0.018461 -0.008010 -0.016407  0.016301 -0.021728 -0.008885  0.026425 -0.022924  0.018767  0.043729  0.009060 -0.026360 -0.022929 -0.017214  0.019894 -0.006185  0.029377  0.008726 -0.001824 -0.014354 -0.015189  0.011830  0.020221 -0.009689  0.000261  0.028255  0.023837  0.018027 -0.035967  0.008750  0.028813  0.004549 -0.001465 -0.016953  0.020607  0.018291  0.038724 -0.037623  0.003532  0.005259  0.049243 -0.017987  0.066571  0.011454  0.062475  0.027699 -0.021016  0.021894 -0.010695  0.002933  0.005600 -0.033731  0.021275  0.015810  0.036280 -0.034727 -0.017751 -0.003225 -0.001692  0.003009  0.029248 -0.004404 -0.015779  0.007313 -0.060288 -0.006324 -0.008195 -0.003219  0.009531 -0.015334 -0.025997 -0.007710 -0.025134  0.012606  0.031888  0.000557  0.225401  0.020078 -0.061595 -0.002544 -0.007329 -0.005184  0.011852  0.007918 -0.012311  0.007487  0.005584  0.000893 -0.017889 -0.012424 -0.020664 -0.026385  0.017411 -0.023717  0.001752 -0.022201 -0.002148  0.022721  0.018994  0.006723  0.029192  0.020577 -0.002910 -0.021486 -0.023146  0.018849  0.017127 -0.003998 -0.004979  0.002978  0.012606  0.015247 \n"}
+,{"stream_name":"stdout","time":424.049653501,"data":"\n"}
+,{"stream_name":"stdout","time":424.049658301,"data":"0.00.010.223 I main: n_parallel == 1 -\u003e unified KV cache is enabled\n"}
+,{"stream_name":"stdout","time":424.049663388,"data":"0.02.592.354 W load: control-looking token:    212 '\u003c/s\u003e' was not control-type; this is probably a bug in the model. its type will be overridden\n"}
+,{"stream_name":"stdout","time":424.049668631,"data":"0.02.593.320 W load: control-looking token:     50 '\u003c|tool_response\u003e' was not control-type; this is probably a bug in the model. its type will be overridden\n"}
+,{"stream_name":"stdout","time":424.049674776,"data":"0.02.643.052 W load: '\u003c/s\u003e' is a normal token here, removing it from EOG list\n"}
+,{"stream_name":"stdout","time":424.049679776,"data":"0.02.924.925 I cmn          init: llama threadpool init, n_threads = 4\n"}
+,{"stream_name":"stdout","time":424.049684443,"data":"0.02.925.060 W init: embeddings required but some input tokens were not marked as outputs -\u003e overriding\n"}
+,{"stream_name":"stdout","time":424.049688835,"data":"0.02.945.108 I \n"}
+,{"stream_name":"stdout","time":424.049693487,"data":"0.02.945.274 I system_info: n_threads = 4 (n_threads_batch = 4) / 4 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | \n"}
+,{"stream_name":"stdout","time":424.049698808,"data":"0.02.945.459 I batch_decode: n_tokens = 11, n_seq = 1\n"}
+,{"stream_name":"stdout","time":424.049703535,"data":"\n"}
+,{"stream_name":"stdout","time":424.083122748,"data":"short chars: [62, 48, 51] | long chars: [1630]\n"}
+,{"stream_name":"stdout","time":429.855581208,"data":"n_threads=1   mean    191.7 ms | p50    191.1 | p95    210.7\n"}
+,{"stream_name":"stdout","time":434.33710904,"data":"n_threads=2   mean    104.1 ms | p50    103.9 | p95    113.6\n"}
+,{"stream_name":"stdout","time":438.620763855,"data":"n_threads=4   mean     89.6 ms | p50     88.8 | p95     97.6\n"}
+,{"stream_name":"stdout","time":455.231742795,"data":"q8_0_short   mean     89.2 ms | p50     88.2 | p95     97.4\n"}
+,{"stream_name":"stdout","time":455.231800476,"data":"q8_0_long    mean   1754.8 ms | p50   1735.4 | p95   1818.4\n"}
+,{"stream_name":"stdout","time":455.23180638,"data":"q8_0 server startup: 0.00 s\n"}
+,{"stream_name":"stdout","time":473.741008688,"data":"bf16_short   mean     92.3 ms | p50     88.3 | p95    105.3\n"}
+,{"stream_name":"stdout","time":473.741036183,"data":"bf16_long    mean   1742.5 ms | p50   1727.6 | p95   1795.3\n"}
+,{"stream_name":"stdout","time":473.741040568,"data":"bf16 server startup: 0.00 s\n"}
+,{"stream_name":"stdout","time":475.230972218,"data":"test 3080 | classes 77\n"}
+,{"stream_name":"stdout","time":797.127714562,"data":"throughput: 9.9 texts/s\n"}
+,{"stream_name":"stdout","time":797.127813451,"data":"zero-shot accuracy under Q8_0: 0.9341 (PyTorch reference 0.9292, delta +0.0049)\n"}
+,{"stream_name":"stdout","time":797.12782177,"data":"log 0.265 | brier 0.107 | ece 0.018\n"}
+,{"stream_name":"stdout","time":812.279357728,"data":"{\n"}
+,{"stream_name":"stdout","time":812.279398317,"data":"  \"n\": 150,\n"}
+,{"stream_name":"stdout","time":812.279403887,"data":"  \"mean_cosine\": 1.0,\n"}
+,{"stream_name":"stdout","time":812.279408514,"data":"  \"min_cosine\": 0.9999998807907104,\n"}
+,{"stream_name":"stdout","time":812.2794135,"data":"  \"p05_cosine\": 0.9999999403953552\n"}
+,{"stream_name":"stdout","time":812.279418134,"data":"}\n"}
+,{"stream_name":"stderr","time":814.920636195,"data":"Traceback (most recent call last):\n"}
+,{"stream_name":"stderr","time":814.92140473,"data":"  File \"\u003cstring\u003e\", line 1, in \u003cmodule\u003e\n"}
+,{"stream_name":"stderr","time":814.921431022,"data":"    import sys;import papermill as pm;pm.execute_notebook(\"__notebook__.ipynb\",\"__notebook__.ipynb\",progress_bar=False,log_output=True,stdout_file=sys.stdout,stderr_file=sys.stderr,allow_errors=False,timeout=43200)\n"}
+,{"stream_name":"stderr","time":814.921481273,"data":"                                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":814.9214863,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 131, in execute_notebook\n"}
+,{"stream_name":"stderr","time":814.921490222,"data":"    raise_for_execution_errors(nb, output_path)\n"}
+,{"stream_name":"stderr","time":814.921493784,"data":"    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":814.92149748,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 251, in raise_for_execution_errors\n"}
+,{"stream_name":"stderr","time":814.921501026,"data":"    raise error\n"}
+,{"stream_name":"stderr","time":814.921504564,"data":"papermill.exceptions.PapermillExecutionError: \n"}
+,{"stream_name":"stderr","time":814.921508161,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":814.921511712,"data":"Exception encountered at \"In [10]\":\n"}
+,{"stream_name":"stderr","time":814.921515173,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":814.921518533,"data":"KeyError                                  Traceback (most recent call last)\n"}
+,{"stream_name":"stderr","time":814.921521959,"data":"/tmp/ipykernel_16/988444183.py in \u003ccell line: 0\u003e()\n"}
+,{"stream_name":"stderr","time":814.921525591,"data":"      7 proc_bf16.terminate()\n"}
+,{"stream_name":"stderr","time":814.921528897,"data":"      8 \n"}
+,{"stream_name":"stderr","time":814.921532182,"data":"----\u003e 9 q8_short = RESULTS[\"encode\"][\"q8_short\"][\"mean_ms\"]\n"}
+,{"stream_name":"stderr","time":814.921535962,"data":"     10 q8_long = RESULTS[\"encode\"][\"q8_long\"][\"mean_ms\"]\n"}
+,{"stream_name":"stderr","time":814.921549954,"data":"     11 PYT_CPU_SHORT, PYT_CPU_LONG, PYT_CPU_THROUGHPUT = 363.5, 6595.0, 1000.0 / 416.1\n"}
+,{"stream_name":"stderr","time":814.921552935,"data":"\n"}
+,{"stream_name":"stderr","time":814.921555533,"data":"KeyError: 'q8_short'\n"}
+,{"stream_name":"stderr","time":814.921558202,"data":"\n"}
+,{"stream_name":"stderr","time":817.680239155,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":817.680279613,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":817.878006582,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":817.878029188,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":818.781206646,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":818.893286876,"data":"[NbConvertApp] Writing 120768 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":822.113851092,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":822.848796064,"data":"[NbConvertApp] Writing 441463 bytes to __results__.html\n"}
+]

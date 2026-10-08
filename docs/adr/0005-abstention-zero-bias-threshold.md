@@ -1,8 +1,17 @@
 # ADR-0005: Abstention via a zero-bias max-score threshold at a target precision
 
 **Date**: 2026-10-07
-**Status**: accepted (measured; competitive at moderate coverage, not decisive)
+**Status**: **superseded by [ADR-0009](0009-conformal-abstention.md)**
 **Deciders**: project owner, agent
+
+> **Amendment (2026-10-07).** Superseded. Measurement showed the fitted threshold is not usable
+> as a product: on BFCL irrelevance the raw score separates relevant from irrelevant pairs by
+> only **0.097**, so holding 90% precision requires escalating **96.5%** of traffic and saves
+> 3.4% of cost. On Banking77 the 90%-precision operating point saturates entirely, because base
+> accuracy already exceeds 90%. Abstention moves to conformal prediction sets (APS/RAPS) with a
+> domain-asymmetric policy. The zero-bias final layer itself is retained — it is what makes
+> `max_score` an open-set signal — but it no longer supplies the decision rule. The analysis
+> below is kept as the record.
 
 ## Context
 
@@ -82,3 +91,13 @@ everything" cannot satisfy the criterion.
 - **Thresholds are not portable across head modes** — fitted values were 10.6
   (fingerprint) vs 56.4 (interaction) on the same data, because the raw score scales
   differ.
+
+## Sources
+
+- `reports/runs/s1_calibration/` — selective curves; fingerprint head at 99.61% selective
+  accuracy at 50% coverage, kNN-5 at 0.9679 coverage at 95% precision against the head's 0.9659
+- `reports/runs/s1_dispatch/` — relevance separation 0.097; 3.46% auto-handled at 90% precision
+- Liu et al., *Zero-Bias Deep Learning for Accurate Identification of IoT Devices* (2021) —
+  the zero-bias layer and the threshold-selection approach
+- `src/decision/protocol.py` — `coverage_at_precision`, which now refuses to report a
+  saturated number

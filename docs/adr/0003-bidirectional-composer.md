@@ -1,8 +1,21 @@
 # ADR-0003: Bidirectional transformer composer over encoder item vectors for multi-item states
 
 **Date**: 2026-10-07
-**Status**: **proposed — unvalidated**
+**Status**: **deprecated — parked, not rejected** (was `proposed`)
 **Deciders**: project owner, agent
+
+> **Amendment (2026-10-07).** Parked rather than deleted. It has never been trained, and the
+> literature prior for classification-shaped tasks leans negative — a large controlled study
+> finds bidirectional attention plus a trainable pooling layer *underperforms* on classification
+> while winning on retrieval, and pooling's advantage concentrates where relevance is uneven.
+> More decisively, both benchmarks available to us are saturated at ~93% zero-shot
+> ([ADR-0011](0011-headroom-check.md)), so a composer ablation on them would be uninterpretable
+> — it could not show an effect even if it had one.
+>
+> **Revisit condition (both must hold):** a genuinely multi-item benchmark with verified
+> headroom ≥ 15%, and a three-arm comparison (masked-mean / SAB+PMA permutation-invariant /
+> RoPE+mean) at equal information with the null pre-registered. The code is retained in
+> `src/decision/composer.py` and its contracts stay tested.
 
 ## Context
 
@@ -75,3 +88,16 @@ remains available as the baseline path (`composer=None`).
 - Note the zero-init convention: attention and MLP output projections start at zero,
   so the composer is the identity at initialization. A test that does not de-zero
   those projections measures pooling, not composition.
+
+## Sources
+
+- Lee et al., *Set Transformer*, ICML 2019 — SAB/ISAB and Pooling by Multihead Attention
+- Zaheer et al. (2017) — permutation-invariant functions as `ρ(pool(φ(x)))`
+- *Pooling and Attention: What are Effective Designs for LLM-based Embedding Models?*,
+  arXiv 2409.02727 — trainable pooling plus bidirectional attention underperforming on
+  classification while winning on retrieval
+- *Why and when should you pool?*, Findings of EMNLP 2020 — pooling's advantage concentrates
+  where relevance is uneven
+- `reports/runs/s1_baseline/`, `reports/runs/s1_dispatch/` — the saturated benchmarks that
+  make a composer ablation uninterpretable today ([ADR-0011](0011-headroom-check.md))
+- `tests/test_decision_composer.py` — the contract tests that keep the code runnable

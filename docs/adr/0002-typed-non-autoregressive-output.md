@@ -74,6 +74,18 @@ the decision path.
 - **Only `Choice` has ever been exercised on real data.** `Score` and `Noul` have
   unit-tested schemas and no measured behaviour. Treat them as implemented, not
   validated.
-- **Order invariance is asserted by construction and was not captured in the last
-  run** (the kernel died before that step). It needs an empirical check on real
-  embeddings before it is cited as a property.
+- **Order invariance was asserted by construction and is now measured — resolved
+  (2026-10-07).** Banking77, fixed 77 labels: max |Δp| = **2.38e-07**, 0 argmax flips. BFCL
+  dispatch, **2–37 options varying per request**: max |Δp| = **1.19e-07**, 0 flips. The
+  property holds on real embeddings at both fixed and variable cardinality.
+- **`Score` and `Noul` have never been exercised on real data.** `Score` is addressed by
+  [ADR-0010](0010-ordinal-score.md); `Noul` has only served as a relevance signal, and its
+  measured separation is weak (0.097), addressed by [ADR-0009](0009-conformal-abstention.md).
+
+## Sources
+
+- `reports/runs/s1_calibration/` — order invariance on a fixed 77-label option set
+- `reports/runs/s1_dispatch/` — order invariance on variable 2–37 option sets
+- `reports/runs/audit/` — the decoder's ~150 ms/token against a documented 15–35 ms claim
+- Santos, *Calibrated Decision Models for Autonomous Penetration-Testing Harnesses* (2026) —
+  the critique of generative decision interfaces and the non-autoregressive robustness argument

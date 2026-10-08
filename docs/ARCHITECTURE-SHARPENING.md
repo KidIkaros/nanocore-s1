@@ -1,7 +1,29 @@
 # Architecture Sharpening — research-backed proposals
 
-Date: 2026-10-07. Status: **proposals, not decisions.** Each item states the change, the
-evidence, the expected effect, the cost, and how to falsify it.
+Date: 2026-10-07. Status: **FROZEN — historical.** This document is kept as the record of a
+research pass, not as live guidance. Its proposals have been resolved, and the surviving ones
+now live as decisions:
+
+| Proposal | Where it went |
+|---|---|
+| S1 conformal abstention | [ADR-0009](adr/0009-conformal-abstention.md) |
+| S2 Set Transformer composer | [ADR-0003](adr/0003-bidirectional-composer.md) — **deprecated, parked** |
+| S3 head initialization from options | **rejected** — measured no effect (93.12% vs 93.11%) |
+| S4 head as a function of the option embedding | **not pursued** — the head was retired ([ADR-0008](adr/0008-cosine-scoring.md)) |
+| S5 fingerprint normalization + FD diagnostic | **rejected as implemented** — training the normalized head dropped accuracy to 79.66% |
+| S6 option-text enrichment | **open** — only affects the cosine and interaction paths |
+| S7 Matryoshka | **closed** — a storage feature, not a latency one (0.2% of a decision) |
+| S8 soft targets / RLCD | **open** — the one untested route to a useful `Choice` head |
+| S9 protocol fixes | **adopted** — and it overturned a published conclusion |
+
+Do not treat anything below as current guidance. `STATE-OF-THE-PROJECT.md` and `adr/` are the
+live documents.
+
+---
+
+## Original text (retained for the record)
+
+Each item stated the change, the evidence, the expected effect, the cost, and how to falsify it.
 
 Companion to `ARCHITECTURE-DECISION-MODEL.md` (what exists and what is validated) and
 `adr/` (decisions taken). Sources: the project library at

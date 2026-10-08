@@ -72,3 +72,12 @@ as reported rather than gated.
   risk note.
 - **Mitigation**: report all three (log score, Brier, ECE) plus accuracy and the
   abstention curve, and do not declare a winner on a single metric.
+
+## Sources
+
+- `reports/runs/audit/` — a zeroed model scoring ECE 0.001953 (exactly 1/vocabulary) against a
+  real initialised model at ~0.00202, i.e. the broken model scoring *better*
+- `reports/runs/s1_calibration/` — the ECE span from 0.907 to 0.038 on the same embeddings
+- `reports/runs/s1_dispatch/` — the head winning one proper score while losing another
+- Brier (1950); Gneiting & Raftery (2007) — strict propriety
+- `src/decision/protocol.py` — `REPORT_ONLY`, the code that keeps ECE out of verdicts

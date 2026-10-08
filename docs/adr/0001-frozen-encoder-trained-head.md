@@ -1,8 +1,17 @@
 # ADR-0001: Frozen EmbeddingGemma 2 encoder with a trained typed head, not a from-scratch decoder
 
 **Date**: 2026-10-07
-**Status**: accepted
+**Status**: **partially superseded by [ADR-0008](0008-cosine-scoring.md)** — the trained-head half
+is rejected; the frozen-encoder half stands and is strengthened by [ADR-0007](0007-llamacpp-runtime.md)
 **Deciders**: project owner, agent
+
+> **Amendment (2026-10-07).** This ADR made two claims. The **encoder** half — freeze
+> EmbeddingGemma 2 rather than train a decoder — is validated and now central to the
+> architecture; it is served through llama.cpp per ADR-0007. The **trained head** half is
+> rejected: three experiments found no win over a one-parameter temperature-scaled cosine on any
+> proper metric, and the head was *worse* than zero-shot on dispatch routing (90.84% vs 93.07%).
+> Scoring is now cosine-based (ADR-0008), with ordinal `Score` the only remaining trained
+> component (ADR-0010). The risk section below is retained as the record of how this was found.
 
 ## Context
 
@@ -82,3 +91,12 @@ or data-sovereignty rules forbid unknown pretrained weights.
   typed interface and temperature-scaled scoring is supported and needs no training.
   The trained head remains justified only for ordinal `Score`, which
   temperature-scaled cosine cannot express at all.
+
+## Sources
+
+- `docs/ARCHITECTURE-REASSESSMENT.md` — why the decoder was set aside
+- `reports/runs/audit/` — the decoder's only stored run: 20 steps at loss 6.7661 against
+  `ln(867) = 6.7650`, i.e. the uniform-random baseline
+- `reports/runs/s1_calibration/`, `reports/runs/s1_dispatch/`, `reports/runs/s1_sharpening/` —
+  the three experiments that retired the trained-head half
+- `reports/runs/s1_prompt_ablation/` — the corrected prompt pairing

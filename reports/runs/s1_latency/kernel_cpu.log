@@ -1,0 +1,59 @@
+[{"stream_name":"stderr","time":8.330572203,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":8.330629677,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":9.623685876,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.623721662,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.62372756,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.623732836,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":10.463733073,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":10.4637748,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":10.463780894,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":10.463786096,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":11.936116605,"data":"CPU: x86_64\n"}
+,{"stream_name":"stdout","time":11.93615164,"data":"   model name\t: Intel(R) Xeon(R) CPU @ 2.20GHz\n"}
+,{"stream_name":"stdout","time":11.936158043,"data":"  cores: 4\n"}
+,{"stream_name":"stdout","time":11.936162647,"data":"RAM GiB: 31.3\n"}
+,{"stream_name":"stdout","time":20.973224013,"data":"..............................................                           [100%]\n"}
+,{"stream_name":"stdout","time":20.973261905,"data":"46 passed in 5.69s\n"}
+,{"stream_name":"stdout","time":20.973266369,"data":"\n"}
+,{"stream_name":"stdout","time":24.785866403,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 8.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":24.969932839,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 78.0 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":24.988227105,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 8.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":24.988264858,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 78.0 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":25.039407754,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 19.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":25.242170427,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 19.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stderr","time":83.288476182,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":83.288521628,"data":"\n"}
+,{"stream_name":"stderr","time":83.288546727,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":100.960123846,"data":"cold load: 52.9 s | params 271 M | dtype torch.float32\n"}
+,{"stream_name":"stdout","time":100.988792167,"data":"short chars: [62, 48, 51, 40, 44]\n"}
+,{"stream_name":"stdout","time":100.988833453,"data":"long chars: [996, 2490]\n"}
+,{"stream_name":"stdout","time":124.315137143,"data":"short_batch1     mean    363.5 ms | p50    351.5 | p95    415.9\n"}
+,{"stream_name":"stdout","time":272.876587547,"data":"long_batch1      mean   6595.0 ms | p50   6577.5 | p95   9455.7\n"}
+,{"stream_name":"stdout","time":278.931377516,"data":"batch 1      416.1 ms total |  416.13 ms/text |    2.4 texts/s\n"}
+,{"stream_name":"stdout","time":323.891893655,"data":"batch 8     3209.8 ms total |  401.22 ms/text |    2.5 texts/s\n"}
+,{"stream_name":"stdout","time":505.757947893,"data":"batch 32   12998.5 ms total |  406.20 ms/text |    2.5 texts/s\n"}
+,{"stream_name":"stdout","time":506.488778751,"data":"k=3   interaction  mean  0.291 ms\n"}
+,{"stream_name":"stdout","time":506.488816198,"data":"k=3   cosine@256  mean 0.0090 ms\n"}
+,{"stream_name":"stdout","time":506.488821868,"data":"k=3   cosine@128  mean 0.0087 ms\n"}
+,{"stream_name":"stdout","time":506.522124405,"data":"k=77  interaction  mean  0.942 ms\n"}
+,{"stream_name":"stdout","time":506.522163683,"data":"k=77  cosine@256  mean 0.0656 ms\n"}
+,{"stream_name":"stdout","time":506.522170239,"data":"k=77  cosine@128  mean 0.0637 ms\n"}
+,{"stream_name":"stdout","time":517.909246636,"data":"end-to-end decision: mean 420.4 ms | p50 418.4 | p95 441.5\n"}
+,{"stream_name":"stdout","time":517.909285973,"data":"breakdown: {\"encoder_ms\": 363.45363811666596, \"total_ms\": 420.350140839987, \"scoring_and_gate_ms\": 56.89650272332102, \"encoder_share\": 0.8646449776140801}\n"}
+,{"stream_name":"stdout","time":517.942028777,"data":"{\n"}
+,{"stream_name":"stdout","time":517.942084449,"data":"  \"end_to_end_mean_ms\": 420.350140839987,\n"}
+,{"stream_name":"stdout","time":517.942091537,"data":"  \"beats_jev_236ms\": false,\n"}
+,{"stream_name":"stdout","time":517.942097526,"data":"  \"beats_laya_40ms\": false,\n"}
+,{"stream_name":"stdout","time":517.942102956,"data":"  \"within_100ms\": false,\n"}
+,{"stream_name":"stdout","time":517.942108514,"data":"  \"encoder_share_of_decision\": 0.8646449776140801,\n"}
+,{"stream_name":"stdout","time":517.942114323,"data":"  \"caveat\": \"Kaggle CPU, not a phone. The absolute number is hardware-specific; the encoder-vs-scoring breakdown is portable, and the encoder dominates.\"\n"}
+,{"stream_name":"stdout","time":517.942121217,"data":"}\n"}
+,{"stream_name":"stderr","time":524.051847635,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":524.051895605,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":524.269669741,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":524.269703465,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":525.21000952,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":525.347116537,"data":"[NbConvertApp] Writing 251272 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":528.694656398,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":529.44981869,"data":"[NbConvertApp] Writing 522864 bytes to __results__.html\n"}
+]

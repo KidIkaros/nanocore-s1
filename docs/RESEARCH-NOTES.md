@@ -346,6 +346,210 @@ temperature below 0.01 is recovered. 87 tests pass on Kaggle.
 
 ---
 
+## 2026-10-07 (market check) — R11: how Qwen and MiniCPM actually handle these problems
+
+Asked to check how the competition handles the issues we hit. Two reference classes, and
+both are informative because they answer our questions differently than we assumed.
+
+### Qwen3 — the market's answer to "should we think harder?" is a **knob, not a router**
+
+- Dense sizes **0.6B, 1.7B, 4B**, 8B, 14B, 32B, plus MoE 30B-A3B and 235B-A22B.
+- **Hybrid thinking mode**: one checkpoint switches between chain-of-thought "thinking" and
+  efficient "non-thinking" via `enable_thinking`, *without changing models*.
+- Headline capabilities are **agentic**: precise external tool integration and Model Context
+  Protocol support, in both modes. 119 languages.
+
+**The escalation decision is exposed to the caller as a flag.** Nobody trains a dispatcher
+to decide it. That is the single most useful fact in this section: it means a *learned*
+escalation predictor is either genuinely novel or genuinely unnecessary — and that the
+market's current answer is that a caller who knows their workload can set the knob.
+
+### MiniCPM — competes on **efficiency at fixed capability**, and measures tokens and latency
+
+- **MiniCPM-V 4.6**: **1.3B total** (SigLIP2-400M + a Qwen3.5-0.8B LLM). Beats
+  Gemma4-E2B-it; ~**1.5× token throughput** vs Qwen3.5-0.8B. Intra-ViT early compression
+  cuts visual encoding cost **>50%**; mixed **4×/16× visual token compression**. Runs on
+  iOS, Android and HarmonyOS with edge adaptation code open-sourced.
+- **MiniCPM-V 4.0**: 4.1B, OpenCompass **69.0** — above GPT-4.1-mini — at **<2 s
+  first-token latency and >17 tok/s on an iPhone 16 Pro Max**.
+- **MiniCPM4**: 0.5B and 8B; InfLLM v2 trainable sparse attention; **CPM.cu** inference
+  system combining sparse attention, quantization and speculative sampling; trained on 8.8T
+  tokens; MiniCPM4.1 adds a hybrid reasoning toggle.
+
+**Two lessons.** First, their competitive axis is *tokens, latency and memory at fixed
+capability* — first-token latency and throughput are first-class reported metrics, not
+afterthoughts. Second, **the model sizes for usable multimodal capability are falling fast**:
+the MiniCPM-V paper's thesis is that GPT-4V-level performance on-device is arriving, and
+they are engineering for it (sparse attention, quantization, speculative decoding, visual
+token compression).
+
+### What this means for us
+
+| Our assumption | What the market does |
+|---|---|
+| "A small model should dispatch, not answer" | Qwen ships agentic/tool-use capability *in* the small model; MiniCPM ships small models that **answer** (OCR, multi-image, video) |
+| "Escalation needs a learned predictor" | Qwen exposes `enable_thinking` as a **caller-set flag** |
+| "Competitive axis is accuracy" | MiniCPM's axis is **token throughput, TTFT, visual token count, quantization** |
+| "Frozen encoder + tiny head is the lightweight path" | The market trains **small generative multimodal models** end-to-end (1.3B–8B) and wins on efficiency engineering |
+| Our latency claim (33–40 ms, never measured) | MiniCPM-V 4.0: **<2 s TTFT, >17 tok/s on a phone** — a different regime, and a published one |
+
+**The uncomfortable conclusion.** Our benchmarks were saturated *because* a frozen embedder
+solves classification and routing. The tasks the market actually competes on — OCR,
+document and video understanding, visual QA — are **not** saturated by embeddings, because
+they require generation and grounding. A frozen encoder plus a linear head cannot enter
+that class of task at all.
+
+**But there is a real gap the market leaves open.** None of these models ships a **typed
+decision interface** — `Choice`/`Score`/`Noul`, probabilities as first-class outputs,
+calibrated abstention. Qwen gives a thinking flag; MiniCPM gives generation. Jev sells typed
+decisions, commercially, in the cloud. So the defensible niche is narrow and specific:
+**on-device typed decisions with calibrated abstention**, not content, and not a router.
+
+### Consequences for the four options
+
+- **A (ship the interface, not a model)** — strengthened. The interface is the part the
+  market does not have, and it is the only part with no unsupported claims.
+- **B (ordinal `Score`)** — strengthened. Still categorically different from anything the
+  market exposes.
+- **C (find harder tasks)** — reframed. "Harder" should mean *generative/grounded* tasks
+  (OCR, documents, video), which is where the market's benchmarks live and where embeddings
+  are not already at ceiling. But that is a different, much larger build.
+- **D (composer)** — unchanged, and still only measurable on a task with headroom.
+- **New, and cheap: measure latency.** We claim "extremely lightweight" and have never
+  produced a number. MiniCPM's published figures are the bar. This is the cheapest way to
+  make or break the design's central claim.
+
+---
+
+## 2026-10-07 (competitive check) — R12: we beat the typed-decision competitors, and the encoder is why
+
+Triggered by the latency result (a larger competitor being faster). Checked the library's own
+benchmark paper, which evaluates **Jev and open models on the same tasks we measured**.
+
+### The category benchmark, with sources
+
+| system | Banking77 accuracy | source |
+|---|---:|---|
+| **EG2 zero-shot + fitted temperature (ours)** | **92.92%** | our measurement, 3,080-example test split |
+| Jev — **independently measured** | **79.7%** (CI 0.782–0.812), ECE 0.087 | *Evaluating and Benchmarking the System One Model* |
+| Jev — **self-reported** | 87.0% | quoted in the pentest paper |
+| Laya | **42.5%** | pentest paper, comparison table |
+
+At **50% coverage** — the selective-prediction metric the benchmark paper itself reports:
+
+| system | accuracy at 50% coverage |
+|---|---:|
+| **ours** (fingerprint head, calibration v3) | **99.61%** |
+| Jev | 96.3% |
+| Qwen (open model) | 94.5% |
+
+**Two things follow.** First, Jev's independently measured number (79.7%) is **7.3 points below
+its self-reported 87.0%** — worth remembering when vendor figures are quoted. Second, our
+frozen-encoder approach beats Jev's measured accuracy by **13.2 points**, Laya's by **50
+points**, and Qwen's selective accuracy by 5 points at the same coverage.
+
+**The uncomfortable corollary:** the win comes from **EmbeddingGemma 2 zero-shot**, not from
+anything this project built. The encoder is the asset; the head has never beaten it.
+
+### Why the encoder is not the whole story: size is modular
+
+EG2 is a **modular** model — 270M text/code, 440M text+vision, 570M text+audio, **740M full
+multimodal** — and the unused encoders are excluded at load time via `config_kwargs`. We load
+text-only (measured 271,002,624 params) or text+vision (439M). So the 740M headline figure is
+the all-modalities configuration, and our text encoder is in fact **smaller than Laya's 421M**.
+
+### Why Laya is faster, and whether it matters
+
+**Correction (2026-10-07, see `docs/ENCODER-EFFICIENCY.md`).** This was first written as "our
+EG2 descends from a decoder stack with full attention at every layer". **That was wrong.**
+EG2's own `config.json` shows alternating local/global attention at **5:1**, a **1024-token**
+sliding window, **GQA/MQA** (4 query heads, 2 local / 1 global KV), and a **512** hidden size —
+the same efficiency playbook as ModernBERT. The claim is retracted.
+
+The real explanation has two parts:
+
+1. **EG2's sliding window is 1024 tokens and our states are far below it.** Within one window
+   every token still attends to all preceding tokens up to the bound, so attention is
+   *effectively quadratic* for short and medium inputs — exactly matching the measured 18×
+   penalty for a ~500-token state versus a 20-token one. The window only pays off past 1024
+   tokens, which our inputs never reach.
+2. **We run the unoptimized reference path** — no quantization, no export, no thread tuning, no
+   sequence cap. We measure **7.7× above the memory-bandwidth floor on CPU and 32.6× on GPU**,
+   and Google publishes the same model at **~191 MB quantized on a Pixel 11 Pro**.
+
+**Verdict:** worth attention, not alarm — and the gap is deployment engineering, not the
+encoder. Laya remains text-only, so it cannot be multimodal at all.
+
+### What this means for the `Score` track
+
+The benchmark paper reports Jev on SST-5: **57.9% five-way accuracy** but **ρ = 0.851**
+probability-weighted ordinal correlation, noting that "treated as an ordinal scale, SST-5 is
+thus solved considerably better than its 57.9% five-way accuracy suggests."
+
+That is a published target for exactly the primitive we were about to build, and it is the
+cleanest statement of the thesis: **for ordinal decisions, the distribution carries more than
+the argmax.** Our `Score` experiment should be measured against both numbers.
+
+---
+
+## 2026-10-07 (encoder efficiency) — R13: llama.cpp closes 4.08×, and two claims retracted
+
+Asked to research encoder efficiency deeply after the latency result showed a *larger* competitor
+faster on the same hardware. Full write-up in `docs/ENCODER-EFFICIENCY.md`; conclusions are now
+ADR-0007 and ADR-0012.
+
+### The measurement
+
+On the same 4-core Xeon (2.20 GHz, **AVX2 only**), same task, llama.cpp Q8_0 vs our PyTorch fp32:
+
+| | PyTorch fp32 | llama.cpp Q8_0 | speedup |
+|---|---:|---:|---:|
+| short state, batch 1 | 363.5 ms | **89.2 ms** (p95 97.4) | **4.08×** |
+| long state, batch 1 | 6,595 ms | **1,754.8 ms** | **3.76×** |
+| throughput | 2.4 texts/s | **9.9 texts/s** | **4.12×** |
+
+**Quality is preserved**: Banking77 zero-shot **93.41%** under Q8_0 against 92.92% for PyTorch
+fp32 (+0.49, within noise). Thread scaling saturates: 1→2 threads 1.84×, 2→4 only 1.16× more.
+
+Against the bars: **beats Jev's cloud p50 (236–276 ms) by ~2.9×**, still loses to Laya's T4 figure
+(33–40 ms) and to our own PyTorch-on-T4 (56.9 ms). The residual **3.9×** is explicable by clock
+speed and instruction set — a modern AVX-512 CPU at 4+ GHz would plausibly reach ~30–45 ms.
+
+### Retraction 1: EG2 does *not* lack modern efficiency features
+
+I claimed EG2 was "a decoder stack with full attention at every layer, quadratic". Its own
+`config.json` shows **alternating local/global attention at 5:1**, a **1024-token** sliding
+window, **GQA/MQA**, and a **512** hidden size — the ModernBERT playbook. Retracted.
+
+The real reason the window does not help us: **our states are far below 1024 tokens**, and within
+a single window every token still attends to all preceding tokens up to the bound, so attention
+is *effectively quadratic* for our inputs. That is exactly the measured 18–19.7× penalty for a
+~500-token state versus a ~20-token one.
+
+### Retraction 2: weight traffic is not the binding constraint
+
+I predicted Q8_0's 1.8× smaller weights (0.31 GB vs 0.56 GB) would give a proportional speedup.
+Measured: **89.2 ms vs 92.3 ms — 3% apart.** With mmap the 262,144-entry embedding table (134M of
+the model's 271M parameters) is never fully read, and the runtime is **compute-bound** on an
+AVX2-only 2.20 GHz part. The bandwidth-floor analysis is retracted as the primary explanation.
+
+### A deployment trap worth recording
+
+`llama-cpp-python` — PyPI 0.3.36 *and* its git master, which still reports 0.3.36 — **cannot load
+the EmbeddingGemma 2 GGUFs** (`Failed to load model from file`). It vendors a llama.cpp revision
+that predates the architecture. `ggml-org/llama.cpp` master (verified at `bd4eeaa`) loads them
+fine, and the GGUF's own `convert.log` confirms standard conversion via
+`convert_hf_to_gguf.py`. **Use `llama-server` from source, not the pip bindings.**
+
+### What this changes
+
+The design's central claim — "extremely lightweight" — was an adjective for the whole project and
+is now a measurement with a condition: **true with an accelerator or a modern CPU, false on a
+2.20 GHz AVX2 core.** Runtime became a first-class design axis, and it was worth 4× — more than
+any head or composer decision in this project's history.
+
+---
+
 ## Synthesis: what the research says about the three pillars
 
 | Pillar | Verdict from research |

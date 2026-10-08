@@ -87,3 +87,13 @@ rather than in a temporary directory, so they survive a host restart.
   to disk so a failed run still yields everything it completed.
 - **Notebooks fail late and lose everything.** Mitigation: incremental result
   persistence, as above, plus reduced-kernel fast-fail for validation.
+
+## Sources
+
+- `jev-stack/AGENTS.md` — the historical outage: a 421M model (~1.7 GB fp32) against 1.6 GB
+  available, load average 78 on 12 cores, swap storm, OS OOM
+- The 2026-10-07 violation: a local notebook "dry run" importing torch over a 19 MB embedding
+  array, which OOM-killed the working session
+- `notebooks/s1_tests/` — the reduced kernel that replaced local dry runs (~2 min, no GPU, no
+  internet, no quota)
+- `docs/ARCHITECTURE-DECISION-MODEL.md` §0 — the boundary restated for this repository
