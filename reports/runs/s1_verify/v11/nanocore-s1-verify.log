@@ -1,0 +1,61 @@
+[{"stream_name":"stderr","time":5.405446695,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":5.405502683,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":6.21832307,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":6.218361344,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":6.218366693,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":6.218370792,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":6.777788307,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":6.777837582,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":6.777843985,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":6.777848328,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":9.387027066,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":9.387081098,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":9.387084227999999,"data":"\n"}
+,{"stream_name":"stdout","time":19.498461665,"data":"\n"}
+,{"stream_name":"stdout","time":19.498515871,"data":"==================================== ERRORS ====================================\n"}
+,{"stream_name":"stdout","time":19.498521648,"data":"___________________ ERROR collecting tests/test_evaluate.py ____________________\n"}
+,{"stream_name":"stdout","time":19.498525513,"data":"ImportError while importing test module '/kaggle/working/nanocore-s1/tests/test_evaluate.py'.\n"}
+,{"stream_name":"stdout","time":19.49852907,"data":"Hint: make sure your test modules/packages have valid Python names.\n"}
+,{"stream_name":"stdout","time":19.498532505,"data":"Traceback:\n"}
+,{"stream_name":"stdout","time":19.498535958,"data":"/usr/lib/python3.13/importlib/__init__.py:88: in import_module\n"}
+,{"stream_name":"stdout","time":19.498539377,"data":"    return _bootstrap._gcd_import(name[level:], package, level)\n"}
+,{"stream_name":"stdout","time":19.498542858,"data":"           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stdout","time":19.498546145,"data":"tests/test_evaluate.py:16: in \u003cmodule\u003e\n"}
+,{"stream_name":"stdout","time":19.498549797,"data":"    from scripts.evaluate import Evaluator, EvalResult\n"}
+,{"stream_name":"stdout","time":19.498553043,"data":"E   ModuleNotFoundError: No module named 'scripts'\n"}
+,{"stream_name":"stdout","time":19.498556207,"data":"=========================== short test summary info ============================\n"}
+,{"stream_name":"stdout","time":19.498559617,"data":"ERROR tests/test_evaluate.py\n"}
+,{"stream_name":"stdout","time":19.498562879,"data":"!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n"}
+,{"stream_name":"stdout","time":19.498566326,"data":"1 error in 2.02s\n"}
+,{"stream_name":"stdout","time":19.498569565,"data":"\n"}
+,{"stream_name":"stderr","time":20.148916816,"data":"Traceback (most recent call last):\n"}
+,{"stream_name":"stderr","time":20.149664916,"data":"  File \"\u003cstring\u003e\", line 1, in \u003cmodule\u003e\n"}
+,{"stream_name":"stderr","time":20.149680596,"data":"    import sys;import papermill as pm;pm.execute_notebook(\"__notebook__.ipynb\",\"__notebook__.ipynb\",progress_bar=False,log_output=True,stdout_file=sys.stdout,stderr_file=sys.stderr,allow_errors=False,timeout=43200)\n"}
+,{"stream_name":"stderr","time":20.149687585,"data":"                                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":20.149692489,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 131, in execute_notebook\n"}
+,{"stream_name":"stderr","time":20.149696798,"data":"    raise_for_execution_errors(nb, output_path)\n"}
+,{"stream_name":"stderr","time":20.149700804,"data":"    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":20.149704708,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 251, in raise_for_execution_errors\n"}
+,{"stream_name":"stderr","time":20.149710896,"data":"    raise error\n"}
+,{"stream_name":"stderr","time":20.149714741,"data":"papermill.exceptions.PapermillExecutionError: \n"}
+,{"stream_name":"stderr","time":20.149720652,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":20.149724811,"data":"Exception encountered at \"In [2]\":\n"}
+,{"stream_name":"stderr","time":20.149728949,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":20.149733912,"data":"AssertionError                            Traceback (most recent call last)\n"}
+,{"stream_name":"stderr","time":20.149738846,"data":"/tmp/ipykernel_22/2855706503.py in \u003ccell line: 0\u003e()\n"}
+,{"stream_name":"stderr","time":20.149743958,"data":"     10                    capture_output=True, text=True, cwd=REPO)\n"}
+,{"stream_name":"stderr","time":20.14974872,"data":"     11 print((r.stdout + r.stderr)[-3000:])\n"}
+,{"stream_name":"stderr","time":20.14975319,"data":"---\u003e 12 assert r.returncode == 0, \"test suite failed on Kaggle\"\n"}
+,{"stream_name":"stderr","time":20.149757385,"data":"     13 write_status(\"tests-green\")\n"}
+,{"stream_name":"stderr","time":20.149768927,"data":"\n"}
+,{"stream_name":"stderr","time":20.14977276,"data":"AssertionError: test suite failed on Kaggle\n"}
+,{"stream_name":"stderr","time":20.149776681,"data":"\n"}
+,{"stream_name":"stderr","time":22.361628782,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":22.361658807,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":22.533037297,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":22.533060219,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":23.247478165,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":23.340116917,"data":"[NbConvertApp] Writing 743306 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":25.710258117,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":26.365092848,"data":"[NbConvertApp] Writing 1132532 bytes to __results__.html\n"}
+]

@@ -30,6 +30,42 @@ from src.decision.scoring import aps_members, fit_temperature, mass_needed, soft
 ACTIONS = ("answer", "clarify", "escalate", "abstain")
 
 
+def fit_answer_threshold(top_prob: np.ndarray, correct: np.ndarray,
+                         precision: float, min_answered: int = 30) -> float:
+    """Smallest top-prob threshold reaching ``precision`` among answered items.
+
+    Module-level because policy arms (``src/decision/policy.py``) refit the
+    same threshold from delayed labels. Fails closed: below ``min_answered``
+    candidates the threshold answers the least, never the most.
+    """
+    top_prob = np.asarray(top_prob, dtype=np.float64)
+    correct = np.asarray(correct, dtype=bool)
+    for t in np.sort(np.quantile(top_prob, np.linspace(0, 0.95, 40))):
+        mask = top_prob >= t
+        if mask.sum() >= min_answered and correct[mask].mean() >= precision:
+            return float(t)
+    return float(np.quantile(top_prob, 0.9))
+
+
+def fit_in_schema_threshold(in_scores: np.ndarray, oos_scores: np.ndarray) -> float:
+    """Youden point on raw max score — the in-schema / out-of-schema boundary.
+
+    Module-level for the same reason as ``fit_answer_threshold``: policy arms
+    refit it from delayed labels. Operates on max scores, not probabilities —
+    the in-schema signal is the raw similarity (measured AUROC 0.934).
+    """
+    ins = np.asarray(in_scores, dtype=np.float64).max(axis=1)
+    oos = np.asarray(oos_scores, dtype=np.float64).max(axis=1)
+    y = np.concatenate([np.ones(len(ins)), np.zeros(len(oos))])
+    x = np.concatenate([ins, oos])
+    best_tau, best_j = float(np.median(ins)), -1.0
+    for t in np.unique(x):
+        j = float((x[y == 1] >= t).mean() + (x[y == 0] < t).mean() - 1)
+        if j > best_j:
+            best_j, best_tau = j, float(t)
+    return best_tau
+
+
 @dataclass
 class GateResult:
     """One gated decision over a label set."""
@@ -111,7 +147,7 @@ class ConformalGate:
         P_A = softmax_rows(scores_A, self.t_prob)
         top = P_A.max(axis=1)
         correct = scores_A.argmax(axis=1) == targets_A
-        self.tau_answer = self._fit_tau_answer(top, correct)
+        self.tau_answer = fit_answer_threshold(top, correct, self.answer_precision)
 
         m = mass_needed(softmax_rows(scores_B, self.t_set), targets_B)
         n = len(m)
@@ -123,18 +159,6 @@ class ConformalGate:
                             "n_A": int(len(scores_A)), "n_B": int(len(scores_B))}
         return self.calibration
 
-    def _fit_tau_answer(self, top_prob: np.ndarray, correct: np.ndarray,
-                        min_answered: int = 30) -> float:
-        """Smallest top-prob threshold reaching answer_precision; fail closed."""
-        cands = np.quantile(top_prob, np.linspace(0, 0.95, 40))
-        for t in np.sort(cands):
-            mask = top_prob >= t
-            if mask.sum() < min_answered:
-                continue
-            if correct[mask].mean() >= self.answer_precision:
-                return float(t)
-        return float(np.quantile(top_prob, 0.9))   # answer the least, not the most
-
     def fit_in_schema(self, in_scores: np.ndarray, oos_scores: np.ndarray) -> float:
         """τ_in_schema on raw max score via the Youden point.
 
@@ -142,19 +166,9 @@ class ConformalGate:
         in-schema signal is the raw max similarity, not a probability —
         measured AUROC 0.934 on CLINC150 (s1_clinc150_oos).
         """
-        ins = np.asarray(in_scores, dtype=np.float64).max(axis=1)
-        oos = np.asarray(oos_scores, dtype=np.float64).max(axis=1)
-        y = np.concatenate([np.ones(len(ins)), np.zeros(len(oos))])
-        x = np.concatenate([ins, oos])
-        best_tau, best_j = float(np.median(ins)), -1.0
-        for t in np.unique(x):
-            j = float((x[y == 1] >= t).mean() + (x[y == 0] < t).mean() - 1)
-            if j > best_j:
-                best_j, best_tau = j, float(t)
-        self.tau_in_schema = best_tau
-        self.calibration["tau_in_schema"] = best_tau
-        self.calibration["in_schema_j"] = best_j
-        return best_tau
+        self.tau_in_schema = fit_in_schema_threshold(in_scores, oos_scores)
+        self.calibration["tau_in_schema"] = self.tau_in_schema
+        return self.tau_in_schema
 
     # ── inference ────────────────────────────────────────────────────────
 
