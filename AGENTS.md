@@ -33,6 +33,14 @@ Rules:
    ones we iterate on) stay; one-off kernels go.
 3. There is **no CLI `stop`** — only `delete`. Queued/running sessions are cleared by
    deleting the kernel or by stopping it in the Kaggle UI.
+4. **Quota is session wall-time, not compute time.** The GPU is attached for the whole
+   session — weight downloads, pip installs, and compiles bill identically to inference.
+   Minimize what happens inside a GPU session: ship prebuilt artifacts, mount models as
+   datasets, keep notebooks single-purpose. Duplicate queued sessions each bill a full
+   run — retry-pushing costs quota twice over (slots + hours).
+5. **Interactive editor sessions are invisible to `kernels status`** — a notebook left
+   open in the Kaggle editor with GPU on burns quota continuously. Check the UI's active
+   sessions before assuming quota is safe.
 
 ## Kaggle gotchas found the hard way
 
