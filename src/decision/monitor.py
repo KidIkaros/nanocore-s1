@@ -162,6 +162,40 @@ def detect_drift(reference: List[dict], recent: List[dict],
     return rep
 
 
+# ── shadow comparison (Phase 6 release) ──────────────────────────────────────
+
+def shadow_compare(records: List[dict], candidate_model,
+                   encoder_encode=None) -> Dict:
+    """Replay logged inputs through a candidate model; report agreement with
+    the logged (live) decisions.
+
+    ``records`` are PredictionLogger lines. ``candidate_model.decide`` is
+    called on each logged ``input`` with the logged ``labels``/``qtype``.
+    Returns agreement rate and the action-shift distribution — the evidence a
+    promotion decision needs before ``registry.promote`` touches ``current``.
+    """
+    from src.decision.schema import Question
+    agree, act_shift, per = 0, {}, []
+    for r in records:
+        q = Question(qtype=r.get("qtype", "choice"),
+                     options=r.get("labels", []))
+        try:
+            p = candidate_model.decide(r["input"], q)
+        except Exception:
+            continue
+        same = p.action == r.get("action")
+        agree += int(same)
+        key = (r.get("action"), p.action)
+        act_shift[key] = act_shift.get(key, 0) + 1
+        per.append({"input": r["input"], "live_action": r.get("action"),
+                    "shadow_action": p.action, "agree": same})
+    n = max(len(per), 1)
+    return {"n": len(per), "agreement": agree / n,
+            "action_transitions": {f"{a}->{b}": c for (a, b), c in
+                                   sorted(act_shift.items())},
+            "per_record": per}
+
+
 # ── the monitor ──────────────────────────────────────────────────────────────
 
 class Monitor:

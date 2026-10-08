@@ -1,0 +1,242 @@
+{
+  "cosine_leg": {
+    "actions": {
+      "escalate": 3648,
+      "answer": 1797,
+      "clarify": 55
+    },
+    "resolved": 0.48163636363636364,
+    "encodes": 5555,
+    "cov_hits": 4113,
+    "n_in": 4500,
+    "encodes_per_item": 1.01,
+    "set_coverage_in_scope": 0.914
+  },
+  "taskhead_leg": {
+    "actions": {
+      "answer": 4381,
+      "escalate": 1119
+    },
+    "resolved": 0.9314545454545454,
+    "encodes": 5500,
+    "cov_hits": 4498,
+    "n_in": 4500,
+    "encodes_per_item": 1.0,
+    "set_coverage_in_scope": 0.9995555555555555
+  },
+  "head_in_scope_acc": 0.9693333333333334,
+  "bundle_roundtrip": {
+    "n": 200,
+    "identical": 200
+  },
+  "ordinal": {
+    "status": "ran",
+    "levels": [
+      "very negative",
+      "negative",
+      "neutral",
+      "positive",
+      "very positive"
+    ],
+    "ordinal_mae": 0.732,
+    "ordinal_acc": 0.432,
+    "zeroshot_mae": 0.875,
+    "zeroshot_acc": 0.318
+  },
+  "cli": {
+    "status": "ran",
+    "n": 12,
+    "actions": {
+      "abstain": 0,
+      "answer": 5,
+      "clarify": 0,
+      "escalate": 7
+    },
+    "transcript": [
+      {
+        "input": "i need to cancel my flight tomorrow",
+        "action": "escalate",
+        "top_prob": 0.3337,
+        "set": [
+          "cancel reservation",
+          "pto request",
+          "book flight",
+          "goodbye"
+        ]
+      },
+      {
+        "input": "what is the balance on my account",
+        "action": "answer",
+        "top_prob": 0.9975,
+        "set": [
+          "balance",
+          "bill balance",
+          "account blocked",
+          "credit limit"
+        ]
+      },
+      {
+        "input": "how do i activate my new card",
+        "action": "escalate",
+        "top_prob": 0.9699,
+        "set": [
+          "new card",
+          "redeem rewards",
+          "greeting",
+          "replacement card duration"
+        ]
+      },
+      {
+        "input": "i lost my wallet on the bus yesterday",
+        "action": "escalate",
+        "top_prob": 0.217,
+        "set": [
+          "lost luggage",
+          "spending history",
+          "goodbye",
+          "report lost card"
+        ]
+      },
+      {
+        "input": "when will my paycheck arrive",
+        "action": "answer",
+        "top_prob": 0.9978,
+        "set": [
+          "payday",
+          "income",
+          "bill due",
+          "order status"
+        ]
+      },
+      {
+        "input": "can you transfer two hundred dollars to my savings",
+        "action": "answer",
+        "top_prob": 0.9996,
+        "set": [
+          "transfer",
+          "balance",
+          "account blocked",
+          "definition"
+        ]
+      },
+      {
+        "input": "why was my card declined at the store",
+        "action": "answer",
+        "top_prob": 0.9996,
+        "set": [
+          "card declined",
+          "account blocked"
+        ]
+      },
+      {
+        "input": "i want to dispute this charge i never made",
+        "action": "escalate",
+        "top_prob": 0.7738,
+        "set": [
+          "report fraud",
+          "cancel",
+          "no",
+          "spending history"
+        ]
+      },
+      {
+        "input": "do you do currency exchange for euros",
+        "action": "answer",
+        "top_prob": 0.9995,
+        "set": [
+          "exchange rate",
+          "plug type",
+          "transfer",
+          "change language"
+        ]
+      },
+      {
+        "input": "my phone was stolen and i need to freeze everything",
+        "action": "escalate",
+        "top_prob": 0.4607,
+        "set": [
+          "sync device",
+          "freeze account",
+          "find phone",
+          "report fraud"
+        ]
+      },
+      {
+        "input": "tell me something completely unrelated to banking intents xyz",
+        "action": "escalate",
+        "top_prob": 0.3639,
+        "set": [
+          "no",
+          "what can i ask you",
+          "meaning of life",
+          "fun fact"
+        ]
+      },
+      {
+        "input": "blorple snizzle wumpus quack",
+        "action": "escalate",
+        "top_prob": 0.1107,
+        "set": [
+          "tell joke",
+          "repeat",
+          "whisper mode",
+          "cancel"
+        ]
+      }
+    ]
+  },
+  "serve": {
+    "status": "ran",
+    "action": "escalate",
+    "latency_ms": 929.74,
+    "log_line": true
+  },
+  "demos": [
+    {
+      "input": "i need to cancel my flight tomorrow",
+      "action": "escalate",
+      "top_prob": 0.0096,
+      "set": [
+        "cancel",
+        "book flight",
+        "insurance change",
+        "income"
+      ]
+    },
+    {
+      "input": "what is the balance on my account",
+      "action": "answer",
+      "top_prob": 0.0163,
+      "set": [
+        "balance",
+        "bill balance",
+        "rewards balance"
+      ]
+    },
+    {
+      "input": "tell me something completely unrelated to banking intents xyz",
+      "action": "escalate",
+      "top_prob": 0.0107,
+      "set": [
+        "no",
+        "what can i ask you",
+        "meaning of life",
+        "definition"
+      ]
+    }
+  ],
+  "verdict": {
+    "suite_green_on_kaggle": true,
+    "cosine_resolved_in_band": true,
+    "head_resolved_in_band": true,
+    "coverage_in_band": true,
+    "head_coverage_reported": 0.9995555555555555,
+    "head_acc_in_band": true,
+    "bundle_roundtrip_identical": true,
+    "ordinal_ran": true,
+    "ordinal_beats_zeroshot": true,
+    "cli_ran": true,
+    "cli_inputs": 12,
+    "serve_ran": true
+  }
+}
