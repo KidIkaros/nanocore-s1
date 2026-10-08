@@ -118,17 +118,48 @@ write_status("encoder")
 
     md('## 1. Load CLINC150 ("plus" config — includes OOS examples in every split)'),
     code('''
-import datasets
+def load_via_datasets():
+    import datasets
+    ds = datasets.load_dataset("clinc_oos", "plus")
+    names = list(ds["test"].features["intent"].names)
+    return names, {k: (list(ds[k]["text"]), np.array(ds[k]["intent"]))
+                   for k in ("train", "validation", "test")}
 
-ds = datasets.load_dataset("clinc_oos", "plus")
-names = ds["test"].features["intent"].names
+def load_via_github():
+    """Official CLINC repo JSON — newer huggingface_hub rejects the legacy
+    no-namespace 'clinc_oos' id, so this is the deterministic fallback."""
+    import requests
+    url = ("https://raw.githubusercontent.com/clinc/oos-eval/master/"
+           "data/data_oos_plus.json")
+    raw = requests.get(url, timeout=300).json()
+    labels = sorted({lab for k, rows in raw.items() if rows
+                     for _, lab in rows})
+    names = labels if "oos" in labels else labels + ["oos"]
+    idx = {lab: i for i, lab in enumerate(names)}
+    splits = {}
+    for split, keys in (("validation", ("val", "oos_val")),
+                        ("test", ("test", "oos_test")),
+                        ("train", ("train", "oos_train"))):
+        rows = [r for k in keys for r in raw.get(k, [])]
+        splits[split] = ([t for t, _ in rows],
+                         np.array([idx[l] for _, l in rows]))
+    return names, splits
+
+try:
+    names, splits = load_via_datasets()
+    src = "hf datasets"
+except Exception as e:
+    print("datasets path failed:", repr(e)[:200])
+    names, splits = load_via_github()
+    src = "github json"
+
 OOS = names.index("oos") if "oos" in names else None
-print("classes:", len(names), "| oos index:", OOS)
+print("source:", src, "| classes:", len(names), "| oos index:", OOS)
 assert OOS is not None, "oos label not found — dataset layout changed"
 
-splits = {k: (ds[k]["text"], np.array(ds[k]["intent"])) for k in ("train", "validation", "test")}
 for k, (x, y) in splits.items():
     print(f"{k}: {len(x)} total | oos {(y == OOS).sum()}")
+assert len(splits["test"][0]) > 2000, "CLINC test split unexpectedly small"
 
 X_val_text, y_val = splits["validation"]
 X_te_text, y_te = splits["test"]
