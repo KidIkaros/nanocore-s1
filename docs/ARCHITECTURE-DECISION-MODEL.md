@@ -75,22 +75,61 @@ spot of the category (Laya: Banking77 0.425).
 ## 2. Component map
 
 ```
-state items [str | {"image": p} | {"audio": p} | {"video": p}]
-      │
-      ▼  Encoder — FROZEN, served via llama.cpp GGUF Q8_0        ADR-0007
-      │            mmap · SIMD · explicit threads · hard max_tokens   ADR-0012
-      │            bf16 on accelerators / fp32 on CPU; fp16 REJECTED
- item embeddings  (n_items, 768)          option embeddings (k, 768), cached
-      │                                          │
-      │  (no composer: parked, ADR-0003)         │
-      ▼  state vector s = masked mean            │
-      │                                          │
-      ▼  Scorer ── temperature-scaled cosine (1 parameter)        ADR-0008
-      │            OrdinalScorer (CORN) for Score only            ADR-0010
-      │
-      ▼  ConformalGate — APS/RAPS sets, asymmetric policy         ADR-0009
-      │
-      ▼  Prediction{probabilities, prediction_set, action}   Choice / Score / Noul
+┌──────────────────────── REQUEST ────────────────────────────────┐
+│  state items [str | {"image":p} | {"audio":p} | {"video":p}]    │
+│  questions [Choice | Score | Noul]                              │
+│  caller knobs: α (coverage) · policy · token_cap   — Qwen/Route │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │ key = hash(state, question, encoder_id, knobs)
+              ┌────────────────▼─────────────────┐
+              │  DecisionCache                   │   hit → serve stored result
+              │  content-addressed embs + output │   (every metric recomputable
+              │  Jev-harness pattern             │    offline; no re-encoding)
+              └────────────────┬─────────────────┘
+                               │ miss
+                               ▼
+        ┌─────────────────────────────────────────────────────┐
+        │  Encoder — FROZEN EmbeddingGemma 2                  │
+        │  llama.cpp GGUF Q8_0 · pinned commit + pinned GGUF  │ ADR-0007
+        │  mmap · SIMD · explicit threads                     │
+        │  hard max_tokens (truncate + warn)                  │ ADR-0012
+        │  bf16 accelerator / fp32 CPU — fp16 REJECTED        │
+        └───────┬─────────────────────────────────┬───────────┘
+                │                                 │
+     item embeddings (n, 768)         option embeddings (k, 768)
+                │                                 │
+                ▼ masked mean                     │
+        ┌───────────────┐                         │
+        │  state vec s  │   composer parked — ADR-0003
+        └───────┬───────┘                         │
+                │                                 │
+                ▼                                 ▼
+        ┌─────────────────────────────────────────────────────┐
+        │  Scorer                                             │
+        │    CosineScorer — temperature-scaled cosine (1 par) │ ADR-0008
+        │    OrdinalScorer (CORN) — Score questions only      │ ADR-0010
+        │    ┄┄┄ ablations: DecisionHead (retired) · kNN ┄┄┄  │
+        └──────────────────────┬──────────────────────────────┘
+                               │ scores (k,)
+                               ▼
+        ┌─────────────────────────────────────────────────────┐
+        │  ConformalGate — APS/RAPS, calibrated per domain    │ ADR-0009
+        │  min_n guard: refuses to calibrate below minimum n  │
+        │  (fail-closed — the MIN_BUCKET_N lesson)            │
+        └──────────────────────┬──────────────────────────────┘
+                               ▼
+        ┌─────────────────────────────────────────────────────┐
+        │  Prediction{probabilities, prediction_set,          │
+        │   action ∈ {answer, escalate, abstain}, α}          │
+        └─────────────────────────────────────────────────────┘
+                          Choice / Score / Noul
+
+upgrade paths (uncommitted): per-instance α via CAP policy ·
+  customer-fitted heads (headroom check per deployment) ·
+  two-encoder split (fast text encoder / EG2 for multimodal)
+
+boundaries: everything loading weights runs on Kaggle      ADR-0006
+            legacy decoder untouched — Route-4 path        src/model.py
 ```
 
 | Component | File | Params | Trained? | Status |
@@ -99,7 +138,8 @@ state items [str | {"image": p} | {"audio": p} | {"video": p}]
 | `SentenceTransformerEncoder` | `src/decision/encoder.py` | 271M / 439M | no | reference backend, works today |
 | `CosineScorer` | `src/decision/scoring.py` (Stage 2) | **1** | one temperature | **decided**, not yet implemented |
 | `OrdinalScorer` (CORN) | `src/decision/scoring.py` (Stage 4) | ordinal head | **yes** | decided, not yet implemented |
-| `ConformalGate` | `src/decision/gate.py` (Stage 3) | — | calibrated | decided, not yet implemented |
+| `ConformalGate` | `src/decision/gate.py` (Stage 3) | — | calibrated + `min_n` guard | decided, not yet implemented |
+| `DecisionCache` | `src/decision/cache.py` (Stage 1) | — | stores, never trains | decided, not yet implemented |
 | `DecisionHead` | `src/decision/head.py` | 59,136 / ~148k | yes | **deprecated for Choice** (ADR-0008); retained as the ablation |
 | `EmbeddingComposer` | `src/decision/composer.py` | 28,315,392 | never | **deprecated, parked** (ADR-0003) |
 | `protocol` | `src/decision/protocol.py` | — | — | the shared evaluation instrument; 87 tests green |
@@ -136,9 +176,12 @@ Scorer(Protocol):    name; scores(state_vec, option_vecs) -> (k,)
                      ├── InteractionScorer (wraps the retired head; ablation only)
                      └── OrdinalScorer     (CORN; Score only)
 
-ConformalGate(alpha=0.05, method="aps", policy="escalate")
-  .calibrate(scores_list, targets_list) -> dict
+ConformalGate(alpha=0.05, method="aps", policy="escalate", min_n=200)
+  .calibrate(scores_list, targets_list) -> dict   # raises below min_n
   .decide(scores, labels) -> GateResult(set, probabilities, action)
+
+DecisionCache(dir)
+  # key = hash(state, question, encoder_id, knobs); hit → stored result
 
 DecisionModel(encoder, scorer, gate=None, cache=None)
   .decide(state, question, policy=None) -> Prediction
