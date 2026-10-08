@@ -462,19 +462,24 @@ try:
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
     from src.decision.protocol import metric_block, compare_to_best
-    from src.decision.metrics import softmax_rows
+    from src.decision.scoring import softmax_rows
 
     tf = TfidfVectorizer(ngram_range=(1, 2), min_df=2).fit(X_tr_i)
+    y_tr_cols = to_cols(y_tr_i)          # column ids 0..149, not dataset ids
     lr = LogisticRegression(max_iter=1000, C=4.0).fit(
-        tf.transform(X_tr_i), y_tr_i)
-    P_lr = lr.predict_proba(tf.transform(X_te[te_in]))
+        tf.transform(X_tr_i), y_tr_cols)
+    Xte_in = [t for t, m in zip(X_te, te_in) if m]  # X_te is a list
+    raw = lr.predict_proba(tf.transform(Xte_in))
+    # predict_proba columns follow lr.classes_ — scatter into the 150-col frame
+    lr_classes = list(lr.classes_)
+    P_lr = np.full((len(Xte_in), len(INTENT_TEXTS)), 1e-9)
+    for col, cid in enumerate(lr_classes):
+        P_lr[:, cid] = raw[:, col]
+    P_lr /= P_lr.sum(axis=1, keepdims=True)
 
     onehot = np.eye(len(INTENT_TEXTS))[yt_c[te_in]]
     P_cos = softmax_rows(SC_te[te_in], gate.t_prob)
     P_head = softmax_rows(head.logits(S_te[te_in]), gate_h.t_prob)
-    # TF-IDF probs come in lr.classes_ order; align to INTENT_TEXTS
-    lr_order = np.array([list(lr.classes_).index(i) for i in range(len(INTENT_TEXTS))])
-    P_lr = P_lr[:, lr_order]
 
     blocks = {"cosine": metric_block(P_cos, onehot),
               "taskhead": metric_block(P_head, onehot),
@@ -500,6 +505,10 @@ coverage (50%/80%) are the selective-prediction standard. ECE over 15 bins.
 RESULTS["rigor"] = {"status": "skipped"}
 try:
     from src.decision import metrics as M
+    from src.decision.scoring import softmax_rows
+
+    P_cos = softmax_rows(SC_te[te_in], gate.t_prob)
+    P_head = softmax_rows(head.logits(S_te[te_in]), gate_h.t_prob)
 
     def rigor_leg(name, P, y_idx):
         conf = P.max(axis=1)
@@ -517,12 +526,12 @@ try:
                 "brier": M.brier_score(P, np.eye(P.shape[1])[y_idx])}
 
     yt_in = yt_c[te_in]
-    RESULTS["rigor"] = {"status": "ran",
-        "cosine": rigor_leg("cosine", P_cos, yt_in),
-        "taskhead": rigor_leg("taskhead", P_head, yt_in),
-        "tfidf_lr": rigor_leg("tfidf_lr", P_lr, yt_in)}
-    for name in ("cosine", "taskhead", "tfidf_lr"):
-        r = RESULTS["rigor"][name]
+    legs = {"cosine": rigor_leg("cosine", P_cos, yt_in),
+            "taskhead": rigor_leg("taskhead", P_head, yt_in)}
+    if "P_lr" in dir():
+        legs["tfidf_lr"] = rigor_leg("tfidf_lr", P_lr, yt_in)
+    RESULTS["rigor"] = {"status": "ran", **legs}
+    for name, r in legs.items():
         print(f"{name:10} acc={r['acc']['point']:.3f} "
               f"[{r['acc']['lo']:.3f},{r['acc']['hi']:.3f}] "
               f"aurc={r['aurc']:.4f} ece15={r['ece15']:.3f} "

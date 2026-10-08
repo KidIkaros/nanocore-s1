@@ -1,0 +1,8 @@
+{
+ "encoder_id": "stub",
+ "scorer": {
+  "class": "TaskHead",
+  "path": "scorer.pt"
+ },
+ "gate": "gate.json"
+}

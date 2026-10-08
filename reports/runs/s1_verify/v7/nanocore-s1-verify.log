@@ -1,0 +1,140 @@
+[{"stream_name":"stderr","time":6.353476838,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":6.353535523,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":7.2917795850000005,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":7.291817718,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":7.291823035,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":7.291826552,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":7.944747276,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":7.944781567,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":7.944787919,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":7.944792526,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":11.741351672,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":11.741384053,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":11.741387312,"data":"\n"}
+,{"stream_name":"stdout","time":149.290054664,"data":"........................................................................ [ 37%]\n"}
+,{"stream_name":"stdout","time":149.29009411,"data":"........................ss.............................................. [ 75%]\n"}
+,{"stream_name":"stdout","time":149.29009836,"data":"..............................................                           [100%]\n"}
+,{"stream_name":"stdout","time":149.29010162,"data":"188 passed, 2 skipped in 128.91s (0:02:08)\n"}
+,{"stream_name":"stdout","time":149.290104595,"data":"\n"}
+,{"stream_name":"stdout","time":152.777886184,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 12.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":152.923915551,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 94.0 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":152.961671294,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 38.1 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":152.979931901,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 12.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":152.979950972,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 94.0 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":152.979956606,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 38.1 MB/s eta 0:00:00\n"}
+,{"stream_name":"stderr","time":190.063892322,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":190.063938897,"data":"\n"}
+,{"stream_name":"stderr","time":190.063945128,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":208.139907337,"data":"datasets path failed: HfUriError(\"Invalid HF URI 'hf://datasets/clinc_oos@155b9c710419136e17307b80d0a13e68cd46b4ec/.huggingface.yaml'. Repository id must be 'name\n"}
+,{"stream_name":"stdout","time":208.368110209,"data":"source: github json | train 15000 | val 3100 | test 5500\n"}
+,{"stream_name":"stdout","time":284.971120696,"data":"peak cuda GiB: 0.88\n"}
+,{"stream_name":"stdout","time":295.58219464,"data":"cosine calibration: {\n"}
+,{"stream_name":"stdout","time":295.582224287,"data":" \"t_prob\": 0.25,\n"}
+,{"stream_name":"stdout","time":295.582230505,"data":" \"tau_answer\": 0.015279530048182147,\n"}
+,{"stream_name":"stdout","time":295.582235797,"data":" \"qhat\": 0.02393932927923971,\n"}
+,{"stream_name":"stdout","time":295.582240599,"data":" \"t_set\": 1.0,\n"}
+,{"stream_name":"stdout","time":295.582246756,"data":" \"n_A\": 1497,\n"}
+,{"stream_name":"stdout","time":295.58225613,"data":" \"n_B\": 1503,\n"}
+,{"stream_name":"stdout","time":295.58225945,"data":" \"tau_in_schema\": 0.6991039514541626,\n"}
+,{"stream_name":"stdout","time":295.582262573,"data":" \"in_schema_j\": 0.7847644975485562\n"}
+,{"stream_name":"stdout","time":295.582265877,"data":"}\n"}
+,{"stream_name":"stdout","time":296.179980521,"data":"cosine leg: {\"actions\": {\"escalate\": 3648, \"answer\": 1797, \"clarify\": 55}, \"resolved\": 0.482, \"encodes\": 5555, \"cov_hits\": 4113, \"n_in\": 4500, \"encodes_per_item\": 1.01, \"set_coverage_in_scope\": 0.914}\n"}
+,{"stream_name":"stdout","time":299.246718256,"data":"head: {'best_val_loss': 0.09621404856443405, 'epochs_run': 27, 'n_train': 13500, 'n_classes': 150}\n"}
+,{"stream_name":"stdout","time":299.246770896,"data":"TaskHead in-scope accuracy: 0.969\n"}
+,{"stream_name":"stdout","time":299.246780295,"data":"head calibration: {\n"}
+,{"stream_name":"stdout","time":299.246786813,"data":" \"t_prob\": 0.8548387096774194,\n"}
+,{"stream_name":"stdout","time":299.246793266,"data":" \"tau_answer\": 0.2898013667933294,\n"}
+,{"stream_name":"stdout","time":299.246798816,"data":" \"qhat\": 0.9998559212068684,\n"}
+,{"stream_name":"stdout","time":299.246804383,"data":" \"t_set\": 1.0,\n"}
+,{"stream_name":"stdout","time":299.246809864,"data":" \"n_A\": 1497,\n"}
+,{"stream_name":"stdout","time":299.246815446,"data":" \"n_B\": 1503,\n"}
+,{"stream_name":"stdout","time":299.246820903,"data":" \"tau_in_schema\": 9.803707122802734,\n"}
+,{"stream_name":"stdout","time":299.246826474,"data":" \"in_schema_j\": 0.9390479071350248\n"}
+,{"stream_name":"stdout","time":299.246832025,"data":"}\n"}
+,{"stream_name":"stdout","time":299.7705355,"data":"head leg: {\"actions\": {\"answer\": 4381, \"escalate\": 1119}, \"resolved\": 0.931, \"encodes\": 5500, \"cov_hits\": 4498, \"n_in\": 4500, \"encodes_per_item\": 1.0, \"set_coverage_in_scope\": 1.0}\n"}
+,{"stream_name":"stdout","time":299.901277104,"data":"bundle round-trip: 200/200 identical\n"}
+,{"stream_name":"stderr","time":300.264768846,"data":"Repo card metadata block was not found. Setting CardData to empty.\n"}
+,{"stream_name":"stderr","time":300.264799893,"data":"\n"}
+,{"stream_name":"stderr","time":300.264804088,"data":"Repo card metadata block was not found. Setting CardData to empty.\n"}
+,{"stream_name":"stdout","time":330.647638533,"data":"ordinal: acc 0.432 mae 0.732 | zeroshot: acc 0.318 mae 0.875\n"}
+,{"stream_name":"stdout","time":347.960991132,"data":"'i need to cancel my flight tomorrow'\n"}
+,{"stream_name":"stdout","time":347.961025014,"data":"  -\u003e action=escalate top=0.334 set=['cancel reservation', 'pto request', 'book flight', 'goodbye']\n"}
+,{"stream_name":"stdout","time":347.961030349,"data":"'what is the balance on my account'\n"}
+,{"stream_name":"stdout","time":347.961033841,"data":"  -\u003e action=answer top=0.997 set=['balance', 'bill balance', 'account blocked', 'credit limit']\n"}
+,{"stream_name":"stdout","time":347.961037547,"data":"'how do i activate my new card'\n"}
+,{"stream_name":"stdout","time":347.961040928,"data":"  -\u003e action=escalate top=0.970 set=['new card', 'redeem rewards', 'greeting', 'replacement card duration']\n"}
+,{"stream_name":"stdout","time":347.96104456,"data":"'i lost my wallet on the bus yesterday'\n"}
+,{"stream_name":"stdout","time":347.961047835,"data":"  -\u003e action=escalate top=0.217 set=['lost luggage', 'spending history', 'goodbye', 'report lost card']\n"}
+,{"stream_name":"stdout","time":347.961052831,"data":"'when will my paycheck arrive'\n"}
+,{"stream_name":"stdout","time":347.961060197,"data":"  -\u003e action=answer top=0.998 set=['payday', 'income', 'bill due', 'order status']\n"}
+,{"stream_name":"stdout","time":347.961062723,"data":"'can you transfer two hundred dollars to my savings'\n"}
+,{"stream_name":"stdout","time":347.961065028,"data":"  -\u003e action=answer top=1.000 set=['transfer', 'balance', 'account blocked', 'definition']\n"}
+,{"stream_name":"stdout","time":347.961067432,"data":"'why was my card declined at the store'\n"}
+,{"stream_name":"stdout","time":347.961069688,"data":"  -\u003e action=answer top=1.000 set=['card declined', 'account blocked']\n"}
+,{"stream_name":"stdout","time":347.961072079,"data":"'i want to dispute this charge i never made'\n"}
+,{"stream_name":"stdout","time":347.961074357,"data":"  -\u003e action=escalate top=0.774 set=['report fraud', 'cancel', 'no', 'spending history']\n"}
+,{"stream_name":"stdout","time":347.961076752,"data":"'do you do currency exchange for euros'\n"}
+,{"stream_name":"stdout","time":347.961078876,"data":"  -\u003e action=answer top=0.999 set=['exchange rate', 'plug type', 'transfer', 'change language']\n"}
+,{"stream_name":"stdout","time":347.961081185,"data":"'my phone was stolen and i need to freeze everything'\n"}
+,{"stream_name":"stdout","time":347.961083349,"data":"  -\u003e action=escalate top=0.461 set=['sync device', 'freeze account', 'find phone', 'report fraud']\n"}
+,{"stream_name":"stdout","time":347.961085571,"data":"'tell me something completely unrelated to banking intents xyz'\n"}
+,{"stream_name":"stdout","time":347.961087722,"data":"  -\u003e action=escalate top=0.364 set=['no', 'what can i ask you', 'meaning of life', 'fun fact']\n"}
+,{"stream_name":"stdout","time":347.961090046,"data":"'blorple snizzle wumpus quack'\n"}
+,{"stream_name":"stdout","time":347.961092166,"data":"  -\u003e action=escalate top=0.111 set=['tell joke', 'repeat', 'whisper mode', 'cancel']\n"}
+,{"stream_name":"stdout","time":363.178384074,"data":"serve: POST /decide -\u003e escalate (939ms) | stats: 1 req, p50=939ms\n"}
+,{"stream_name":"stdout","time":363.36048488,"data":"baselines leg failed: ImportError(\"cannot import name 'softmax_rows' from 'src.decision.metrics' (/kaggle/working/nanocore-s1/src/decision/metrics.py)\")\n"}
+,{"stream_name":"stdout","time":363.491370307,"data":"rigor leg failed: NameError(\"name 'P_cos' is not defined\")\n"}
+,{"stream_name":"stdout","time":364.025953762,"data":"acc by nearest-train-similarity band: {\n"}
+,{"stream_name":"stdout","time":364.025978893,"data":" \"[-1,0.8)\": {\n"}
+,{"stream_name":"stdout","time":364.025993739,"data":"  \"n\": 190,\n"}
+,{"stream_name":"stdout","time":364.025997245,"data":"  \"acc\": 0.9105263157894737\n"}
+,{"stream_name":"stdout","time":364.026000558,"data":" },\n"}
+,{"stream_name":"stdout","time":364.026003694,"data":" \"[0.8,0.9)\": {\n"}
+,{"stream_name":"stdout","time":364.026007503,"data":"  \"n\": 1350,\n"}
+,{"stream_name":"stdout","time":364.026024311,"data":"  \"acc\": 0.9422222222222222\n"}
+,{"stream_name":"stdout","time":364.026028204,"data":" },\n"}
+,{"stream_name":"stdout","time":364.026031371,"data":" \"[0.9,0.95)\": {\n"}
+,{"stream_name":"stdout","time":364.026034599,"data":"  \"n\": 1146,\n"}
+,{"stream_name":"stdout","time":364.026037827,"data":"  \"acc\": 0.9729493891797557\n"}
+,{"stream_name":"stdout","time":364.026041054,"data":" },\n"}
+,{"stream_name":"stdout","time":364.026044189,"data":" \"[0.95,1.01)\": {\n"}
+,{"stream_name":"stdout","time":364.026047399,"data":"  \"n\": 1814,\n"}
+,{"stream_name":"stdout","time":364.026050606,"data":"  \"acc\": 0.9933847850055126\n"}
+,{"stream_name":"stdout","time":364.026053861,"data":" }\n"}
+,{"stream_name":"stdout","time":364.026057001,"data":"}\n"}
+,{"stream_name":"stdout","time":364.220787296,"data":"'i need to cancel my flight tomorrow'\n"}
+,{"stream_name":"stdout","time":364.220816427,"data":"  -\u003e action=escalate top=0.010 set=['cancel', 'book flight', 'insurance change', 'income']\n"}
+,{"stream_name":"stdout","time":364.220822648,"data":"\n"}
+,{"stream_name":"stdout","time":364.299449701,"data":"'what is the balance on my account'\n"}
+,{"stream_name":"stdout","time":364.299471283,"data":"  -\u003e action=answer top=0.016 set=['balance', 'bill balance', 'rewards balance']\n"}
+,{"stream_name":"stdout","time":364.299476479,"data":"\n"}
+,{"stream_name":"stdout","time":364.299480079,"data":"'tell me something completely unrelated to banking intents xyz'\n"}
+,{"stream_name":"stdout","time":364.299484374,"data":"  -\u003e action=escalate top=0.011 set=['no', 'what can i ask you', 'meaning of life', 'definition']\n"}
+,{"stream_name":"stdout","time":364.299488666,"data":"\n"}
+,{"stream_name":"stdout","time":364.334278065,"data":"{\n"}
+,{"stream_name":"stdout","time":364.334305126,"data":"  \"suite_green_on_kaggle\": true,\n"}
+,{"stream_name":"stdout","time":364.3343113,"data":"  \"cosine_resolved_in_band\": true,\n"}
+,{"stream_name":"stdout","time":364.334315584,"data":"  \"head_resolved_in_band\": true,\n"}
+,{"stream_name":"stdout","time":364.334319562,"data":"  \"coverage_in_band\": true,\n"}
+,{"stream_name":"stdout","time":364.334323632,"data":"  \"head_coverage_reported\": 0.9995555555555555,\n"}
+,{"stream_name":"stdout","time":364.334327789,"data":"  \"head_acc_in_band\": true,\n"}
+,{"stream_name":"stdout","time":364.334331863,"data":"  \"bundle_roundtrip_identical\": true,\n"}
+,{"stream_name":"stdout","time":364.334340155,"data":"  \"ordinal_ran\": true,\n"}
+,{"stream_name":"stdout","time":364.334342939,"data":"  \"ordinal_beats_zeroshot\": true,\n"}
+,{"stream_name":"stdout","time":364.334345549,"data":"  \"cli_ran\": true,\n"}
+,{"stream_name":"stdout","time":364.334348074,"data":"  \"cli_inputs\": 12,\n"}
+,{"stream_name":"stdout","time":364.334350705,"data":"  \"serve_ran\": true,\n"}
+,{"stream_name":"stdout","time":364.334353252,"data":"  \"baselines_ran\": false,\n"}
+,{"stream_name":"stdout","time":364.334355996,"data":"  \"head_beats_tfidf_acc\": false,\n"}
+,{"stream_name":"stdout","time":364.334358635,"data":"  \"rigor_ran\": false,\n"}
+,{"stream_name":"stdout","time":364.334361318,"data":"  \"memorization_ran\": true\n"}
+,{"stream_name":"stdout","time":364.3344041,"data":"}\n"}
+,{"stream_name":"stderr","time":369.772119495,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":369.77214919,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":369.935009832,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":369.935033378,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":370.666410319,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":370.805659684,"data":"[NbConvertApp] Writing 500860 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":373.216439608,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":373.878810483,"data":"[NbConvertApp] Writing 815031 bytes to __results__.html\n"}
+]
