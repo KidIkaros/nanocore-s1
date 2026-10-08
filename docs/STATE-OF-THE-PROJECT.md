@@ -20,7 +20,9 @@ head can show an improvement because there is nothing left to win. The one desig
 that is solidly validated is **order invariance**. The abstention gate is implemented but its
 signal is weak (separation 0.097, 3.5% auto-handled at 90% precision). The composer and the
 ordinal `Score` primitive have **never been exercised**. The binding constraint on every
-architectural claim is **benchmark saturation**, not model quality.
+architectural claim was **benchmark saturation**, not model quality — until the GoEmotions
+run found a task with real headroom (macro-F1 0.287, AUROC 0.824) and exercised `Noul` for
+the first time, tying Jev's tuned micro-F1 (0.386 vs 0.387).
 
 ---
 
@@ -45,6 +47,10 @@ architectural claim is **benchmark saturation**, not model quality.
 | 15 | **llama.cpp is 4.08× faster than PyTorch on CPU, with quality preserved** | 89.2 ms vs 363.5 ms short; 1,754.8 vs 6,595 ms long; 9.9 vs 2.4 texts/s; Banking77 zero-shot **93.41%** under Q8_0 vs 92.92% | **high** |
 | 16 | The Python bindings cannot load these GGUFs | `llama-cpp-python` 0.3.36 (PyPI *and* git master) fails; `ggml-org/llama.cpp` master (`bd4eeaa`) loads them | **high** |
 | 17 | Weight traffic is **not** the binding constraint at batch 1 | Q8_0 (0.31 GB) 89.2 ms vs BF16 (0.56 GB) 92.3 ms — 1.8× less traffic, 3% faster | **high** |
+| 18 | **A headroom-positive benchmark exists: GoEmotions** | zero-shot Noul battery macro-F1 0.287 (headroom 0.713, gate `usable`); macro-AUROC 0.824 — ordering strong, placement weak | **high** |
+| 19 | Tuned micro-F1 on GoEmotions **ties Jev** | 0.386 vs Jev's 0.387; above Qwen 0.317 and Gemma 0.268 (Jev paper Table 4 protocol) | **high** |
+| 20 | `Noul` works as a scored primitive | 28 binary questions/comment on 5,427 test items — natural multilabel formulation | **high** |
+| 21 | Bare emotion names beat descriptive label templates | AUROC 0.824 vs 0.789 — extra words dilute the signal | **medium** (single task) |
 
 ---
 
@@ -72,7 +78,7 @@ protocol now exists as tested code with regression tests rather than as repeated
 |---|---|
 | `EmbeddingComposer` | implemented (28,315,392 params), contracts tested, **never trained** |
 | `Score` (ordinal) | schema tested, **never run on real data**; currently uses cross-entropy, the loss the ordinal literature says discards ordering |
-| `Noul` | exercised only as the relevance signal in §1 row 9, not as a trained primitive |
+| `Noul` | **exercised** — GoEmotions battery (§1 rows 18–21); no trained variant yet |
 | Multimodality | vision: 100-image smoke test. audio/video: **untested** |
 | End-to-end deployment | never attempted; every number comes from an offline split |
 
@@ -91,9 +97,13 @@ Both benchmarks we selected hit this wall. The practical consequence for any fut
 experiment: **measure zero-shot first, and refuse to draw architectural conclusions without
 headroom.** `protocol.headroom_check` now enforces that mechanically.
 
-The one task we have found that is *not* saturated is relevance/quality estimation —
-separation 0.097, and BFCL's irrelevance set is deliberately hard. That is also the task the
-routing literature names as the critical factor.
+**The wall has now been breached once.** GoEmotions (`s1_goemotions`) — a 28-label Noul
+battery — returns zero-shot macro-F1 **0.287** with macro-AUROC **0.824**: the ordering is
+strong, the placement is weak, and ~0.17 of F1 separates our tuned thresholds from
+trained-BERT-era systems (~0.46). That gap is real, and it is where trained components
+(learned multilabel heads exploiting label co-occurrence — something per-label thresholds
+structurally cannot capture) get their first **fair fight**. This is the task ADR-0011's
+gate was built to find.
 
 ---
 
@@ -124,7 +134,9 @@ hardware — Laya's 421M ModernBERT does typed decisions in 33–40 ms on a T4 a
 
 1. **Ordinal `Score`** — temperature-scaled cosine has no notion of order at all. This is the
    strongest remaining candidate and the only capability that is categorically different.
-2. **Composition** of multi-item states — unproven, prior leans negative for
+2. **Multilabel `Noul` heads** — GoEmotions has real headroom (§4); a learned head exploiting
+   label co-occurrence is now a live hypothesis, not a dead one.
+3. **Composition** of multi-item states — unproven, prior leans negative for
    classification-shaped tasks, positive when relevance is uneven.
 
 ---

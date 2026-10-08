@@ -1,0 +1,208 @@
+# GoEmotions Noul battery
+
+{
+  "label_templates": {
+    "name": {
+      "fixed_0.5": {
+        "macro_f1": 0.07495065935049205,
+        "micro_f1": 0.0994671403197158
+      },
+      "tuned_dev": {
+        "macro_f1": 0.28730061054294437,
+        "micro_f1": 0.3860215053763441
+      },
+      "log_loss": 0.12282064810393126,
+      "tuned_thresholds": {
+        "admiration": 0.19999999999999998,
+        "amusement": 0.18,
+        "anger": 0.13999999999999999,
+        "annoyance": 0.1,
+        "approval": 0.1,
+        "caring": 0.1,
+        "confusion": 0.12000000000000001,
+        "curiosity": 0.1,
+        "desire": 0.08,
+        "disappointment": 0.08,
+        "disapproval": 0.1,
+        "disgust": 0.18,
+        "embarrassment": 0.04,
+        "excitement": 0.08,
+        "fear": 0.1,
+        "gratitude": 0.26,
+        "grief": 0.02,
+        "joy": 0.13999999999999999,
+        "love": 0.16,
+        "nervousness": 0.02,
+        "optimism": 0.12000000000000001,
+        "pride": 0.02,
+        "realization": 0.06,
+        "relief": 0.02,
+        "remorse": 0.1,
+        "sadness": 0.13999999999999999,
+        "surprise": 0.1,
+        "neutral": 0.28
+      },
+      "macro_auroc": 0.8241634794282975
+    },
+    "sentence": {
+      "fixed_0.5": {
+        "macro_f1": 0.04743014131706206,
+        "micro_f1": 0.07297949336550061
+      },
+      "tuned_dev": {
+        "macro_f1": 0.24125530411503596,
+        "micro_f1": 0.351559952168714
+      },
+      "log_loss": 0.12801316929597367,
+      "tuned_thresholds": {
+        "admiration": 0.18,
+        "amusement": 0.18,
+        "anger": 0.12000000000000001,
+        "annoyance": 0.1,
+        "approval": 0.1,
+        "caring": 0.04,
+        "confusion": 0.1,
+        "curiosity": 0.1,
+        "desire": 0.06,
+        "disappointment": 0.06,
+        "disapproval": 0.1,
+        "disgust": 0.1,
+        "embarrassment": 0.04,
+        "excitement": 0.06,
+        "fear": 0.12000000000000001,
+        "gratitude": 0.30000000000000004,
+        "grief": 0.02,
+        "joy": 0.08,
+        "love": 0.16,
+        "nervousness": 0.02,
+        "optimism": 0.1,
+        "pride": 0.02,
+        "realization": 0.04,
+        "relief": 0.02,
+        "remorse": 0.08,
+        "sadness": 0.13999999999999999,
+        "surprise": 0.1,
+        "neutral": 0.02
+      },
+      "macro_auroc": 0.7885146771164883
+    }
+  },
+  "per_label_auroc": {
+    "name": {
+      "admiration": 0.8214152713695675,
+      "amusement": 0.8948891148557041,
+      "anger": 0.8649991983325317,
+      "annoyance": 0.733216051497944,
+      "approval": 0.6229522090436196,
+      "caring": 0.776673385403544,
+      "confusion": 0.7324090804315658,
+      "curiosity": 0.7046936489635851,
+      "desire": 0.7957421001370751,
+      "disappointment": 0.7730288097043213,
+      "disapproval": 0.80148615103214,
+      "disgust": 0.8476222884400791,
+      "embarrassment": 0.8209346637918067,
+      "excitement": 0.8517347712866449,
+      "fear": 0.9535307342374084,
+      "gratitude": 0.9294863972234663,
+      "grief": 0.9978478755457173,
+      "joy": 0.8583760111154883,
+      "love": 0.8706576290180748,
+      "nervousness": 0.9185908988510926,
+      "optimism": 0.8127886412549522,
+      "pride": 0.8590602476436886,
+      "realization": 0.6708665735288357,
+      "relief": 0.9187760171881294,
+      "remorse": 0.9474891613692581,
+      "sadness": 0.9072355267574391,
+      "surprise": 0.8267717750353537,
+      "neutral": 0.5633031909332973
+    },
+    "sentence": {
+      "admiration": 0.8059019616377935,
+      "amusement": 0.8695822988748614,
+      "anger": 0.8205269369928004,
+      "annoyance": 0.6859824750342667,
+      "approval": 0.6129941695347527,
+      "caring": 0.6587154614932393,
+      "confusion": 0.7023900699200171,
+      "curiosity": 0.6186961355924777,
+      "desire": 0.770513941995527,
+      "disappointment": 0.7293943836641243,
+      "disapproval": 0.7541321894143947,
+      "disgust": 0.8069841445020786,
+      "embarrassment": 0.7852529709672567,
+      "excitement": 0.8222347238735749,
+      "fear": 0.934545637574241,
+      "gratitude": 0.9195566502463054,
+      "grief": 0.9951116030252721,
+      "joy": 0.8153400579835955,
+      "love": 0.8752147804583387,
+      "nervousness": 0.8518488720110706,
+      "optimism": 0.7660987704472388,
+      "pride": 0.8306805581223432,
+      "realization": 0.637724738539477,
+      "relief": 0.8832080032227743,
+      "remorse": 0.9433631672739846,
+      "sadness": 0.8758105550934236,
+      "surprise": 0.79205341018561,
+      "neutral": 0.5145522915808309
+    }
+  },
+  "verdict": {
+    "headroom": {
+      "zero_shot_accuracy": 0.28730061054294437,
+      "headroom": 0.7126993894570557,
+      "min_headroom": 0.15,
+      "usable": true,
+      "note": ""
+    },
+    "ours": {
+      "template": "name",
+      "macro": [
+        0.07495065935049205,
+        0.28730061054294437
+      ],
+      "micro": [
+        0.0994671403197158,
+        0.3860215053763441
+      ]
+    },
+    "jev_table": {
+      "jev": {
+        "macro": [
+          0.243,
+          0.353
+        ],
+        "micro": [
+          0.239,
+          0.387
+        ]
+      },
+      "qwen3.8-27b": {
+        "macro": [
+          0.255,
+          0.323
+        ],
+        "micro": [
+          0.236,
+          0.317
+        ]
+      },
+      "gemma-4-e4b": {
+        "macro": [
+          0.211,
+          0.267
+        ],
+        "micro": [
+          0.207,
+          0.268
+        ]
+      }
+    },
+    "read": {
+      "auroc_vs_f1_gap": 0.5368628688853532,
+      "interpretation": "AUROC >> F1: ordering is good, thresholds/calibration are the bottleneck \u2014 a scoring-rule fix, not a head opportunity"
+    }
+  }
+}

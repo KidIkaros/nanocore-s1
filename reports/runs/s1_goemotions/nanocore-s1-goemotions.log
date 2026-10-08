@@ -1,0 +1,59 @@
+[{"stream_name":"stderr","time":7.388237948,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":7.388294592,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":8.475278718,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.475320918,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.475326961,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.475331763,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":9.20980078,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.209838442,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.209848968,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.209851852,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":12.918799851,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":12.918842367,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":12.918846151,"data":"\n"}
+,{"stream_name":"stdout","time":18.301552729,"data":"torch 2.11.0+cu128 | cuda: True\n"}
+,{"stream_name":"stdout","time":26.160692492,"data":"..........................                                               [100%]\n"}
+,{"stream_name":"stdout","time":26.16073878,"data":"26 passed in 2.09s\n"}
+,{"stream_name":"stdout","time":26.160743935,"data":"\n"}
+,{"stream_name":"stdout","time":29.912951282999998,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 12.2 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":30.11517843,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 12.2 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":30.279246368,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 38.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":30.322605233,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 34.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":30.482078841,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 38.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":30.48212436,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 34.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stderr","time":79.064366817,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":79.064402623,"data":"\n"}
+,{"stream_name":"stderr","time":79.064408681,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":98.43756638,"data":"encoder params: 271 M | dtype: torch.bfloat16\n"}
+,{"stream_name":"stdout","time":101.519574686,"data":"source: hf datasets | dev 5426 | test 5427 | labels 28\n"}
+,{"stream_name":"stdout","time":101.519613257,"data":"multilabel fraction dev: 0.162\n"}
+,{"stream_name":"stdout","time":101.519618818,"data":"  rare label: grief has only 6 positives in test\n"}
+,{"stream_name":"stdout","time":101.519623054,"data":"  rare label: pride has only 16 positives in test\n"}
+,{"stream_name":"stdout","time":101.519627186,"data":"  rare label: relief has only 11 positives in test\n"}
+,{"stream_name":"stdout","time":101.519631262,"data":"min positives test: 6 | max: 1787\n"}
+,{"stream_name":"stdout","time":151.398292424,"data":"peak cuda GiB: 1.27\n"}
+,{"stream_name":"stdout","time":151.398328432,"data":"S: (10853, 768) | label vecs: {'name': (28, 768), 'sentence': (28, 768)}\n"}
+,{"stream_name":"stdout","time":151.641973603,"data":"saved goemotions_scores.npz — the conformal gate's future calibration data\n"}
+,{"stream_name":"stdout","time":156.093263916,"data":"\n"}
+,{"stream_name":"stdout","time":156.093303357,"data":"[name]  macro-F1 0.075 -\u003e 0.287 | micro-F1 0.099 -\u003e 0.386 | macro-AUROC 0.824\n"}
+,{"stream_name":"stdout","time":159.866042565,"data":"\n"}
+,{"stream_name":"stdout","time":159.866090216,"data":"[sentence]  macro-F1 0.047 -\u003e 0.241 | micro-F1 0.073 -\u003e 0.352 | macro-AUROC 0.789\n"}
+,{"stream_name":"stdout","time":159.979538734,"data":"best template: name\n"}
+,{"stream_name":"stdout","time":159.979586605,"data":"headroom check: {\"zero_shot_accuracy\": 0.28730061054294437, \"headroom\": 0.7126993894570557, \"min_headroom\": 0.15, \"usable\": true, \"note\": \"\"}\n"}
+,{"stream_name":"stdout","time":159.979596352,"data":"\n"}
+,{"stream_name":"stdout","time":159.97960246,"data":"model          macro@0.5 macro@tuned micro@0.5 micro@tuned\n"}
+,{"stream_name":"stdout","time":159.979608658,"data":"ours (EG2+Platt)     0.075       0.287     0.099       0.386\n"}
+,{"stream_name":"stdout","time":159.979613832,"data":"jev                0.243       0.353     0.239       0.387\n"}
+,{"stream_name":"stdout","time":159.979618884,"data":"qwen3.8-27b        0.255       0.323     0.236       0.317\n"}
+,{"stream_name":"stdout","time":159.979623761,"data":"gemma-4-e4b        0.211       0.267     0.207       0.268\n"}
+,{"stream_name":"stdout","time":159.979628807,"data":"\n"}
+,{"stream_name":"stdout","time":159.979633709,"data":"read: {\"auroc_vs_f1_gap\": 0.5368628688853532, \"interpretation\": \"AUROC \u003e\u003e F1: ordering is good, thresholds/calibration are the bottleneck \\u2014 a scoring-rule fix, not a head opportunity\"}\n"}
+,{"stream_name":"stderr","time":166.57690724,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":166.576944451,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":166.765333556,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":166.765365646,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":167.624728135,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":167.760263053,"data":"[NbConvertApp] Writing 387799 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":170.736875047,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":171.486420022,"data":"[NbConvertApp] Writing 646362 bytes to __results__.html\n"}
+]
