@@ -198,20 +198,28 @@ class ConformalGate:
             obs, _ = observe_row(scores, self.t_prob, self.qhat)
             self.slow.observe(obs)
 
-        if self.policy == "answer":
-            action = "answer"
-        elif thresholds.tau_in_schema is not None and max_score < thresholds.tau_in_schema:
-            action = "escalate"
-        elif top_prob >= thresholds.tau_answer:
-            action = "answer"
-        elif len(pred_set) <= thresholds.k_clarify and self.policy == "full":
-            action = "clarify"
-        else:
-            action = "escalate"
-
+        action = self._gate_action(top_prob, max_score, len(pred_set), thresholds)
         return GateResult(probabilities=probs, prediction_set=pred_set,
                           action=action, top_prob=top_prob,
                           max_score=max_score, alpha=self.alpha)
+
+    def _gate_action(self, top_prob: float, max_score: float, set_size: int,
+                     thresholds: PolicyThresholds) -> str:
+        """The action rule, in its documented order (ADR-0013).
+
+        Out-of-schema first, then calibrated confidence, then set size — the
+        order is the contract, so it lives in one testable place rather than
+        inline in ``decide``.
+        """
+        if self.policy == "answer":
+            return "answer"
+        if thresholds.tau_in_schema is not None and max_score < thresholds.tau_in_schema:
+            return "escalate"
+        if top_prob >= thresholds.tau_answer:
+            return "answer"
+        if set_size <= thresholds.k_clarify and self.policy == "full":
+            return "clarify"
+        return "escalate"
 
     # ── persistence ──────────────────────────────────────────────────────
 

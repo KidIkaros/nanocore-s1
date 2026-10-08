@@ -23,6 +23,7 @@ reads, which is the capacity confound the ANGN literature cannot rule out.
 """
 from __future__ import annotations
 
+import threading
 from collections import deque
 from dataclasses import dataclass, replace
 from typing import List, Optional, Sequence
@@ -145,6 +146,10 @@ class SlowState:
         self._streak = 0
         self._activate_at = cfg.activate_at
         self._release_at = cfg.release_at
+        # Attaching this state makes the gate stateful, and the gate is served
+        # by a ThreadingHTTPServer: the lock lives here, with the state, so
+        # every caller is serialized by construction rather than by contract.
+        self._lock = threading.Lock()
 
     def calibrate(self, reference: Sequence[Observation]) -> int:
         """Set the activation bar from a healthy reference stream.
@@ -159,9 +164,10 @@ class SlowState:
             raise ValueError(
                 f"reference stream of {len(reference)} is shorter than the "
                 f"{self._cfg.window}-window it must calibrate")
-        self._activate_at = min(self._cfg.window, max(counts) + 1)
-        self._release_at = min(self._cfg.release_at, self._activate_at - 1)
-        return self._activate_at
+        with self._lock:
+            self._activate_at = min(self._cfg.window, max(counts) + 1)
+            self._release_at = min(self._cfg.release_at, self._activate_at - 1)
+            return self._activate_at
 
     @property
     def config(self) -> SlowStateConfig:
@@ -179,8 +185,9 @@ class SlowState:
                        release_at=self._release_at)
 
     def observe(self, obs: Observation) -> None:
-        self._window.append(obs)
-        self._streak = self._next_streak()
+        with self._lock:
+            self._window.append(obs)
+            self._streak = self._next_streak()
 
     def _next_streak(self) -> int:
         """Schmitt trigger: activate on strong evidence, hold through ambiguity.
@@ -223,7 +230,9 @@ class SlowState:
         in proportion to it — the boundary lives in raw-score units, so an
         absolute step would mean something different on every dataset.
         """
-        shift = min(self._cfg.max_shift, self._streak * self._cfg.tau_step)
+        with self._lock:
+            streak = self._streak
+        shift = min(self._cfg.max_shift, streak * self._cfg.tau_step)
         reference = self._cfg.reference_max_score
         if self._base.tau_in_schema is None or reference is None:
             schema_bar = self._base.tau_in_schema
@@ -231,5 +240,5 @@ class SlowState:
             schema_bar = min(TAU_CEILING, self._base.tau_in_schema + shift * reference)
         return PolicyThresholds(
             tau_answer=min(TAU_CEILING, self._base.tau_answer + shift),
-            k_clarify=max(1, self._base.k_clarify - int(self._streak > 0)),
+            k_clarify=max(1, self._base.k_clarify - int(streak > 0)),
             tau_in_schema=schema_bar)

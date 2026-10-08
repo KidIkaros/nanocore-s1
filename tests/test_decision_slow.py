@@ -87,6 +87,52 @@ def test_bundle_roundtrip_preserves_the_slow_mode(tmp_path):
     assert reloaded.tau_answer == pytest.approx(gate.tau_answer)
 
 
+def test_concurrent_decisions_run_clean():
+    """Smoke check, not a proof.
+
+    The gate is served by a ThreadingHTTPServer, so attaching mutable state
+    makes concurrency a real question. A lost update is a race, so no test can
+    fail deterministically on it — the guarantee comes from the lock inside
+    ``SlowState``; this only asserts that concurrent use raises nothing and
+    leaves the invariants intact.
+    """
+    import threading
+
+    gate = _gate()
+    gate.attach_slow_state(SlowStateConfig(reference_max_score=3.0))
+    row = np.array([3.0, 0.0, 0.0, 0.0])
+    errors: list = []
+
+    def decide_many():
+        try:
+            for _ in range(80):
+                gate.decide(row, ["a", "b", "c", "d"])
+        except Exception as exc:            # noqa: BLE001 - reported below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=decide_many) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors
+    # a healthy stream never activates, however the requests interleaved
+    assert gate.slow.thresholds().tau_answer == pytest.approx(gate.tau_answer)
+
+
+def test_action_rule_order_is_out_of_schema_first():
+    """The documented order is the contract, so it is asserted directly."""
+    from src.decision.slow import PolicyThresholds
+
+    gate = _gate()
+    confident = PolicyThresholds(tau_answer=0.01, k_clarify=3, tau_in_schema=0.70)
+    assert gate._gate_action(0.99, 0.20, 1, confident) == "escalate"
+    assert gate._gate_action(0.99, 0.90, 1, confident) == "answer"
+    quiet = PolicyThresholds(tau_answer=0.99, k_clarify=3, tau_in_schema=None)
+    assert gate._gate_action(0.50, 0.90, 2, quiet) == "clarify"
+    assert gate._gate_action(0.50, 0.90, 9, quiet) == "escalate"
+
+
 def test_bundle_without_a_slow_state_stays_frozen(tmp_path):
     gate = _gate()
     gate.save(tmp_path / "gate.json")
