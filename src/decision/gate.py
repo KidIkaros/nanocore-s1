@@ -193,3 +193,31 @@ class ConformalGate:
         return GateResult(probabilities=probs, prediction_set=pred_set,
                           action=action, top_prob=top_prob,
                           max_score=max_score, alpha=self.alpha)
+
+    # ── persistence ──────────────────────────────────────────────────────
+
+    def save(self, path) -> None:
+        import json
+        from pathlib import Path
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({
+            "alpha": self.alpha, "min_n": self.min_n,
+            "t_prob_floor": self.t_prob_floor, "t_set": self.t_set,
+            "k_clarify": self.k_clarify, "answer_precision": self.answer_precision,
+            "policy": self.policy, "t_prob": self.t_prob,
+            "tau_answer": self.tau_answer, "qhat": self.qhat,
+            "tau_in_schema": self.tau_in_schema, "calibration": self.calibration,
+        }, indent=1))
+
+    @classmethod
+    def load(cls, path) -> "ConformalGate":
+        import json
+        from pathlib import Path
+        d = json.loads(Path(path).read_text())
+        g = cls(alpha=d["alpha"], min_n=d["min_n"], t_prob_floor=d["t_prob_floor"],
+                t_set=d["t_set"], k_clarify=d["k_clarify"],
+                answer_precision=d["answer_precision"], policy=d["policy"])
+        g.t_prob, g.tau_answer, g.qhat = d["t_prob"], d["tau_answer"], d["qhat"]
+        g.tau_in_schema, g.calibration = d["tau_in_schema"], d["calibration"]
+        return g

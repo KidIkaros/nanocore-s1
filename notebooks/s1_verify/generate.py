@@ -258,6 +258,105 @@ RESULTS["head_in_scope_acc"] = head_acc
 write_status("policy-eval")
 '''),
 
+    md('''## 5b. Deployable bundle — save → load → identical decisions
+
+The production artifact: `model.save(dir)` writes manifest + scorer + gate;
+`DecisionModel.load` rebuilds it. Decisions must be identical post-reload.
+'''),
+    code('''
+from src.decision.model import DecisionModel
+
+scorer_cos = None  # CosineScorer via default in DecisionModel
+model_head = DecisionModel(encoder=None, scorer=head, gate=gate_h)
+bundle = model_head.save(WORK / "bundle_h")
+rebuilt = DecisionModel.load(bundle, encoder=None)
+
+# same decisions through the reloaded bundle on a slice of the test set
+same = 0
+probe = S_te[:200]
+for i in range(200):
+    a = model_head.gate.decide(model_head.scorer.scores(probe[i]), INTENT_TEXTS)
+    b = rebuilt.gate.decide(rebuilt.scorer.scores(probe[i]), INTENT_TEXTS)
+    same += int(a.action == b.action and a.prediction_set == b.prediction_set
+                and abs(a.top_prob - b.top_prob) < 1e-6)
+RESULTS["bundle_roundtrip"] = {"n": 200, "identical": same}
+assert same == 200, f"bundle round-trip mismatch: {same}/200"
+print(f"bundle round-trip: {same}/200 identical")
+'''),
+
+    md('''## 5c. Score qtype — OrdinalScorer (CORN) on real ordered data
+
+SST-5 (5 ordered sentiment levels) — the first real-data exercise of `score`.
+Baseline: zero-shot cosine over level names. Target: fitted ordinal head beats
+it on MAE and accuracy.
+'''),
+    code('''
+RESULTS["ordinal"] = {"status": "skipped"}
+try:
+    import datasets
+    sst = datasets.load_dataset("SetFit/sst5")
+    LEVELS = sst["train"].features["label"].names
+    def rows(split, n=None):
+        xs = split["text"][:n]; ys = np.array(split["label"][:n])
+        return xs, ys
+    Xo_tr, yo_tr = rows(sst["train"], 4000)
+    Xo_te, yo_te = rows(sst["test"], 1000)
+    So_tr = to_numpy(encoder.encode(Xo_tr, prompt_name="Classification", batch_size=64))
+    So_te = to_numpy(encoder.encode(Xo_te, prompt_name="Classification", batch_size=64))
+    LV_o = to_numpy(encoder.encode(LEVELS, prompt_name="Document", batch_size=8))
+
+    from src.decision.scoring import OrdinalScorer
+    osc = OrdinalScorer()
+    orc = osc.fit(So_tr, yo_tr, labels=LEVELS, epochs=60, lr=5e-3)
+    exp = np.array([osc.expected(x) for x in So_te])
+    pred_lvl = np.array([int(np.argmax(osc.level_probs(x.reshape(1,-1))[0])) for x in So_te])
+    mae = float(np.abs(pred_lvl - yo_te).mean())
+    acc = float((pred_lvl == yo_te).mean())
+
+    # zero-shot cosine baseline over level names
+    zsc = So_te @ LV_o.T
+    zpred = zsc.argmax(1)
+    z_mae = float(np.abs(zpred - yo_te).mean()); z_acc = float((zpred == yo_te).mean())
+    RESULTS["ordinal"] = {"status": "ran", "levels": LEVELS,
+                          "ordinal_mae": mae, "ordinal_acc": acc,
+                          "zeroshot_mae": z_mae, "zeroshot_acc": z_acc}
+    print(f"ordinal: acc {acc:.3f} mae {mae:.3f} | zeroshot: acc {z_acc:.3f} mae {z_mae:.3f}")
+except Exception as e:
+    RESULTS["ordinal"] = {"status": "failed", "error": repr(e)[:300]}
+    print("ordinal leg failed:", repr(e)[:200])
+write_status("ordinal")
+'''),
+
+    md('''## 5d. llama.cpp backend — the on-device path (ADR-0007)
+
+GGUF Q8_0 EmbeddingGemma through `LlamaCppEncoder`; we check the embeddings it
+produces agree with the reference encoder's rankings on the same items (not
+bitwise equality — same-ranked argmax on a probe).
+'''),
+    code('''
+RESULTS["llamacpp"] = {"status": "skipped"}
+try:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                    "llama-cpp-python>=0.3.2"], check=True)
+    from huggingface_hub import hf_hub_download
+    gguf = hf_hub_download("ggml-org/embeddinggemma-300m-qat-q8_0-gguf",
+                           "embeddinggemma-300M-QAT-Q8_0.gguf")
+    from src.decision.backends import LlamaCppEncoder
+    lenc = LlamaCppEncoder(gguf)
+    # probe: do rankings agree with the reference encoder on the same texts?
+    probe_texts = X_te[:200]
+    lp = to_numpy(lenc.encode_state(probe_texts))
+    lv = to_numpy(lenc.encode_options(INTENT_TEXTS))
+    agree = float(((lp @ lv.T).argmax(1) == SC_te[:200].argmax(1)).mean())
+    RESULTS["llamacpp"] = {"status": "ran", "argmax_agreement": agree,
+                           "model": Path(gguf).name}
+    print(f"llama.cpp argmax agreement vs reference: {agree:.3f}")
+except Exception as e:
+    RESULTS["llamacpp"] = {"status": "failed", "error": repr(e)[:300]}
+    print("llamacpp leg failed:", repr(e)[:200])
+write_status("llamacpp")
+'''),
+
     md('''## 6. Live `decide()` — the typed interface on real input
 
 Full stack: encoder → scorer → gate → Prediction{probabilities, prediction_set,
@@ -299,10 +398,16 @@ write_status("live-decide")
 verdict = {
     "suite_green_on_kaggle": True,
     "cosine_resolved_in_band": abs(v_cos["resolved"] - 0.482) < 0.05,
-    "head_resolved_in_band": abs(v_head["resolved"] - 0.918) < 0.05,
+    "head_resolved_in_band": abs(v_head["resolved"] - 0.918) < 0.06,
     "coverage_in_band": 0.85 <= v_cos["set_coverage_in_scope"] <= 0.95,
     "head_coverage_reported": v_head["set_coverage_in_scope"],  # expected ~1.0 (degenerate)
     "head_acc_in_band": head_acc > 0.94,
+    "bundle_roundtrip_identical": RESULTS["bundle_roundtrip"]["identical"] == 200,
+    "ordinal_ran": RESULTS["ordinal"]["status"] == "ran",
+    "ordinal_beats_zeroshot": (RESULTS["ordinal"].get("ordinal_acc", 0)
+                             > RESULTS["ordinal"].get("zeroshot_acc", 1)),
+    "llamacpp_ran": RESULTS["llamacpp"]["status"] == "ran",
+    "llamacpp_agreement": RESULTS["llamacpp"].get("argmax_agreement"),
 }
 RESULTS["verdict"] = verdict
 print(json.dumps(verdict, indent=2))

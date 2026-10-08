@@ -103,6 +103,137 @@ class CosineScorer:
         return softmax_rows(self.scores(state_vec, option_vecs), t)[0]
 
 
+class OrdinalScorer:
+    """CORN ordinal head for ``score`` questions (ordered rubric levels).
+
+    Ordinal regression treats the k options as thresholds, not classes: for
+    levels 0..k-1 the head emits k-1 cumulative logits ``logit(P(y > j))``.
+    Per-level mass is recovered by differencing sigmoids — monotone by
+    construction, unlike a softmax that ignores the ordering (ADR-0010).
+
+    ``scores`` returns log level-probabilities so the gate's
+    ``softmax(x/T)`` remains a well-defined temperature operation on them.
+    """
+
+    def __init__(self):
+        self._torch = None
+        self.labels_: Optional[list] = None
+        self.temperature = 1.0
+        self._mu = self._sd = None
+
+    def fit(self, X: np.ndarray, y_levels: np.ndarray,
+            labels: Optional[Sequence[str]] = None,
+            epochs: int = 40, lr: float = 1e-3, batch_size: int = 256,
+            seed: int = 0, val_fraction: float = 0.1, patience: int = 8) -> Dict:
+        import torch
+        import torch.nn as nn
+
+        X = np.asarray(X, dtype=np.float32)
+        y = np.asarray(y_levels, dtype=np.int64).reshape(-1)
+        k = int(y.max()) + 1
+        if k < 2:
+            raise ValueError("ordinal scoring needs at least two levels")
+        self.labels_ = list(labels) if labels is not None else [str(i) for i in range(k)]
+
+        rng = np.random.default_rng(seed)
+        self._mu = X.mean(0, keepdims=True)
+        self._sd = X.std(0, keepdims=True) + 1e-6
+        X = (X - self._mu) / self._sd
+        perm = rng.permutation(len(X))
+        n_val = max(1, int(len(X) * val_fraction))
+        vi, ti = perm[:n_val], perm[n_val:]
+        Xt = torch.as_tensor(X[ti]); Xv = torch.as_tensor(X[vi])
+        # cumulative targets: (n, k-1) with b_j = 1{y > j}
+        def cum_targets(yy):
+            j = torch.arange(k - 1)
+            return (yy[:, None] > j[None, :]).float()
+        Yt = cum_targets(torch.as_tensor(y[ti])); Yv = cum_targets(torch.as_tensor(y[vi]))
+
+        torch.manual_seed(seed)
+        net = nn.Linear(X.shape[1], k - 1)
+        opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=1e-4)
+        lossf = nn.BCEWithLogitsLoss()
+
+        best_val, best_state, bad = np.inf, None, 0
+        for epoch in range(epochs):
+            order = torch.as_tensor(rng.permutation(len(Xt)))
+            for start in range(0, len(Xt), batch_size):
+                idx = order[start:start + batch_size]
+                opt.zero_grad()
+                loss = lossf(net(Xt[idx]), Yt[idx])
+                loss.backward()
+                opt.step()
+            with torch.no_grad():
+                vl = float(lossf(net(Xv), Yv))
+            if vl < best_val - 1e-5:
+                best_val, bad = vl, 0
+                best_state = {n: p.detach().clone() for n, p in net.state_dict().items()}
+            else:
+                bad += 1
+                if bad >= patience:
+                    break
+        if best_state is not None:
+            net.load_state_dict(best_state)
+        net.eval()
+        self._torch = net
+        return {"best_val_loss": best_val, "epochs_run": epoch + 1,
+                "n_train": int(len(Xt)), "n_levels": k}
+
+    def level_probs(self, X: np.ndarray) -> np.ndarray:
+        """CORN reconstruction: cumulative sigmoids → per-level mass ``(n, k)``."""
+        import torch
+        if self._torch is None:
+            raise RuntimeError("OrdinalScorer is not fitted")
+        X = (np.asarray(X, dtype=np.float32) - self._mu) / self._sd
+        with torch.no_grad():
+            cum = torch.sigmoid(self._torch(torch.as_tensor(X))).numpy()  # P(y > j)
+        # CORN logits aren't guaranteed monotone — project to non-increasing so
+        # differencing can't produce negative mass, then renormalize.
+        cum = np.minimum.accumulate(cum, axis=1)
+        k = cum.shape[1] + 1
+        P = np.zeros((len(cum), k))
+        P[:, 0] = 1.0 - cum[:, 0]
+        for j in range(1, k - 1):
+            P[:, j] = cum[:, j - 1] - cum[:, j]
+        P[:, k - 1] = cum[:, k - 2]
+        P = np.clip(P, 1e-12, 1.0)
+        return P / P.sum(axis=1, keepdims=True)
+
+    def scores(self, state_vec: np.ndarray, option_vecs=None) -> np.ndarray:
+        """Log level-probabilities — softmax(log p / T) is proper tempering."""
+        P = self.level_probs(np.asarray(state_vec, dtype=np.float32).reshape(1, -1))
+        return np.log(P[0])
+
+    def expected(self, state_vec: np.ndarray, scale=None) -> float:
+        """Expected rubric position (0..k-1, or caller's scale)."""
+        P = self.level_probs(np.asarray(state_vec, dtype=np.float32).reshape(1, -1))[0]
+        k = len(P)
+        w = np.asarray(scale, dtype=np.float64) if scale is not None else np.arange(k)
+        return float((P * w).sum())
+
+    def save(self, path) -> None:
+        import torch
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"labels": self.labels_, "temperature": self.temperature,
+                    "mu": self._mu, "sd": self._sd,
+                    "state_dict": self._torch.state_dict()}, path)
+
+    @classmethod
+    def load(cls, path) -> "OrdinalScorer":
+        import torch
+        import torch.nn as nn
+        d = torch.load(Path(path), map_location="cpu", weights_only=False)
+        s = cls()
+        s.labels_, s.temperature = d["labels"], d.get("temperature", 1.0)
+        s._mu, s._sd = d.get("mu"), d.get("sd")
+        k = len(s.labels_)
+        net = nn.Linear(d["state_dict"]["weight"].shape[1], k - 1)
+        net.load_state_dict(d["state_dict"]); net.eval()
+        s._torch = net
+        return s
+
+
 class TaskHead:
     """Fitted head on state embeddings — linear or one-hidden-layer MLP.
 

@@ -202,3 +202,51 @@ class DecisionModel:
                 "prediction_set": pred.prediction_set,
                 "action": pred.action, "alpha": pred.alpha})
         return pred
+
+    # ── deployable bundle ────────────────────────────────────────────────
+
+    def save(self, dir) -> "Path":
+        """Write a portable calibrated bundle: manifest + scorer + gate.
+
+        ``dir/manifest.json`` describes the encoder and scorer so
+        ``DecisionModel.load`` can rebuild the pipeline. The encoder itself is
+        not serialized — it is identified by ``model_name`` and constructed by
+        the caller's backend (StateEncoder, LlamaCppEncoder, ...).
+        """
+        import json
+        from pathlib import Path
+        d = Path(dir)
+        d.mkdir(parents=True, exist_ok=True)
+        manifest = {"encoder_id": self.encoder_id, "scorer": None, "gate": None}
+
+        if self.scorer is not None:
+            if hasattr(self.scorer, "save") and self.scorer.__class__.__name__ == "TaskHead":
+                self.scorer.save(d / "scorer.pt")
+                manifest["scorer"] = {"class": "TaskHead", "path": "scorer.pt"}
+            else:
+                manifest["scorer"] = {"class": self.scorer.__class__.__name__,
+                                      "temperature": getattr(self.scorer, "temperature", 1.0)}
+        if self.gate is not None:
+            self.gate.save(d / "gate.json")
+            manifest["gate"] = "gate.json"
+        (d / "manifest.json").write_text(json.dumps(manifest, indent=1))
+        return d
+
+    @classmethod
+    def load(cls, dir, encoder=None, cache=None) -> "DecisionModel":
+        """Rebuild a bundle. ``encoder`` is the caller's backend instance."""
+        import json
+        from pathlib import Path
+        from src.decision.gate import ConformalGate
+        from src.decision.scoring import CosineScorer, TaskHead
+
+        d = Path(dir)
+        manifest = json.loads((d / "manifest.json").read_text())
+        sc = manifest.get("scorer") or {}
+        if sc.get("class") == "TaskHead":
+            scorer = TaskHead.load(d / sc["path"])
+        else:
+            scorer = CosineScorer(temperature=sc.get("temperature", 1.0))
+        gate = ConformalGate.load(d / manifest["gate"]) if manifest.get("gate") else None
+        return cls(encoder=encoder, scorer=scorer, gate=gate, cache=cache,
+                   encoder_id=manifest.get("encoder_id", ""))

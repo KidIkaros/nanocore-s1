@@ -16,8 +16,9 @@ from src.decision.cache import DecisionCache, decision_key
 from src.decision.gate import ConformalGate
 from src.decision.model import DecisionModel
 from src.decision.schema import Question, State
-from src.decision.scoring import (CosineScorer, TaskHead, aps_members,
-                                  fit_temperature, mass_needed, softmax_rows)
+from src.decision.scoring import (CosineScorer, OrdinalScorer, TaskHead,
+                                  aps_members, fit_temperature, mass_needed,
+                                  softmax_rows)
 
 NPZ = Path("reports/runs/s1_policy_v2/policy_v2_scores.npz")
 OOS_LABEL = 80                      # "oos" sits at index 80 in the CLINC label list
@@ -115,17 +116,18 @@ def test_cache_round_trip_and_key(tmp_path):
 
 class _StubEncoder:
     model_name = "stub"
-    def __init__(self):
+    def __init__(self, dim: int = 4):
         self.calls = 0
+        self.dim = dim
     def encode_state(self, items):
         self.calls += 1
         import torch
-        return torch.ones(len(items), 4)
+        return torch.ones(len(items), self.dim)
     def encode_options(self, texts):
         import torch
-        out = torch.zeros(len(texts), 4)
+        out = torch.zeros(len(texts), self.dim)
         for i in range(len(texts)):
-            out[i, i % 4] = 1.0
+            out[i, i % self.dim] = 1.0
         return out
 
 
@@ -206,3 +208,64 @@ def test_taskhead_learns_on_real_embeddings():
     probs = h.logits(Xv[in_scope]).argmax(1)
     acc = float((probs == col[in_scope]).mean())
     assert acc > 0.80                      # kernel: 0.970 at full data/epochs
+
+
+# ── production-path components ───────────────────────────────────────────
+
+def test_gate_save_load_round_trip(tmp_path):
+    rng = np.random.default_rng(3)
+    k, n = 5, 400
+    sc = rng.normal(0, 0.5, (n, k)); sc[np.arange(n), np.arange(n) % k] += 6.0
+    g = ConformalGate(alpha=0.10, min_n=200)
+    g.calibrate(sc, np.arange(n) % k)
+    g.fit_in_schema(sc[:300], sc[300:] - 5.0)     # in vs clearly-OOS
+    g.save(tmp_path / "gate.json")
+    g2 = ConformalGate.load(tmp_path / "gate.json")
+    for attr in ("t_prob", "tau_answer", "qhat", "tau_in_schema"):
+        assert getattr(g2, attr) == pytest.approx(getattr(g, attr))
+    r1, r2 = g.decide(sc[0], list("abcde")), g2.decide(sc[0], list("abcde"))
+    assert r1.action == r2.action and r1.prediction_set == r2.prediction_set
+
+
+def test_model_bundle_round_trip(tmp_path):
+    rng = np.random.default_rng(4)
+    k, n, d = 4, 300, 16
+    X = rng.normal(0, 1, (n, d)).astype(np.float32)
+    y = np.arange(n) % k
+    X[:, 0] += (y == 0) * 3                        # make classes separable
+    h = TaskHead(kind="linear")
+    h.fit(X, y, epochs=15, labels=list("abcd"))
+    g = ConformalGate(alpha=0.10, min_n=100)
+    g.calibrate(h.logits(X), y)
+
+    enc = _StubEncoder(dim=16)
+    m = DecisionModel(encoder=enc, scorer=h, gate=g)
+    bundle = m.save(tmp_path / "bundle")
+    m2 = DecisionModel.load(bundle, encoder=enc)
+
+    q = Question(qtype="choice", options=list("abcd"))
+    p1, p2 = m.decide("hello", q), m2.decide("hello", q)
+    assert p1.action == p2.action
+    assert p1.prediction_set == p2.prediction_set
+    assert p1.probabilities == pytest.approx(p2.probabilities)
+
+
+def test_ordinal_scorer_orders_and_sums():
+    rng = np.random.default_rng(5)
+    n, d, k = 600, 8, 5
+    y = np.repeat(np.arange(k), n // k)
+    X = rng.normal(0, 1, (n, d)).astype(np.float32)
+    X[:, 0] += y * 1.5                             # monotone signal in dim 0
+    s = OrdinalScorer()
+    s.fit(X, y, epochs=60, lr=5e-3, labels=list("abcde"))
+    P = s.level_probs(X[:64])
+    assert P.shape == (64, k)
+    assert np.allclose(P.sum(1), 1.0, atol=1e-3)
+    assert np.all((P >= 0) & (P <= 1))
+    exp = np.array([s.expected(x) for x in X])
+    # ordering preserved: higher true level → higher expected value on average
+    # (evaluated over all rows — a prefix would be a single class, corr=NaN)
+    assert np.corrcoef(exp, y)[0, 1] > 0.7
+    # log-prob scores are gate-compatible
+    sc = s.scores(X[0])
+    assert np.isfinite(sc).all() and len(sc) == k
