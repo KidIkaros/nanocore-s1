@@ -56,6 +56,10 @@ the first time, tying Jev's tuned micro-F1 (0.386 vs 0.387).
 | 24 | The learned gain is real ranking, not thresholds | macro-AUROC climbs 0.824 → 0.901 → 0.908 → 0.914 → 0.922 with each arm | **high** |
 | 25 | Task-fitted `mlp_emb` reaches the fine-tuned-BERT frontier | 0.455 macro / 0.525 micro vs ~0.46 for trained BERT-era systems; above Jev tuned 0.353 and Qwen tuned 0.323 (different regime — task-fitted vs generative) | **high** |
 | 26 | **The head beats Platt at every data scale measured** | scaling curve n=100…43k on cached real embeddings: mlp_emb wins at n=100 (+0.08); Platt saturates at ~0.31 by 16k while heads still climb; `linear_emb` is the sweet spot below ~16k | **high** |
+| 27 | **OOS inputs are separable by score magnitude** | CLINC150: `max_sim` AUROC 0.934 — the in-schema check meta-routing needs (ADR-0013) | **high** |
+| 28 | **Conformal coverage holds at the unsharpened temperature** | CLINC150: 0.913 @ α=0.10, T=1.0 | **high** |
+| 29 | **`clarify` resolves with measured precision** | P(true intent ∈ set \| \|set\|≤3) = 0.975, on 27.9% of in-scope inputs | **high** |
+| 30 | **Log-loss temperature fitting can destroy conformal sets** | kernel fit T=0.02 → q̂=0.9975, mean set 56.7, trivial 0.997 coverage; scorer and gate need separate temperature treatment | **high** — the sharpening trap in a new guise |
 
 ---
 
