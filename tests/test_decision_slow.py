@@ -3,8 +3,9 @@ import numpy as np
 import pytest
 
 from src.decision.gate import ConformalGate
-from src.decision.slow import (Observation, PolicyThresholds, SlowState,
-                               SlowStateConfig, observe_row)
+from src.decision.slow import (AciConfig, AdaptiveThreshold, Observation,
+                               PolicyThresholds, SlowState, SlowStateConfig,
+                               observe_row)
 
 
 def _gate(alpha: float = 0.10) -> ConformalGate:
@@ -118,6 +119,99 @@ def test_concurrent_decisions_run_clean():
     assert not errors
     # a healthy stream never activates, however the requests interleaved
     assert gate.slow.thresholds().tau_answer == pytest.approx(gate.tau_answer)
+
+
+def test_adaptive_threshold_moves_against_the_error():
+    """ACI: an error raises the bar, a safe outcome lowers it."""
+    t = AdaptiveThreshold(0.70, AciConfig(target=0.10, step=0.05))
+    t.observe(True)                       # unsafe answer → escalate more
+    assert t.value() == pytest.approx(0.70 + 0.05 * (1 - 0.10))
+    t.observe(False)                      # safe → escalate less
+    assert t.value() == pytest.approx(0.70 + 0.05 * (1 - 0.10) - 0.05 * 0.10)
+
+
+def test_adaptive_threshold_holds_the_target_rate():
+    """The property that matters: the tolerated rate is maintained online."""
+    target = 0.10
+    t = AdaptiveThreshold(0.50, AciConfig(target=target, step=0.02,
+                                               bounds=(0.0, 1.0)))
+    rng = np.random.default_rng(0)
+    # a stream whose error rate depends on the bar: higher bar → fewer errors
+    unsafe = 0
+    for _ in range(20_000):
+        p_unsafe = max(0.0, 0.60 - t.value())
+        err = rng.random() < p_unsafe
+        unsafe += err
+        t.observe(err)
+    assert unsafe / 20_000 == pytest.approx(target, abs=0.03)
+
+
+def test_adaptive_threshold_respects_its_bounds():
+    t = AdaptiveThreshold(0.95, AciConfig(step=0.5, bounds=(0.30, 0.99)))
+    for _ in range(50):
+        t.observe(True)
+    assert t.value() == pytest.approx(0.99)
+    for _ in range(500):
+        t.observe(False)
+    assert t.value() == pytest.approx(0.30)
+
+
+def test_adaptive_config_rejects_nonsense():
+    with pytest.raises(ValueError):
+        AciConfig(target=0.0)
+    with pytest.raises(ValueError):
+        AciConfig(step=0.0)
+    with pytest.raises(ValueError):
+        AciConfig(bounds=(0.9, 0.3))
+
+
+def test_adaptive_arm_raises_the_bar_on_a_wrong_answer():
+    from src.decision.policy import AdaptivePolicy, AdaptivePolicyConfig
+
+    base = PolicyThresholds(tau_answer=0.30, k_clarify=3, tau_in_schema=0.70)
+    arm = AdaptivePolicy(base, AdaptivePolicyConfig(delay=2, target=0.10,
+                                                    step=0.05))
+    assert arm.label_delay == 2
+    obs = Observation(0.99, 1, 0.1, 0, 0.90, 0.4)
+    arm.observe(obs)
+    assert arm.thresholds().tau_in_schema == pytest.approx(0.70)  # unmoved yet
+    arm.observe_labeled(obs, label=7)              # answered, and wrong
+    assert arm.thresholds().tau_in_schema > 0.70
+
+
+def test_adaptive_arm_lowers_the_bar_on_a_correct_answer():
+    from src.decision.policy import AdaptivePolicy, AdaptivePolicyConfig
+
+    base = PolicyThresholds(tau_answer=0.30, k_clarify=3, tau_in_schema=0.70)
+    arm = AdaptivePolicy(base, AdaptivePolicyConfig(delay=0, target=0.10,
+                                                    step=0.05))
+    obs = Observation(0.99, 1, 0.1, 3, 0.90, 0.4)
+    arm.observe(obs)
+    arm.observe_labeled(obs, label=3)              # answered, and right
+    assert arm.thresholds().tau_in_schema < 0.70
+
+
+def test_adaptive_arm_counts_an_escalated_item_as_safe():
+    """No answer was given, so no unsafe answer occurred — the rate is over
+    all traffic, not only over answered items."""
+    from src.decision.policy import AdaptivePolicy, AdaptivePolicyConfig
+
+    base = PolicyThresholds(tau_answer=0.30, k_clarify=3, tau_in_schema=0.70)
+    arm = AdaptivePolicy(base, AdaptivePolicyConfig(delay=0, target=0.10,
+                                                    step=0.05))
+    obs = Observation(0.05, 9, 0.1, 3, 0.60, 0.05)   # would escalate
+    arm.observe(obs)
+    arm.observe_labeled(obs, label=3)
+    assert arm.thresholds().tau_in_schema < 0.70
+
+
+def test_adaptive_arm_fails_loudly_on_a_label_with_no_pending_decision():
+    from src.decision.policy import AdaptivePolicy, AdaptivePolicyConfig
+
+    base = PolicyThresholds(tau_answer=0.30, k_clarify=3, tau_in_schema=0.70)
+    arm = AdaptivePolicy(base, AdaptivePolicyConfig(delay=0))
+    with pytest.raises(ValueError):
+        arm.observe_labeled(Observation(0.99, 1, 0.1, 0, 0.9, 0.4), label=0)
 
 
 def test_experiment_and_gate_share_one_action_rule():

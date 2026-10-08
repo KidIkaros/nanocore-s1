@@ -15,9 +15,21 @@
   "novel_intents": {
    "static": {
     "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.8066666666666666,
       "sd": 0.025712081034235872
+     },
+     "selective_acc": {
+      "mean": 0.8828125,
+      "sd": 0.014043196627825813
+     },
+     "coverage": {
+      "mean": 0.8466666666666667,
+      "sd": 0.018856180831641263
      },
      "escalation_rate": {
       "mean": 0.1841666666666667,
@@ -27,9 +39,17 @@
       "mean": 0.11000000000000001,
       "sd": 0.017078251276599333
      },
-     "selective_acc": {
-      "mean": 0.8828125,
-      "sd": 0.014043196627825813
+     "aurc": {
+      "mean": 0.07623986717437498,
+      "sd": 0.0113448153608873
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
@@ -37,7 +57,19 @@
      }
     },
     "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "selective_acc": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage": {
       "mean": 0.0,
       "sd": 0.0
      },
@@ -49,21 +81,63 @@
       "mean": 0.3041666666666667,
       "sd": 0.01898464291649086
      },
-     "selective_acc": {
-      "mean": 0.0,
+     "aurc": {
+      "mean": 0.9966666666666666,
+      "sd": 0.0
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
       "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
       "sd": 0.0
      }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "lo": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "hi": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
+     }
     }
    },
    "glial": {
     "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.8066666666666666,
       "sd": 0.025712081034235872
+     },
+     "selective_acc": {
+      "mean": 0.8828125,
+      "sd": 0.014043196627825813
+     },
+     "coverage": {
+      "mean": 0.8466666666666667,
+      "sd": 0.018856180831641263
      },
      "escalation_rate": {
       "mean": 0.1841666666666667,
@@ -73,9 +147,17 @@
       "mean": 0.11000000000000001,
       "sd": 0.017078251276599333
      },
-     "selective_acc": {
-      "mean": 0.8828125,
-      "sd": 0.014043196627825813
+     "aurc": {
+      "mean": 0.07623986717437498,
+      "sd": 0.0113448153608873
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
@@ -83,7 +165,19 @@
      }
     },
     "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "selective_acc": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage": {
       "mean": 0.0,
       "sd": 0.0
      },
@@ -95,21 +189,171 @@
       "mean": 0.018750000000000003,
       "sd": 0.013430634551071833
      },
+     "aurc": {
+      "mean": 0.9966666666666666,
+      "sd": 0.0
+     },
+     "tau_answer_mean": {
+      "mean": 0.2918050059143182,
+      "sd": 0.0088404963095971
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.9535581476400294,
+      "sd": 0.007082413653677618
+     },
+     "tau_in_schema_max": {
+      "mean": 0.9715769648551941,
+      "sd": 0.0
+     }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "lo": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "hi": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
+     }
+    }
+   },
+   "adaptive(delay=200, step=0.01)": {
+    "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
+     "accuracy": {
+      "mean": 0.8066666666666666,
+      "sd": 0.025712081034235872
+     },
+     "selective_acc": {
+      "mean": 0.8828125,
+      "sd": 0.014043196627825813
+     },
+     "coverage": {
+      "mean": 0.8466666666666667,
+      "sd": 0.018856180831641263
+     },
+     "escalation_rate": {
+      "mean": 0.3170833333333334,
+      "sd": 0.03963154958139061
+     },
+     "wrong_answer_rate": {
+      "mean": 0.08333333333333333,
+      "sd": 0.011426091000668406
+     },
+     "aurc": {
+      "mean": 0.07623986717437498,
+      "sd": 0.0113448153608873
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7569620538711552,
+      "sd": 0.008979339712176354
+     },
+     "tau_in_schema_max": {
+      "mean": 0.883537053871157,
+      "sd": 0.027114202920240974
+     }
+    },
+    "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
+     "accuracy": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
      "selective_acc": {
       "mean": 0.0,
       "sd": 0.0
      },
+     "coverage": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "escalation_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "wrong_answer_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "aurc": {
+      "mean": 0.9966666666666666,
+      "sd": 0.0
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.9762762904249038,
+      "sd": 0.01158256321567289
+     },
      "tau_in_schema_max": {
-      "mean": 0.9715769648551941,
+      "mean": 0.99,
+      "sd": 0.0
+     }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "lo": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "hi": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
       "sd": 0.0
      }
     }
    },
    "recalibrate(delay=200)": {
     "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.8066666666666666,
       "sd": 0.025712081034235872
+     },
+     "selective_acc": {
+      "mean": 0.8828125,
+      "sd": 0.014043196627825813
+     },
+     "coverage": {
+      "mean": 0.8466666666666667,
+      "sd": 0.018856180831641263
      },
      "escalation_rate": {
       "mean": 0.1841666666666667,
@@ -119,9 +363,17 @@
       "mean": 0.10583333333333333,
       "sd": 0.016478099944404325
      },
-     "selective_acc": {
-      "mean": 0.8828125,
-      "sd": 0.014043196627825813
+     "aurc": {
+      "mean": 0.07623986717437498,
+      "sd": 0.0113448153608873
+     },
+     "tau_answer_mean": {
+      "mean": 0.01595237793012047,
+      "sd": 0.0004924730705793207
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
@@ -129,7 +381,19 @@
      }
     },
     "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "selective_acc": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage": {
       "mean": 0.0,
       "sd": 0.0
      },
@@ -141,21 +405,63 @@
       "mean": 0.10666666666666666,
       "sd": 0.029297326385411576
      },
-     "selective_acc": {
-      "mean": 0.0,
+     "aurc": {
+      "mean": 0.9966666666666666,
       "sd": 0.0
+     },
+     "tau_answer_mean": {
+      "mean": 0.0265908501463447,
+      "sd": 0.0018091841330979339
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7397627453009288,
+      "sd": 0.005462171119539773
      },
      "tau_in_schema_max": {
       "mean": 0.7668752893805504,
       "sd": 0.018344421801637468
      }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "lo": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "hi": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
+     }
     }
    },
    "recalibrate(delay=0)": {
     "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.8066666666666666,
       "sd": 0.025712081034235872
+     },
+     "selective_acc": {
+      "mean": 0.8828125,
+      "sd": 0.014043196627825813
+     },
+     "coverage": {
+      "mean": 0.8466666666666667,
+      "sd": 0.018856180831641263
      },
      "escalation_rate": {
       "mean": 0.1841666666666667,
@@ -165,9 +471,17 @@
       "mean": 0.07208333333333333,
       "sd": 0.010663736576724772
      },
-     "selective_acc": {
-      "mean": 0.8828125,
-      "sd": 0.014043196627825813
+     "aurc": {
+      "mean": 0.07623986717437498,
+      "sd": 0.0113448153608873
+     },
+     "tau_answer_mean": {
+      "mean": 0.024013832192858565,
+      "sd": 0.0015123374363829407
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
@@ -175,7 +489,19 @@
      }
     },
     "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "selective_acc": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage": {
       "mean": 0.0,
       "sd": 0.0
      },
@@ -187,13 +513,43 @@
       "mean": 0.05541666666666667,
       "sd": 0.021339680045503132
      },
-     "selective_acc": {
-      "mean": 0.0,
+     "aurc": {
+      "mean": 0.9966666666666666,
       "sd": 0.0
+     },
+     "tau_answer_mean": {
+      "mean": 0.02547989350362064,
+      "sd": 0.00037509783148894434
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7611437360445658,
+      "sd": 0.019694937288930174
      },
      "tau_in_schema_max": {
       "mean": 0.7668752893805504,
       "sd": 0.018344421801637468
+     }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "lo": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "hi": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
      }
     }
    }
@@ -201,9 +557,21 @@
   "prior_shift": {
    "static": {
     "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.7516666666666667,
       "sd": 0.011547005383792537
+     },
+     "selective_acc": {
+      "mean": 0.8375,
+      "sd": 0.018749999999999992
+     },
+     "coverage": {
+      "mean": 0.8954166666666666,
+      "sd": 0.005758447900452168
      },
      "escalation_rate": {
       "mean": 0.15,
@@ -213,9 +581,17 @@
       "mean": 0.05375,
       "sd": 0.017906974122453585
      },
-     "selective_acc": {
-      "mean": 0.8375,
-      "sd": 0.018749999999999992
+     "aurc": {
+      "mean": 0.10825730853476478,
+      "sd": 0.015906268467094517
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
@@ -223,9 +599,21 @@
      }
     },
     "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.7875,
       "sd": 0.022958295523259842
+     },
+     "selective_acc": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "coverage": {
+      "mean": 0.9020833333333333,
+      "sd": 0.014523687548277837
      },
      "escalation_rate": {
       "mean": 0.12,
@@ -235,21 +623,67 @@
       "mean": 0.07125000000000001,
       "sd": 0.016409473889596012
      },
-     "selective_acc": {
-      "mean": 0.8526041666666666,
-      "sd": 0.030257682392245466
+     "aurc": {
+      "mean": 0.10912122570133954,
+      "sd": 0.023782767646146254
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
       "sd": 0.0
      }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "lo": {
+      "mean": 0.8052083333333333,
+      "sd": 0.032725579317510405
+     },
+     "hi": {
+      "mean": 0.8945442708333333,
+      "sd": 0.02626611285715052
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
+     }
+    },
+    "recovery_latency": {
+     "mean": 5.375,
+     "sd": 12.439227266996934
     }
    },
    "glial": {
     "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.7516666666666667,
       "sd": 0.011547005383792537
+     },
+     "selective_acc": {
+      "mean": 0.8375,
+      "sd": 0.018749999999999992
+     },
+     "coverage": {
+      "mean": 0.8954166666666666,
+      "sd": 0.005758447900452168
      },
      "escalation_rate": {
       "mean": 0.15,
@@ -259,9 +693,17 @@
       "mean": 0.05375,
       "sd": 0.017906974122453585
      },
-     "selective_acc": {
-      "mean": 0.8375,
-      "sd": 0.018749999999999992
+     "aurc": {
+      "mean": 0.10825730853476478,
+      "sd": 0.015906268467094517
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
@@ -269,9 +711,21 @@
      }
     },
     "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.7875,
       "sd": 0.022958295523259842
+     },
+     "selective_acc": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "coverage": {
+      "mean": 0.9020833333333333,
+      "sd": 0.014523687548277837
      },
      "escalation_rate": {
       "mean": 0.12,
@@ -281,21 +735,179 @@
       "mean": 0.07125000000000001,
       "sd": 0.016409473889596012
      },
-     "selective_acc": {
-      "mean": 0.8526041666666666,
-      "sd": 0.030257682392245466
+     "aurc": {
+      "mean": 0.10912122570133954,
+      "sd": 0.023782767646146254
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
       "sd": 0.0
      }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "lo": {
+      "mean": 0.8052083333333333,
+      "sd": 0.032725579317510405
+     },
+     "hi": {
+      "mean": 0.8945442708333333,
+      "sd": 0.02626611285715052
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
+     }
+    },
+    "recovery_latency": {
+     "mean": 5.375,
+     "sd": 12.439227266996934
+    }
+   },
+   "adaptive(delay=200, step=0.01)": {
+    "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
+     "accuracy": {
+      "mean": 0.7516666666666667,
+      "sd": 0.011547005383792537
+     },
+     "selective_acc": {
+      "mean": 0.8375,
+      "sd": 0.018749999999999992
+     },
+     "coverage": {
+      "mean": 0.8954166666666666,
+      "sd": 0.005758447900452168
+     },
+     "escalation_rate": {
+      "mean": 0.16916666666666666,
+      "sd": 0.01587713240271471
+     },
+     "wrong_answer_rate": {
+      "mean": 0.05375,
+      "sd": 0.017906974122453585
+     },
+     "aurc": {
+      "mean": 0.10825730853476478,
+      "sd": 0.015906268467094517
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7357578872044884,
+      "sd": 0.003432238397411621
+     },
+     "tau_in_schema_max": {
+      "mean": 0.7601370538711565,
+      "sd": 0.015050249167372763
+     }
+    },
+    "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
+     "accuracy": {
+      "mean": 0.7875,
+      "sd": 0.022958295523259842
+     },
+     "selective_acc": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "coverage": {
+      "mean": 0.9020833333333333,
+      "sd": 0.014523687548277837
+     },
+     "escalation_rate": {
+      "mean": 0.5533333333333333,
+      "sd": 0.15016657417681206
+     },
+     "wrong_answer_rate": {
+      "mean": 0.042083333333333334,
+      "sd": 0.01674460941450843
+     },
+     "aurc": {
+      "mean": 0.10912122570133954,
+      "sd": 0.023782767646146254
+     },
+     "tau_answer_mean": {
+      "mean": 0.014296672580984887,
+      "sd": 0.0
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.8184781431528783,
+      "sd": 0.036285110154579206
+     },
+     "tau_in_schema_max": {
+      "mean": 0.8988074221372682,
+      "sd": 0.05333234914497477
+     }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "lo": {
+      "mean": 0.8052083333333333,
+      "sd": 0.032725579317510405
+     },
+     "hi": {
+      "mean": 0.8945442708333333,
+      "sd": 0.02626611285715052
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
+     }
+    },
+    "recovery_latency": {
+     "mean": 5.375,
+     "sd": 12.439227266996934
     }
    },
    "recalibrate(delay=200)": {
     "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.7516666666666667,
       "sd": 0.011547005383792537
+     },
+     "selective_acc": {
+      "mean": 0.8375,
+      "sd": 0.018749999999999992
+     },
+     "coverage": {
+      "mean": 0.8954166666666666,
+      "sd": 0.005758447900452168
      },
      "escalation_rate": {
       "mean": 0.15,
@@ -305,9 +917,17 @@
       "mean": 0.05416666666666667,
       "sd": 0.011023963796102461
      },
-     "selective_acc": {
-      "mean": 0.8375,
-      "sd": 0.018749999999999992
+     "aurc": {
+      "mean": 0.10825730853476478,
+      "sd": 0.015906268467094517
+     },
+     "tau_answer_mean": {
+      "mean": 0.014454503275144045,
+      "sd": 0.0003375534379819265
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
@@ -315,9 +935,21 @@
      }
     },
     "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.7875,
       "sd": 0.022958295523259842
+     },
+     "selective_acc": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "coverage": {
+      "mean": 0.9020833333333333,
+      "sd": 0.014523687548277837
      },
      "escalation_rate": {
       "mean": 0.20958333333333334,
@@ -327,21 +959,67 @@
       "mean": 0.04791666666666667,
       "sd": 0.027332190016738707
      },
-     "selective_acc": {
-      "mean": 0.8526041666666666,
-      "sd": 0.030257682392245466
+     "aurc": {
+      "mean": 0.10912122570133954,
+      "sd": 0.023782767646146254
+     },
+     "tau_answer_mean": {
+      "mean": 0.01636076539295752,
+      "sd": 0.001125842950879944
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7479557714362939,
+      "sd": 0.01828982428684546
      },
      "tau_in_schema_max": {
       "mean": 0.8212390542030334,
       "sd": 0.05686377641348492
      }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "lo": {
+      "mean": 0.8052083333333333,
+      "sd": 0.032725579317510405
+     },
+     "hi": {
+      "mean": 0.8945442708333333,
+      "sd": 0.02626611285715052
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
+     }
+    },
+    "recovery_latency": {
+     "mean": 5.375,
+     "sd": 12.439227266996934
     }
    },
    "recalibrate(delay=0)": {
     "phase1": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.7516666666666667,
       "sd": 0.011547005383792537
+     },
+     "selective_acc": {
+      "mean": 0.8375,
+      "sd": 0.018749999999999992
+     },
+     "coverage": {
+      "mean": 0.8954166666666666,
+      "sd": 0.005758447900452168
      },
      "escalation_rate": {
       "mean": 0.15,
@@ -351,9 +1029,17 @@
       "mean": 0.05708333333333333,
       "sd": 0.010984521938720057
      },
-     "selective_acc": {
-      "mean": 0.8375,
-      "sd": 0.018749999999999992
+     "aurc": {
+      "mean": 0.10825730853476478,
+      "sd": 0.015906268467094517
+     },
+     "tau_answer_mean": {
+      "mean": 0.015426301260712039,
+      "sd": 0.0009667885827891322
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7312370538711548,
+      "sd": 0.0
      },
      "tau_in_schema_max": {
       "mean": 0.7312370538711548,
@@ -361,9 +1047,21 @@
      }
     },
     "phase2": {
+     "n": {
+      "mean": 300.0,
+      "sd": 0.0
+     },
      "accuracy": {
       "mean": 0.7875,
       "sd": 0.022958295523259842
+     },
+     "selective_acc": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "coverage": {
+      "mean": 0.9020833333333333,
+      "sd": 0.014523687548277837
      },
      "escalation_rate": {
       "mean": 0.4379166666666666,
@@ -373,14 +1071,48 @@
       "mean": 0.03333333333333333,
       "sd": 0.02560381915956203
      },
-     "selective_acc": {
-      "mean": 0.8526041666666666,
-      "sd": 0.030257682392245466
+     "aurc": {
+      "mean": 0.10912122570133954,
+      "sd": 0.023782767646146254
+     },
+     "tau_answer_mean": {
+      "mean": 0.016293280454873365,
+      "sd": 0.001539978163996206
+     },
+     "tau_in_schema_mean": {
+      "mean": 0.7911675643424193,
+      "sd": 0.06773014145512059
      },
      "tau_in_schema_max": {
       "mean": 0.8212390542030334,
       "sd": 0.05686377641348492
      }
+    },
+    "phase2_selective_ci": {
+     "point": {
+      "mean": 0.8526041666666666,
+      "sd": 0.030257682392245466
+     },
+     "lo": {
+      "mean": 0.8052083333333333,
+      "sd": 0.032725579317510405
+     },
+     "hi": {
+      "mean": 0.8945442708333333,
+      "sd": 0.02626611285715052
+     },
+     "resamples": {
+      "mean": 500.0,
+      "sd": 0.0
+     },
+     "confidence": {
+      "mean": 0.95,
+      "sd": 0.0
+     }
+    },
+    "recovery_latency": {
+     "mean": 5.375,
+     "sd": 12.439227266996934
     }
    }
   }
@@ -448,6 +1180,41 @@
       "tau_answer_mean": 0.2990300059143182,
       "tau_in_schema_mean": 0.9593463338295616,
       "tau_in_schema_max": 0.9715769648551941
+     },
+     "phase2_selective_ci": {
+      "point": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": null
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.8533333333333334,
+      "selective_acc": 0.9041666666666667,
+      "coverage": 0.88,
+      "escalation_rate": 0.29333333333333333,
+      "wrong_answer_rate": 0.07666666666666666,
+      "aurc": 0.05710229427617193,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7508703872044884,
+      "tau_in_schema_max": 0.8730370538711569
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.0,
+      "selective_acc": 0.0,
+      "coverage": 0.0,
+      "escalation_rate": 1.0,
+      "wrong_answer_rate": 0.0,
+      "aurc": 0.9966666666666666,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.9670838081366234,
+      "tau_in_schema_max": 0.99
      },
      "phase2_selective_ci": {
       "point": 0.0,
@@ -590,6 +1357,41 @@
       "tau_answer_mean": 0.014296672580984887,
       "tau_in_schema_mean": 0.7312370538711548,
       "tau_in_schema_max": 0.7312370538711548
+     },
+     "phase2_selective_ci": {
+      "point": 0.8708333333333333,
+      "lo": 0.825,
+      "hi": 0.9125,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": 0
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.77,
+      "selective_acc": 0.8291666666666667,
+      "coverage": 0.89,
+      "escalation_rate": 0.16333333333333333,
+      "wrong_answer_rate": 0.08,
+      "aurc": 0.12422681528103088,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7406370538711552,
+      "tau_in_schema_max": 0.7768370538711564
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.8166666666666667,
+      "selective_acc": 0.8708333333333333,
+      "coverage": 0.92,
+      "escalation_rate": 0.7666666666666667,
+      "wrong_answer_rate": 0.01,
+      "aurc": 0.09713569182798831,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.8636037205378271,
+      "tau_in_schema_max": 0.9614370538711638
      },
      "phase2_selective_ci": {
       "point": 0.8708333333333333,
@@ -744,6 +1546,41 @@
      },
      "recovery_latency": null
     },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.8233333333333334,
+      "selective_acc": 0.8916666666666667,
+      "coverage": 0.85,
+      "escalation_rate": 0.25666666666666665,
+      "wrong_answer_rate": 0.09,
+      "aurc": 0.06958907999696003,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7471703872044885,
+      "tau_in_schema_max": 0.8532370538711569
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.0,
+      "selective_acc": 0.0,
+      "coverage": 0.0,
+      "escalation_rate": 1.0,
+      "wrong_answer_rate": 0.0,
+      "aurc": 0.9966666666666666,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.9742772143656422,
+      "tau_in_schema_max": 0.99
+     },
+     "phase2_selective_ci": {
+      "point": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": null
+    },
     "recalibrate(delay=200)": {
      "policy": "recalibrate(delay=200)",
      "phase1": {
@@ -876,6 +1713,41 @@
       "tau_answer_mean": 0.014296672580984887,
       "tau_in_schema_mean": 0.7312370538711548,
       "tau_in_schema_max": 0.7312370538711548
+     },
+     "phase2_selective_ci": {
+      "point": 0.9,
+      "lo": 0.8583333333333333,
+      "hi": 0.9333333333333333,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": 0
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7333333333333333,
+      "selective_acc": 0.8125,
+      "coverage": 0.8933333333333333,
+      "escalation_rate": 0.20666666666666667,
+      "wrong_answer_rate": 0.05,
+      "aurc": 0.11299533005602808,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7391370538711551,
+      "tau_in_schema_max": 0.7762370538711565
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.8133333333333334,
+      "selective_acc": 0.9,
+      "coverage": 0.8966666666666666,
+      "escalation_rate": 0.5133333333333333,
+      "wrong_answer_rate": 0.04,
+      "aurc": 0.07764811802711316,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.8047703872044938,
+      "tau_in_schema_max": 0.8734370538711635
      },
      "phase2_selective_ci": {
       "point": 0.9,
@@ -1030,6 +1902,41 @@
      },
      "recovery_latency": null
     },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7933333333333333,
+      "selective_acc": 0.8833333333333333,
+      "coverage": 0.8433333333333334,
+      "escalation_rate": 0.36,
+      "wrong_answer_rate": 0.08,
+      "aurc": 0.08098280161078802,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7677037205378219,
+      "tau_in_schema_max": 0.912237053871157
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.0,
+      "selective_acc": 0.0,
+      "coverage": 0.0,
+      "escalation_rate": 1.0,
+      "wrong_answer_rate": 0.0,
+      "aurc": 0.9966666666666666,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.9859528407967886,
+      "tau_in_schema_max": 0.99
+     },
+     "phase2_selective_ci": {
+      "point": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": null
+    },
     "recalibrate(delay=200)": {
      "policy": "recalibrate(delay=200)",
      "phase1": {
@@ -1162,6 +2069,41 @@
       "tau_answer_mean": 0.014296672580984887,
       "tau_in_schema_mean": 0.7312370538711548,
       "tau_in_schema_max": 0.7312370538711548
+     },
+     "phase2_selective_ci": {
+      "point": 0.8166666666666667,
+      "lo": 0.7666666666666667,
+      "hi": 0.8583333333333333,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": 5
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.74,
+      "selective_acc": 0.8166666666666667,
+      "coverage": 0.8933333333333333,
+      "escalation_rate": 0.16,
+      "wrong_answer_rate": 0.08666666666666667,
+      "aurc": 0.13419226236868756,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7384703872044885,
+      "tau_in_schema_max": 0.7742370538711567
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.7633333333333333,
+      "selective_acc": 0.8166666666666667,
+      "coverage": 0.8933333333333333,
+      "escalation_rate": 0.8166666666666667,
+      "wrong_answer_rate": 0.023333333333333334,
+      "aurc": 0.13425959348092437,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.8893324347915696,
+      "tau_in_schema_max": 0.99
      },
      "phase2_selective_ci": {
       "point": 0.8166666666666667,
@@ -1316,6 +2258,41 @@
      },
      "recovery_latency": null
     },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7866666666666666,
+      "selective_acc": 0.8791666666666667,
+      "coverage": 0.8266666666666667,
+      "escalation_rate": 0.35333333333333333,
+      "wrong_answer_rate": 0.07,
+      "aurc": 0.06859152871583071,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.768003720537822,
+      "tau_in_schema_max": 0.9214370538711572
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.0,
+      "selective_acc": 0.0,
+      "coverage": 0.0,
+      "escalation_rate": 1.0,
+      "wrong_answer_rate": 0.0,
+      "aurc": 0.9966666666666666,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.9858901250279746,
+      "tau_in_schema_max": 0.99
+     },
+     "phase2_selective_ci": {
+      "point": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": null
+    },
     "recalibrate(delay=200)": {
      "policy": "recalibrate(delay=200)",
      "phase1": {
@@ -1448,6 +2425,41 @@
       "tau_answer_mean": 0.014296672580984887,
       "tau_in_schema_mean": 0.7312370538711548,
       "tau_in_schema_max": 0.7312370538711548
+     },
+     "phase2_selective_ci": {
+      "point": 0.8625,
+      "lo": 0.8125,
+      "hi": 0.9,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": 0
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7666666666666667,
+      "selective_acc": 0.8583333333333333,
+      "coverage": 0.8966666666666666,
+      "escalation_rate": 0.16,
+      "wrong_answer_rate": 0.043333333333333335,
+      "aurc": 0.09499732256331993,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7334703872044884,
+      "tau_in_schema_max": 0.7564370538711565
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.77,
+      "selective_acc": 0.8625,
+      "coverage": 0.8966666666666666,
+      "escalation_rate": 0.5166666666666667,
+      "wrong_answer_rate": 0.05,
+      "aurc": 0.10623709615801204,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.8020370538711603,
+      "tau_in_schema_max": 0.8542370538711634
      },
      "phase2_selective_ci": {
       "point": 0.8625,
@@ -1602,6 +2614,41 @@
      },
      "recovery_latency": null
     },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.8366666666666667,
+      "selective_acc": 0.8958333333333334,
+      "coverage": 0.8733333333333333,
+      "escalation_rate": 0.29333333333333333,
+      "wrong_answer_rate": 0.06666666666666667,
+      "aurc": 0.0677164146296656,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7510370538711552,
+      "tau_in_schema_max": 0.842637053871157
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.0,
+      "selective_acc": 0.0,
+      "coverage": 0.0,
+      "escalation_rate": 1.0,
+      "wrong_answer_rate": 0.0,
+      "aurc": 0.9966666666666666,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.9505944510097517,
+      "tau_in_schema_max": 0.99
+     },
+     "phase2_selective_ci": {
+      "point": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": null
+    },
     "recalibrate(delay=200)": {
      "policy": "recalibrate(delay=200)",
      "phase1": {
@@ -1734,6 +2781,41 @@
       "tau_answer_mean": 0.014296672580984887,
       "tau_in_schema_mean": 0.7312370538711548,
       "tau_in_schema_max": 0.7312370538711548
+     },
+     "phase2_selective_ci": {
+      "point": 0.8625,
+      "lo": 0.8166666666666667,
+      "hi": 0.9041666666666667,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": 0
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7466666666666667,
+      "selective_acc": 0.8291666666666667,
+      "coverage": 0.9,
+      "escalation_rate": 0.15333333333333332,
+      "wrong_answer_rate": 0.04,
+      "aurc": 0.10902857908917206,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7301370538711551,
+      "tau_in_schema_max": 0.7330370538711557
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.8033333333333333,
+      "selective_acc": 0.8625,
+      "coverage": 0.92,
+      "escalation_rate": 0.41333333333333333,
+      "wrong_answer_rate": 0.05333333333333334,
+      "aurc": 0.09442737790898625,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7875703872044937,
+      "tau_in_schema_max": 0.8620370538711637
      },
      "phase2_selective_ci": {
       "point": 0.8625,
@@ -1888,6 +2970,41 @@
      },
      "recovery_latency": null
     },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7833333333333333,
+      "selective_acc": 0.8583333333333333,
+      "coverage": 0.8366666666666667,
+      "escalation_rate": 0.30666666666666664,
+      "wrong_answer_rate": 0.10333333333333333,
+      "aurc": 0.08705561663955577,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7478370538711552,
+      "tau_in_schema_max": 0.872237053871157
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.0,
+      "selective_acc": 0.0,
+      "coverage": 0.0,
+      "escalation_rate": 1.0,
+      "wrong_answer_rate": 0.0,
+      "aurc": 0.9966666666666666,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.9775202500559494,
+      "tau_in_schema_max": 0.99
+     },
+     "phase2_selective_ci": {
+      "point": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": null
+    },
     "recalibrate(delay=200)": {
      "policy": "recalibrate(delay=200)",
      "phase1": {
@@ -2020,6 +3137,41 @@
       "tau_answer_mean": 0.014296672580984887,
       "tau_in_schema_mean": 0.7312370538711548,
       "tau_in_schema_max": 0.7312370538711548
+     },
+     "phase2_selective_ci": {
+      "point": 0.7958333333333333,
+      "lo": 0.7458333333333333,
+      "hi": 0.8480208333333332,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": 0
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.75,
+      "selective_acc": 0.8458333333333333,
+      "coverage": 0.9066666666666666,
+      "escalation_rate": 0.17333333333333334,
+      "wrong_answer_rate": 0.05333333333333334,
+      "aurc": 0.10276930288624714,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7366037205378217,
+      "tau_in_schema_max": 0.7634370538711568
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.7666666666666667,
+      "selective_acc": 0.7958333333333333,
+      "coverage": 0.8866666666666667,
+      "escalation_rate": 0.5833333333333334,
+      "wrong_answer_rate": 0.06333333333333334,
+      "aurc": 0.1568208032279868,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.826703720537827,
+      "tau_in_schema_max": 0.9442370538711635
      },
      "phase2_selective_ci": {
       "point": 0.7958333333333333,
@@ -2174,6 +3326,41 @@
      },
      "recovery_latency": null
     },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7966666666666666,
+      "selective_acc": 0.8666666666666667,
+      "coverage": 0.8366666666666667,
+      "escalation_rate": 0.38,
+      "wrong_answer_rate": 0.09,
+      "aurc": 0.08953572040142554,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7691037205378218,
+      "tau_in_schema_max": 0.9116370538711571
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.0,
+      "selective_acc": 0.0,
+      "coverage": 0.0,
+      "escalation_rate": 1.0,
+      "wrong_answer_rate": 0.0,
+      "aurc": 0.9966666666666666,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.9858776071828208,
+      "tau_in_schema_max": 0.99
+     },
+     "phase2_selective_ci": {
+      "point": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": null
+    },
     "recalibrate(delay=200)": {
      "policy": "recalibrate(delay=200)",
      "phase1": {
@@ -2306,6 +3493,41 @@
       "tau_answer_mean": 0.014296672580984887,
       "tau_in_schema_mean": 0.7312370538711548,
       "tau_in_schema_max": 0.7312370538711548
+     },
+     "phase2_selective_ci": {
+      "point": 0.8541666666666666,
+      "lo": 0.8,
+      "hi": 0.8958333333333334,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": 38
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7533333333333333,
+      "selective_acc": 0.8708333333333333,
+      "coverage": 0.8966666666666666,
+      "escalation_rate": 0.16,
+      "wrong_answer_rate": 0.03666666666666667,
+      "aurc": 0.07881522604843229,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7356037205378219,
+      "tau_in_schema_max": 0.7584370538711562
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.76,
+      "selective_acc": 0.8541666666666666,
+      "coverage": 0.8833333333333333,
+      "escalation_rate": 0.41333333333333333,
+      "wrong_answer_rate": 0.056666666666666664,
+      "aurc": 0.11295967222076038,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7861370538711604,
+      "tau_in_schema_max": 0.8622370538711637
      },
      "phase2_selective_ci": {
       "point": 0.8541666666666666,
@@ -2460,6 +3682,41 @@
      },
      "recovery_latency": null
     },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.78,
+      "selective_acc": 0.8833333333333333,
+      "coverage": 0.8266666666666667,
+      "escalation_rate": 0.29333333333333333,
+      "wrong_answer_rate": 0.09,
+      "aurc": 0.0893454811246022,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7539703872044885,
+      "tau_in_schema_max": 0.8818370538711571
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.0,
+      "selective_acc": 0.0,
+      "coverage": 0.0,
+      "escalation_rate": 1.0,
+      "wrong_answer_rate": 0.0,
+      "aurc": 0.9966666666666666,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.9830140268236801,
+      "tau_in_schema_max": 0.99
+     },
+     "phase2_selective_ci": {
+      "point": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": null
+    },
     "recalibrate(delay=200)": {
      "policy": "recalibrate(delay=200)",
      "phase1": {
@@ -2592,6 +3849,41 @@
       "tau_answer_mean": 0.014296672580984887,
       "tau_in_schema_mean": 0.7312370538711548,
       "tau_in_schema_max": 0.7312370538711548
+     },
+     "phase2_selective_ci": {
+      "point": 0.8583333333333333,
+      "lo": 0.8166666666666667,
+      "hi": 0.9041666666666667,
+      "resamples": 500,
+      "confidence": 0.95
+     },
+     "recovery_latency": 0
+    },
+    "adaptive(delay=200, step=0.01)": {
+     "policy": "adaptive(delay=200, step=0.01)",
+     "phase1": {
+      "n": 300,
+      "accuracy": 0.7533333333333333,
+      "selective_acc": 0.8375,
+      "coverage": 0.8866666666666667,
+      "escalation_rate": 0.17666666666666667,
+      "wrong_answer_rate": 0.04,
+      "aurc": 0.10903362998520028,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7320037205378219,
+      "tau_in_schema_max": 0.7424370538711569
+     },
+     "phase2": {
+      "n": 300,
+      "accuracy": 0.8066666666666666,
+      "selective_acc": 0.8583333333333333,
+      "coverage": 0.92,
+      "escalation_rate": 0.4033333333333333,
+      "wrong_answer_rate": 0.04,
+      "aurc": 0.09348145275894504,
+      "tau_answer_mean": 0.014296672580984887,
+      "tau_in_schema_mean": 0.7876703872044938,
+      "tau_in_schema_max": 0.8428370538711636
      },
      "phase2_selective_ci": {
       "point": 0.8583333333333333,

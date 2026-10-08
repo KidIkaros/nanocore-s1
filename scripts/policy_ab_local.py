@@ -35,9 +35,11 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.decision.escalation import curve_at
 from src.decision.evaluate import seed_aggregate
 from src.decision.gate import ConformalGate, fit_in_schema_threshold
-from src.decision.policy import (GlialPolicy, PolicyThresholds,
+from src.decision.policy import (AdaptivePolicy, AdaptivePolicyConfig,
+                                 GlialPolicy, PolicyThresholds,
                                  RecalibrateConfig, RecalibratePolicy,
                                  SlowStateConfig, StaticPolicy, Stream,
                                  StreamConfig, observe_row, run_stream)
@@ -129,11 +131,17 @@ class Reference:
     max_score: float
 
 
-def arms(base: PolicyThresholds, cfg: StreamConfig, reference: Reference) -> list:
-    """Static incumbent, the glial arm, and the two label-driven baselines."""
+def arms(base: PolicyThresholds, cfg: StreamConfig, reference: Reference,
+         step: float = 0.01) -> list:
+    """Static incumbent, the label-free arm, and three label-driven baselines.
+
+    ``adaptive`` is ACI on the binding threshold: same delayed labels as the
+    refit arms, but one parameter and a small step instead of a batch refit.
+    """
     glial = GlialPolicy(base, SlowStateConfig(reference_max_score=reference.max_score))
     glial.calibrate_reference(reference.observations)
     return [StaticPolicy(base), glial,
+            AdaptivePolicy(base, AdaptivePolicyConfig(delay=200, step=step)),
             RecalibratePolicy(base, RecalibrateConfig(delay=200, refit_every=50,
                                                       n_options=SPLIT)),
             RecalibratePolicy(base, RecalibrateConfig(delay=0, refit_every=50,
@@ -145,7 +153,7 @@ def reference_from(arrays: dict, oos: int, columns: dict,
     """Build the healthy reference from the calibration split."""
     keep = arrays["y_val"] != oos
     rows = arrays["scores_val"][keep]
-    return Reference([observe_row(row, cfg)[0] for row in rows],
+    return Reference([observe_row(row, cfg.t_prob, cfg.qhat)[0] for row in rows],
                      float(rows.max(axis=1).mean()))
 
 
@@ -208,6 +216,61 @@ def sweep(arrays: dict, gate: ConformalGate, per_phase: int, seeds: int) -> dict
 
 
 
+STATIC_BARS = tuple(np.linspace(0.60, 0.99, 16))
+TARGETS = (0.005, 0.01, 0.02, 0.04, 0.06, 0.09, 0.14, 0.20, 0.30)
+
+
+def _point(result: Dict) -> tuple:
+    """(handoff, unsafe) — handoff is escalate ∪ clarify, as in the dry run."""
+    p2 = result["phase2"]
+    return (p2["escalation_rate"] + p2.get("clarify_rate", 0.0),
+            p2["wrong_answer_rate"])
+
+
+def curves_for(arrays: dict, gate: ConformalGate, per_phase: int, seed: int) -> Dict:
+    """Trace each policy's own knob: a fixed bar, or a tolerated error rate."""
+    oos, columns = label_mapping(arrays)
+    scores, labels = train_pool(arrays, oos, columns)
+    deployed = np.arange(SPLIT)
+    cfg = StreamConfig(t_prob=gate.t_prob, qhat=gate.qhat, k_clarify=gate.k_clarify)
+    reference = reference_from(arrays, oos, columns, cfg)
+    base = PolicyThresholds(gate.tau_answer, gate.k_clarify, gate.tau_in_schema)
+    rng = np.random.default_rng(seed)
+    S, y = sample_stream(scores, labels, deployed, per_phase, rng)
+    stream = Stream(S, y, per_phase)
+
+    fixed = []
+    for bar in STATIC_BARS:
+        policy = StaticPolicy(PolicyThresholds(base.tau_answer, base.k_clarify, bar))
+        fixed.append(_point(run_stream(policy, stream, cfg)))
+    adaptive = []
+    for target in TARGETS:
+        policy = AdaptivePolicy(base, AdaptivePolicyConfig(delay=200, target=target))
+        adaptive.append(_point(run_stream(policy, stream, cfg)))
+    glial = _point(run_stream(arms(base, cfg, reference)[1], stream, cfg))
+    return {"static": fixed, "adaptive": adaptive, "glial": glial}
+
+
+def report_curves(arrays: dict, gate: ConformalGate, args) -> None:
+    """Unsafe answers at a matched handoff rate — the only fair comparison."""
+    # The option-set shift is the stream where a fixed bar is actually wrong;
+    # a healthy stream has no operating point worth choosing between.
+    curves = curves_for(arrays, gate, args.per_phase, seed=0)
+    print("\n== novel_intents: unsafe answers at a matched handoff rate")
+    print(f"  {'handoff':>8} {'fixed bar':>10} {'adaptive':>10}")
+    for target in (0.20, 0.30, 0.40, 0.50):
+        a = curve_at(curves["static"], target)
+        b = curve_at(curves["adaptive"], target)
+        print(f"  {target:>8.2f} {a:>10.3f} {b:>10.3f}")
+    print(f"  glial (own point): handoff {curves['glial'][0]:.3f} "
+          f"unsafe {curves['glial'][1]:.3f}")
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "curves.json").write_text(json.dumps(curves, indent=1))
+    print(f"\nwrote {out_dir / 'curves.json'}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--npz", default=DEFAULT_NPZ)
@@ -216,6 +279,8 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, default=5)
     ap.add_argument("--sweep", action="store_true",
                     help="glial advantage vs novelty rate instead of the two streams")
+    ap.add_argument("--curves", action="store_true",
+                    help="unsafe answers at a matched handoff rate instead of raw points")
     args = ap.parse_args()
 
     arrays = load_arrays(Path(args.npz))
@@ -242,6 +307,10 @@ def main() -> None:
             esc = by_policy["glial"]["phase1"]["escalation_rate"]["mean"]
             print(f"  {rate:5}  {st:12.3f}  {gl:11.3f}  {st - gl:+9.3f}  {esc:12.3f}")
         print(f"\nwrote {out_dir / 'sweep_results.json'}")
+        return
+
+    if args.curves:
+        report_curves(arrays, gate, args)
         return
 
     runs = [run_streams(arrays, gate, args.per_phase, s) for s in range(args.seeds)]

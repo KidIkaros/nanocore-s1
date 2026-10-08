@@ -218,6 +218,26 @@ def unsafe_at_escalation(risk: np.ndarray, wrong: np.ndarray,
     return float(wrong[safest].mean())
 
 
+def curve_at(curve: Sequence[Tuple[float, float]], target: float) -> float:
+    """Unsafe rate from a (handoff, unsafe) curve at a matched handoff rate.
+
+    Policies have different operating knobs — a fixed bar, a cost ratio, a
+    tolerated error rate — so comparing them at whatever point each happens to
+    choose says nothing. Interpolating to a common handoff rate is the
+    comparison. Returns ``nan`` when the curve never reaches the rate, which is
+    itself informative: the policy cannot operate there.
+    """
+    ordered = sorted(curve)
+    rates = [handoff for handoff, _ in ordered]
+    if not ordered or target < rates[0] or target > rates[-1]:
+        return float("nan")
+    for (h0, u0), (h1, u1) in zip(ordered, ordered[1:]):
+        if h0 <= target <= h1:
+            weight = 0.0 if h1 == h0 else (target - h0) / (h1 - h0)
+            return float(u0 + weight * (u1 - u0))
+    return float(ordered[-1][1])
+
+
 def evaluate_policy(actions: Sequence[str], wrong: np.ndarray) -> Dict:
     """Escalation rate and unsafe-answer rate for a policy's decisions."""
     actions = np.asarray(actions)

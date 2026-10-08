@@ -29,9 +29,9 @@ from policy_ab_local import (calibrate_base, label_mapping, to_columns,
                              verify_alignment)
 
 from src.decision.escalation import (Costs, DecisionFeatures,
-                                     calibrated_actions, decision_features,
-                                     evaluate_policy, select_error_model,
-                                     unsafe_at_escalation)
+                                     calibrated_actions, curve_at,
+                                     decision_features, evaluate_policy,
+                                     select_error_model, unsafe_at_escalation)
 
 DEFAULT_NPZ = "reports/runs/s1_verify/v13/verify_scores.npz"
 MATCHED_RATES = (0.20, 0.30, 0.40)
@@ -125,19 +125,6 @@ def sweep_ranked(risk: np.ndarray, wrong: np.ndarray, k_clarify: int) -> list:
     return curve
 
 
-def read_curve(curve: list, target: float) -> float:
-    """Unsafe rate at a matched escalation rate, linearly interpolated."""
-    curve = sorted(curve)
-    rates = [e for e, _ in curve]
-    if target < rates[0] or target > rates[-1]:
-        return float("nan")
-    for (e0, u0), (e1, u1) in zip(curve, curve[1:]):
-        if e0 <= target <= e1:
-            w = 0.0 if e1 == e0 else (target - e0) / (e1 - e0)
-            return u0 + w * (u1 - u0)
-    return float("nan")
-
-
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--npz", default=DEFAULT_NPZ)
@@ -178,10 +165,10 @@ def main() -> None:
     print(f"  {'handoff':>8} {'frozen':>8} {'cost-cal':>9} "
           f"{'rank max_score':>15} {'rank margin':>12}")
     for target in MATCHED_RATES:
-        vals = {"static": read_curve(static, target),
-                "calibrated": read_curve(calibrated, target),
-                "ranked_max_score": read_curve(by_max_score, target),
-                "ranked_margin": read_curve(by_margin, target)}
+        vals = {"static": curve_at(static, target),
+                "calibrated": curve_at(calibrated, target),
+                "ranked_max_score": curve_at(by_max_score, target),
+                "ranked_margin": curve_at(by_margin, target)}
         for key, value in vals.items():
             rows[key][f"{target:.2f}"] = value
         print(f"  {target:>8.2f} {vals['static']:>8.3f} {vals['calibrated']:>9.3f} "

@@ -26,6 +26,7 @@ not in code path.
 """
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Protocol, Sequence
 
@@ -33,9 +34,10 @@ import numpy as np
 
 from src.decision import metrics as M
 from src.decision.gate import action_for as gate_action_for
-from src.decision.slow import (Observation, PolicyThresholds, SlowState,
-                               SlowStateConfig, fit_answer_threshold,
-                               fit_in_schema_threshold, observe_row)
+from src.decision.slow import (AciConfig, AdaptiveThreshold, Observation,
+                               PolicyThresholds, SlowState, SlowStateConfig,
+                               fit_answer_threshold, fit_in_schema_threshold,
+                               observe_row)
 
 class Policy(Protocol):
     """An information budget plus a threshold rule. No IO, no globals.
@@ -164,6 +166,70 @@ class RecalibratePolicy:
         if min(len(inside), len(outside)) < self._cfg.min_group:
             return self._tau_in
         return fit_in_schema_threshold(inside[:, None], outside[:, None])
+
+
+@dataclass(frozen=True)
+class AdaptivePolicyConfig:
+    """The ACI arm's information budget and update."""
+    delay: int = 200
+    target: float = 0.02
+    step: float = 0.01
+    bounds: tuple = (0.30, 0.99)
+
+    def __post_init__(self) -> None:
+        if self.delay < 0:
+            raise ValueError("delay must be >= 0")
+
+
+class AdaptivePolicy:
+    """Moves the binding threshold by the revealed error rate (ACI).
+
+    The delayed-refit arm refits several thresholds in batches and was measured
+    harmful (0.305 unsafe against the incumbent's 0.143) because it moved the
+    confidence bar while the in-schema bar was the binding constraint. This arm
+    carries the same information — labels, ``delay`` steps late — through a
+    single small-step update on the knob that actually gates novel input.
+
+    Pending actions are matched to arriving labels in order, which is what a
+    constant delay guarantees: the runner hands the label of step ``i - delay``
+    to ``observe_labeled`` right after ``observe`` has recorded step ``i``.
+    """
+
+    def __init__(self, base: PolicyThresholds, cfg: AdaptivePolicyConfig):
+        self._base, self._cfg = base, cfg
+        bar = base.tau_in_schema if base.tau_in_schema is not None else 0.7
+        self._threshold = AdaptiveThreshold(bar, AciConfig(
+            target=cfg.target, step=cfg.step, bounds=cfg.bounds))
+        self._pending: deque = deque()
+        self.label_delay = cfg.delay
+        self.name = f"adaptive(delay={cfg.delay}, step={cfg.step:g})"
+
+    def thresholds(self) -> PolicyThresholds:
+        return PolicyThresholds(self._base.tau_answer, self._base.k_clarify,
+                                self._threshold.value())
+
+    def observe(self, obs: Observation) -> None:
+        self._pending.append(obs.top_prob < self._base.tau_answer
+                             or obs.set_size > self._base.k_clarify)
+
+    def observe_labeled(self, obs: Observation, label: int) -> None:
+        """A revealed outcome moves the bar only when an answer was wrong.
+
+        An escalated item cannot produce an unsafe answer, so it counts as a
+        safe observation — the update is over the rate across all traffic.
+
+        An empty buffer is a contract violation, not a no-op: the runner only
+        delivers a label for step ``i - delay`` once ``observe`` has recorded
+        step ``i``. Dropping it silently would leave the bar un-updated and the
+        budget silently unheld, which is the failure mode this whole line of
+        work exists to remove.
+        """
+        if not self._pending:
+            raise ValueError(
+                "label arrived with no pending decision — the runner must "
+                "observe each step before delivering its delayed label")
+        would_escalate = self._pending.popleft()
+        self._threshold.observe(not would_escalate and obs.pred != label)
 
 
 @dataclass(frozen=True)

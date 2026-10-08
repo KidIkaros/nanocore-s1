@@ -137,6 +137,63 @@ def _windows(items: Sequence, window: int) -> List[List]:
     return [list(items[i:i + window]) for i in range(len(items) - window + 1)]
 
 
+@dataclass(frozen=True)
+class AciConfig:
+    """ACI on one threshold: a tolerated rate and a step.
+
+    ``target`` is the tolerated *unsafe-answer* rate over all traffic — not a
+    precision among answered items. The distinction matters: a precision target
+    can be met by answering almost nothing, whereas a rate over all traffic is a
+    budget the operator can actually hold.
+    """
+    target: float = 0.02
+    step: float = 0.01
+    bounds: tuple = (0.30, 0.99)
+
+    def __post_init__(self) -> None:
+        if not 0 < self.target < 1:
+            raise ValueError("target must be a rate in (0, 1)")
+        if self.step <= 0:
+            raise ValueError("step must be positive")
+        low, high = self.bounds
+        if not low < high:
+            raise ValueError("bounds must be an increasing (low, high) pair")
+
+
+class AdaptiveThreshold:
+    """One parameter, moved by the observed error rate (Gibbs & Candès 2021).
+
+        τ ← τ + γ (1{unsafe} − target)
+
+    Adaptive conformal inference tracks a single parameter by gradient descent
+    on the coverage error and provably holds the target rate over long intervals
+    under an arbitrary data-generating process. Here the event is an unsafe
+    answer rather than a set miss, and the sign follows our threshold direction:
+    a raised in-schema bar escalates more, so an error raises it.
+
+    What it is *not*: the step size is fixed. DtACI (JMLR 2024) tunes the step
+    online as well, and the sensitivity sweep is what would justify adding that.
+    """
+
+    def __init__(self, value: float, cfg: AciConfig):
+        low, high = cfg.bounds
+        self._cfg = cfg
+        self._value = float(min(max(value, low), high))
+
+    @property
+    def config(self) -> AciConfig:
+        return self._cfg
+
+    def value(self) -> float:
+        return self._value
+
+    def observe(self, unsafe: bool) -> None:
+        """One revealed outcome: was the answer we gave wrong?"""
+        low, high = self._cfg.bounds
+        moved = self._value + self._cfg.step * (float(bool(unsafe)) - self._cfg.target)
+        self._value = float(min(max(moved, low), high))
+
+
 class SlowState:
     """Windowed slow state over label-free anomalies.
 
