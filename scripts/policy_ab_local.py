@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -38,7 +39,7 @@ from src.decision.gate import ConformalGate, fit_in_schema_threshold
 from src.decision.policy import (GlialPolicy, PolicyThresholds,
                                  RecalibrateConfig, RecalibratePolicy,
                                  SlowStateConfig, StaticPolicy, Stream,
-                                 StreamConfig, run_stream)
+                                 StreamConfig, observe_row, run_stream)
 
 DEFAULT_NPZ = "reports/runs/s1_verify/v10/verify_scores.npz"
 EXPECTED_COSINE_TEST_ACC = 0.7562    # v10's published cosine accuracy
@@ -94,10 +95,7 @@ def calibrate_base(arrays: dict, oos: int, columns: dict,
     return gate
 
 
-def reference_scale(arrays: dict, oos: int) -> float:
-    """Mean raw top score on the calibration distribution — the drift baseline."""
-    keep = arrays["y_val"] != oos
-    return float(arrays["scores_val"][keep].max(axis=1).mean())
+
 
 
 def train_pool(arrays: dict, oos: int, columns: dict) -> tuple:
@@ -117,14 +115,37 @@ def sample_stream(scores: np.ndarray, labels: np.ndarray, columns: np.ndarray,
     return scores[picked][:, columns], labels[picked]
 
 
-def arms(base: PolicyThresholds, reference: float) -> list:
+@dataclass(frozen=True)
+class Reference:
+    """The healthy stream the glial arm's bars are fitted on.
+
+    Both bars are data-derived: the drift baseline is the reference's mean top
+    score, and the activation bar is the most anomalous reference window plus
+    one. Neither is a constant, because on this scorer the median healthy
+    decision sits exactly on the answer threshold.
+    """
+    observations: list
+    max_score: float
+
+
+def arms(base: PolicyThresholds, cfg: StreamConfig, reference: Reference) -> list:
     """Static incumbent, the glial arm, and the two label-driven baselines."""
-    return [StaticPolicy(base),
-            GlialPolicy(base, SlowStateConfig(reference_max_score=reference)),
+    glial = GlialPolicy(base, SlowStateConfig(reference_max_score=reference.max_score))
+    glial.calibrate_reference(reference.observations)
+    return [StaticPolicy(base), glial,
             RecalibratePolicy(base, RecalibrateConfig(delay=200, refit_every=50,
                                                       n_options=SPLIT)),
             RecalibratePolicy(base, RecalibrateConfig(delay=0, refit_every=50,
                                                       n_options=SPLIT))]
+
+
+def reference_from(arrays: dict, oos: int, columns: dict,
+                   cfg: StreamConfig) -> Reference:
+    """Build the healthy reference from the calibration split."""
+    keep = arrays["y_val"] != oos
+    rows = arrays["scores_val"][keep]
+    return Reference([observe_row(row, cfg)[0] for row in rows],
+                     float(rows.max(axis=1).mean()))
 
 
 def run_streams(arrays: dict, gate: ConformalGate, per_phase: int,
@@ -133,22 +154,58 @@ def run_streams(arrays: dict, gate: ConformalGate, per_phase: int,
     scores, labels = train_pool(arrays, oos, columns)
     deployed, full = np.arange(SPLIT), np.arange(scores.shape[1])
     base = PolicyThresholds(gate.tau_answer, gate.k_clarify, gate.tau_in_schema)
-    reference = reference_scale(arrays, oos)
+    cfg = StreamConfig(t_prob=gate.t_prob, qhat=gate.qhat, k_clarify=gate.k_clarify)
+    reference = reference_from(arrays, oos, columns, cfg)
     rng = np.random.default_rng(seed)
     streams = {"novel_intents": sample_stream(scores, labels, deployed, per_phase, rng),
                "prior_shift": sample_stream(scores, labels, full, per_phase, rng)}
-    out = {}
-    for name, (S, y) in streams.items():
-        stream = Stream(S, y, per_phase)
-        cfg = StreamConfig(t_prob=gate.t_prob, qhat=gate.qhat,
-                           k_clarify=gate.k_clarify)
-        out[name] = {p.name: run_stream(p, stream, cfg)
-                     for p in arms(base, reference)}
-    return out
+    return {name: {p.name: run_stream(p, Stream(S, y, per_phase), cfg)
+                   for p in arms(base, cfg, reference)}
+            for name, (S, y) in streams.items()}
+
+
+SWEEP_RATES = (0.0, 0.25, 0.5, 0.75, 1.0)
+
+
+def sample_mixed_stream(scores: np.ndarray, labels: np.ndarray, columns: np.ndarray,
+                        per_phase: int, novelty: float, rng) -> tuple:
+    """Phase 2 mixes novel items with in-schema ones at the requested rate.
+
+    ``novelty`` is the difficulty axis the ANGN review names: its central
+    empirical regularity is that the glial advantage grows with problem
+    difficulty, so the advantage is worth measuring *across* it.
+    """
+    in_schema = np.flatnonzero(labels < SPLIT)
+    novel = np.flatnonzero(labels >= SPLIT)
+    n_novel = int(round(per_phase * novelty))
+    phase2 = np.concatenate([rng.choice(novel, n_novel, replace=False),
+                             rng.choice(in_schema, per_phase - n_novel, replace=False)])
+    picked = np.concatenate([rng.choice(in_schema, per_phase, replace=False), phase2])
+    return scores[picked][:, columns], labels[picked]
+
+
+def sweep(arrays: dict, gate: ConformalGate, per_phase: int, seeds: int) -> dict:
+    """Glial advantage as a function of how much of phase 2 is unanswerable."""
+    oos, columns = label_mapping(arrays)
+    scores, labels = train_pool(arrays, oos, columns)
+    base = PolicyThresholds(gate.tau_answer, gate.k_clarify, gate.tau_in_schema)
+    cfg = StreamConfig(t_prob=gate.t_prob, qhat=gate.qhat, k_clarify=gate.k_clarify)
+    reference = reference_from(arrays, oos, columns, cfg)
+    rows = {}
+    for novelty in SWEEP_RATES:
+        runs = []
+        for seed in range(seeds):
+            S, y = sample_mixed_stream(scores, labels, np.arange(SPLIT), per_phase,
+                                       novelty, np.random.default_rng(seed))
+            stream = Stream(S, y, per_phase)
+            runs.append({"mixed": {p.name: run_stream(p, stream, cfg)
+                                   for p in arms(base, cfg, reference)}})
+        rows[f"{novelty:.2f}"] = aggregate(runs)["mixed"]
+    return rows
 
 
 AGGREGATED_METRICS = ("accuracy", "escalation_rate", "wrong_answer_rate",
-                      "selective_acc")
+                      "selective_acc", "tau_in_schema_max")
 
 
 def aggregate(runs: list) -> dict:
@@ -177,6 +234,8 @@ def main() -> None:
     ap.add_argument("--out", default="reports/runs/policy_ab/v1")
     ap.add_argument("--per-phase", type=int, default=300)
     ap.add_argument("--seeds", type=int, default=5)
+    ap.add_argument("--sweep", action="store_true",
+                    help="glial advantage vs novelty rate instead of the two streams")
     args = ap.parse_args()
 
     arrays = load_arrays(Path(args.npz))
@@ -186,8 +245,24 @@ def main() -> None:
     gate = calibrate_base(arrays, oos, columns)
     print(f"base: tau={gate.tau_answer:.3f} qhat={gate.qhat:.3f} "
           f"k_clarify={gate.k_clarify} t_prob={gate.t_prob:.3f} "
-          f"tau_in_schema={gate.tau_in_schema:.3f} "
-          f"ref_max_score={reference_scale(arrays, oos):.3f}")
+          f"tau_in_schema={gate.tau_in_schema:.3f}")
+
+    if args.sweep:
+        rows = sweep(arrays, gate, args.per_phase, args.seeds)
+        out_dir = Path(args.out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "sweep_results.json").write_text(json.dumps(
+            {"base": gate.calibration, "per_phase": args.per_phase,
+             "seeds": args.seeds, "novelty_rates": SWEEP_RATES, "rows": rows},
+            indent=1))
+        print(f"\nnovelty  static_wrong  glial_wrong  advantage  glial_p1_esc")
+        for rate, by_policy in rows.items():
+            st = by_policy["static"]["phase2"]["wrong_answer_rate"]["mean"]
+            gl = by_policy["glial"]["phase2"]["wrong_answer_rate"]["mean"]
+            esc = by_policy["glial"]["phase1"]["escalation_rate"]["mean"]
+            print(f"  {rate:5}  {st:12.3f}  {gl:11.3f}  {st - gl:+9.3f}  {esc:12.3f}")
+        print(f"\nwrote {out_dir / 'sweep_results.json'}")
+        return
 
     runs = [run_streams(arrays, gate, args.per_phase, s) for s in range(args.seeds)]
     agg = aggregate(runs)

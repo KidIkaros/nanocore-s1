@@ -27,7 +27,7 @@ not in code path.
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Protocol, Sequence
 
 import numpy as np
@@ -71,6 +71,7 @@ class SlowStateConfig:
     """
     window: int = 20
     activate_at: int = 14
+    release_at: int = 6
     tau_step: float = 0.04
     max_shift: float = 0.30
     reference_max_score: Optional[float] = None
@@ -88,20 +89,48 @@ class SlowState:
     def __init__(self, base: PolicyThresholds, cfg: SlowStateConfig):
         if not 0 < cfg.activate_at <= cfg.window:
             raise ValueError("activate_at must be in (0, window]")
+        if not 0 <= cfg.release_at < cfg.activate_at:
+            raise ValueError("release_at must be in [0, activate_at)")
         self._base, self._cfg = base, cfg
         self._window: deque = deque(maxlen=cfg.window)
         self._streak = 0
+        self._activate_at = cfg.activate_at
+        self._release_at = cfg.release_at
+
+    def calibrate(self, reference: Sequence[Observation]) -> int:
+        """Set the activation bar from a healthy reference stream.
+
+        The anomaly criterion fires at the *scorer's* base rate, not at a
+        rare-event rate: on cached CLINC150 the median healthy decision sits
+        exactly on ``tau_answer``, so half of healthy decisions look anomalous
+        and a constant bar false-activates. The bar is therefore the most
+        anomalous window seen while healthy, plus one.
+        """
+        counts = [sum(self._anomalous(o) for o in w) for w in _windows(reference, self._cfg.window)]
+        if counts:
+            self._activate_at = min(self._cfg.window, max(counts) + 1)
+        self._release_at = min(self._cfg.release_at, self._activate_at - 1)
+        return self._activate_at
 
     def observe(self, obs: Observation) -> None:
         self._window.append(obs)
-        self._streak = self._streak + 1 if self._activated() else 0
+        self._streak = self._next_streak()
 
-    def _activated(self) -> bool:
-        """A full window is required — a partial one is not evidence."""
+    def _next_streak(self) -> int:
+        """Schmitt trigger: activate on strong evidence, hold through ambiguity.
+
+        A single quiet window is not grounds to release — measured on real
+        data, a shift that sits near ``drift_margin`` otherwise flickers, and
+        the threshold snaps back to base while the shift is still in force.
+        """
         if len(self._window) < self._cfg.window:
-            return False
+            return 0
         anomalies = sum(self._anomalous(o) for o in self._window)
-        return anomalies >= self._cfg.activate_at or self._drifted()
+        if anomalies >= self._activate_at or self._drifted():
+            return self._streak + 1
+        if self._streak and anomalies <= self._release_at:
+            return 0
+        return self._streak
 
     def _anomalous(self, obs: Observation) -> bool:
         below_schema = (self._base.tau_in_schema is not None
@@ -183,6 +212,10 @@ class GlialPolicy:
     def __init__(self, base: PolicyThresholds,
                  cfg: Optional[SlowStateConfig] = None):
         self._state = SlowState(base, cfg or SlowStateConfig())
+
+    def calibrate_reference(self, reference: Sequence[Observation]) -> int:
+        """Feed the healthy reference stream the activation bar is fitted on."""
+        return self._state.calibrate(reference)
 
     def thresholds(self) -> PolicyThresholds:
         return self._state.thresholds()
@@ -316,21 +349,39 @@ def _as_stream_arrays(stream: Stream) -> tuple:
     return scores, labels
 
 
-def _step(policy: Policy, row: np.ndarray, label: int,
-          cfg: StreamConfig) -> tuple:
-    """One decision: probabilities, conformal set, action, observation."""
+def observe_row(row: np.ndarray, cfg: StreamConfig) -> tuple:
+    """The label-free statistics of one decision row — the state's only input.
+
+    Public so a caller can build the healthy reference stream the activation
+    bar is calibrated on, using exactly the statistics the state will see.
+    """
     P = softmax_rows(row, cfg.t_prob)[0]
     members = aps_members(P[None, :], cfg.qhat)[0]
     obs = Observation(top_prob=float(P.max()), set_size=len(members),
                       entropy=float(-(P * np.log(P + 1e-12)).sum()),
                       pred=int(P.argmax()), max_score=float(row.max()))
+    return obs, members
+
+
+def _windows(items: Sequence, window: int) -> List[List]:
+    return [list(items[i:i + window]) for i in range(len(items) - window + 1)]
+
+
+def _step(policy: Policy, row: np.ndarray, label: int,
+          cfg: StreamConfig) -> tuple:
+    """One decision: probabilities, conformal set, action, observation."""
+    obs, members = observe_row(row, cfg)
     policy.observe(obs)
-    action = _action(obs, policy.thresholds())
+    thresholds = policy.thresholds()
+    action = _action(obs, thresholds)
     record = {"correct": float(obs.pred == label),
               "covered": float(label in members),
               "escalated": float(action == "escalate"),
               "wrong_answer": float(action == "answer" and obs.pred != label),
-              "top_prob": obs.top_prob}
+              "top_prob": obs.top_prob,
+              "tau_answer": thresholds.tau_answer,
+              "tau_in_schema": (np.nan if thresholds.tau_in_schema is None
+                                else thresholds.tau_in_schema)}
     return obs, record
 
 
@@ -344,15 +395,25 @@ def _action(obs: Observation, thresholds: PolicyThresholds) -> str:
 
 
 def _phase_block(records: Sequence[Dict], coverage_target: float) -> Dict:
+    """Metrics plus the policy's own state during this phase.
+
+    The threshold statistics matter: an end-of-stream snapshot can read "base"
+    while the phase was governed by a raised bar, which makes the metrics look
+    impossible. These are the numbers that explain them.
+    """
     conf = np.array([r["top_prob"] for r in records])
     hit = np.array([r["correct"] for r in records])
+    schema = np.array([r["tau_in_schema"] for r in records])
     return {"n": len(records),
             "accuracy": float(hit.mean()),
             "selective_acc": float(M.selective_at_coverage(conf, hit, coverage_target)),
             "coverage": float(np.mean([r["covered"] for r in records])),
             "escalation_rate": float(np.mean([r["escalated"] for r in records])),
             "wrong_answer_rate": float(np.mean([r["wrong_answer"] for r in records])),
-            "aurc": float(M.aurc(conf, hit))}
+            "aurc": float(M.aurc(conf, hit)),
+            "tau_answer_mean": float(np.mean([r["tau_answer"] for r in records])),
+            "tau_in_schema_mean": float(np.nanmean(schema)),
+            "tau_in_schema_max": float(np.nanmax(schema))}
 
 
 def _recovery_latency(records: Sequence[Dict], shift_at: int,
@@ -378,5 +439,4 @@ def _summarize(policy: Policy, records: Sequence[Dict], shift_at: int,
                 lambda h, c: M.selective_at_coverage(c, h, cfg.coverage_target),
                 hit2, conf2, resamples=500),
             "recovery_latency": _recovery_latency(records, shift_at,
-                                                  cfg.recovery_window),
-            "final_thresholds": asdict(policy.thresholds())}
+                                                  cfg.recovery_window)}

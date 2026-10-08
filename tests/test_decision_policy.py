@@ -105,9 +105,63 @@ def test_slow_state_stays_bounded_under_sustained_drift():
     assert moved.tau_answer <= 0.999
 
 
+def test_slow_state_holds_through_a_single_quiet_window():
+    """Schmitt trigger: one calm window is not grounds to release.
+
+    Measured on real data, a shift sitting near ``drift_margin`` otherwise
+    flickers and the bar snaps back while the shift is still in force.
+    """
+    cfg = SlowStateConfig(window=20, activate_at=14, release_at=6,
+                          reference_max_score=0.8)
+    state = SlowState(BASE, cfg)
+    for _ in range(14):
+        state.observe(_obs(0.05, set_size=12))         # anomalies
+    for _ in range(6):
+        state.observe(_obs(0.95, set_size=1))          # window now full: 14 anomalies
+    raised = state.thresholds().tau_answer
+    assert raised > BASE.tau_answer
+
+    for _ in range(6):
+        state.observe(_obs(0.95, set_size=1))          # 8 anomalies left in window
+    assert state.thresholds().tau_answer == raised     # held, not released
+
+    for _ in range(8):
+        state.observe(_obs(0.95, set_size=1))          # 0 anomalies → sustained calm
+    assert state.thresholds() == BASE
+
+
+def test_calibrate_sets_the_bar_above_the_worst_healthy_window():
+    """The bar is data-derived, not a constant: healthy worst window, plus one."""
+    state = SlowState(BASE, SlowStateConfig(window=20, activate_at=14))
+    mixed = [_obs(0.05, set_size=9) if i % 5 == 0 else _obs(0.95, set_size=1)
+             for i in range(100)]                    # exactly 4 anomalies per window
+    assert state.calibrate(mixed) == 5
+    for _ in range(20):
+        state.observe(_obs(0.05, set_size=9))
+    assert state.thresholds().tau_answer > BASE.tau_answer
+
+
+def test_calibrated_state_stays_quiet_on_its_reference_stream():
+    """Regression: an uncalibrated bar fires on healthy data.
+
+    On cached CLINC150 the median healthy decision sits exactly on tau_answer,
+    so ~half of healthy decisions look anomalous and a constant bar activates
+    the policy on data that has not shifted.
+    """
+    reference = [_obs(0.05, set_size=9) if i % 5 == 0 else _obs(0.95, set_size=1)
+                 for i in range(200)]
+    state = SlowState(BASE, SlowStateConfig(window=20, activate_at=14))
+    state.calibrate(reference)
+    for obs in reference:
+        state.observe(obs)
+    assert state.thresholds() == BASE
+
+
 def test_slow_state_rejects_impossible_config():
     with pytest.raises(ValueError):
         SlowState(BASE, SlowStateConfig(window=10, activate_at=11))
+    with pytest.raises(ValueError):
+        SlowState(BASE, SlowStateConfig(activate_at=10, release_at=10))
 
 
 def test_recalibrate_raises_bar_when_confident_labels_are_wrong():
@@ -146,7 +200,8 @@ def test_run_stream_reports_both_phases_with_uncertainty():
     assert out["phase1"]["n"] == out["phase2"]["n"] == 200
     ci = out["phase2_selective_ci"]
     assert ci["lo"] <= ci["point"] <= ci["hi"]
-    assert out["final_thresholds"]["tau_answer"] == BASE.tau_answer
+    assert out["phase2"]["tau_answer_mean"] == pytest.approx(BASE.tau_answer)
+    assert out["phase2"]["tau_in_schema_max"] == pytest.approx(BASE.tau_in_schema)
 
 
 def test_run_stream_rejects_misaligned_stream():
@@ -183,10 +238,10 @@ def test_label_delay_changes_what_recalibrate_sees():
     oracle = _run(RecalibratePolicy(BASE, RecalibrateConfig(0, 50)), scores, y, 300)
     delayed = _run(RecalibratePolicy(BASE, RecalibrateConfig(250, 50)), scores, y, 300)
     assert oracle["policy"] != delayed["policy"]
-    assert oracle["final_thresholds"]["tau_answer"] != pytest.approx(
-        delayed["final_thresholds"]["tau_answer"])
+    assert oracle["phase2"]["tau_answer_mean"] != pytest.approx(
+        delayed["phase2"]["tau_answer_mean"])
     for arm in (oracle, delayed):
-        assert 0 < arm["final_thresholds"]["tau_answer"] < 1
+        assert 0 < arm["phase2"]["tau_answer_mean"] < 1
 
 
 def test_glial_raises_the_in_schema_bar_only_with_a_reference_scale():
@@ -196,8 +251,8 @@ def test_glial_raises_the_in_schema_bar_only_with_a_reference_scale():
     scaled = _run(GlialPolicy(BASE, SlowStateConfig(reference_max_score=0.8)),
                   scores, y, 300)
     unscaled = _run(GlialPolicy(BASE), scores, y, 300)
-    assert scaled["final_thresholds"]["tau_in_schema"] > BASE.tau_in_schema
-    assert unscaled["final_thresholds"]["tau_in_schema"] == BASE.tau_in_schema
+    assert scaled["phase2"]["tau_in_schema_max"] > BASE.tau_in_schema
+    assert unscaled["phase2"]["tau_in_schema_max"] == BASE.tau_in_schema
 
 
 def test_stream_records_wrong_answers_separately_from_escalations():
