@@ -222,7 +222,7 @@ def _step(policy: Policy, row: np.ndarray, label: int,
     obs, members = observe_row(row, cfg.t_prob, cfg.qhat)
     policy.observe(obs)
     thresholds = policy.thresholds()
-    action = _action(obs, thresholds)
+    action = action_for(obs, thresholds)
     record = {"correct": float(obs.pred == label),
               "covered": float(label in members),
               "escalated": float(action == "escalate"),
@@ -234,7 +234,7 @@ def _step(policy: Policy, row: np.ndarray, label: int,
     return obs, record
 
 
-def _action(obs: Observation, thresholds: PolicyThresholds) -> str:
+def action_for(obs: Observation, thresholds: PolicyThresholds) -> str:
     """``ConformalGate.decide`` order: in-schema, confidence, set size."""
     if thresholds.tau_in_schema is not None and obs.max_score < thresholds.tau_in_schema:
         return "escalate"
