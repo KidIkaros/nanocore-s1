@@ -1,12 +1,16 @@
 # ADR-0013: Ambiguity-aware decision policy — `clarify` action and meta-routed heads
 
 **Date**: 2026-10-07
-**Status**: accepted in principle; **trigger mapping revised after measurement** —
-the `s1_policy` run showed `answer`-on-singleton-set is unreachable on flat softmaxes
-(top prob ~0.008 < q̂ on a 150-way task), so the policy lost to a plain threshold
-(−0.26 resolved). Action boundaries must key on calibrated confidence or relative set
-mass, not absolute set size. The clarify mechanism itself is validated (97.5%
-resolution); the action table below is the corrected version.
+**Status**: accepted; **trigger mapping revised twice under measurement** —
+`s1_policy` showed `answer`-on-singleton-set is unreachable on flat softmaxes
+(top prob ~0.008 < q̂ on a 150-way task), losing −0.26 to a threshold gate;
+`s1_policy_v2` (confidence-keyed triggers, dual temperature, 3-way calibration
+splits) confirmed the corrected table below and revealed the load-bearing
+constraint: **the three-action policy requires a confidence-meaningful scorer**.
+On flat cosine it still loses (0.482 vs 0.719 — honest uncertainty on 150-way
+*is* escalation); on a task-fitted head the identical policy resolves **0.918**
+(+0.20 over threshold, +0.30 over always-answer). On wide schemas the fitted
+head is a prerequisite for the full policy, not an optional upgrade.
 **Deciders**: project owner, agent
 
 ## Context
@@ -55,9 +59,22 @@ This is directly supported by the project's measured evidence:
 | `escalate` | hand to a bigger model / human | OOS signal, or a genuinely diffuse set |
 | `abstain` | no answer possible | empty set / policy forbids escalation |
 
-> **Measured correction** (`s1_policy`): the first-draft trigger (`|set|==1` → answer)
-> produced *zero* answers on CLINC150 at T=1.0 — 72% of traffic escalated and the
-> policy lost −0.26 to threshold gating. Triggers belong in confidence space.
+> **Measured corrections** (`s1_policy`, `s1_policy_v2`, CLINC150):
+>
+> - v1's `|set|==1` → answer trigger produced *zero* answers at T=1.0 — 72% of
+>   traffic escalated, −0.26 vs threshold gating. Triggers belong in confidence
+>   space.
+> - v2's corrected mapping still loses on flat cosine (0.482 vs 0.719): a
+>   90%-precision τ_answer can only admit the easy ~33% of a 150-way flat softmax,
+>   and `clarify` fired on only 55/5500 items — the band between "confident" and
+>   "diffuse" is nearly empty on CLINC's bimodal distribution. The same policy on
+>   a linear task head (in-scope 0.970) resolves 0.918 and beats every baseline.
+> - Clarify is therefore a *dataset-property* mechanism: correct where ambiguity
+>   exists, near-vestigial where it doesn't. Its next evaluation needs data with
+>   genuine in-schema ambiguity, not templated intents.
+> - The head's conformal sets are degenerate (q̂≈1.0, coverage 0.9996): the
+>   sharpening pathology's fourth sighting. Per-scorer set calibration is a hard
+>   Stage-3 requirement, and coverage must land in a band, not merely ≥ target.
 
 `clarify` and `escalate` are distinct because they have different costs: a follow-up
 question is ~one encode; escalation is a bigger model call. The caller's policy controls
@@ -68,10 +85,14 @@ whether `clarify` is offered (a headless router wants `escalate` directly).
 Before any fitted scorer runs, an in-schema check decides the path:
 
 ```
-in-schema for a fitted TaskHead?   → TaskHead
-in-scope but no fitted head?       → zero-shot CosineScorer
+in-schema for a fitted TaskHead?   → TaskHead → calibrated policy
+in-scope but no fitted head?       → zero-shot CosineScorer + threshold gate
 out-of-scope for the deployment?   → gate (clarify / escalate / abstain)
 ```
+
+> **Measured** (`s1_policy_v2`): the fitted head also improves the in-schema check
+> itself — 86.9% OOS caught at 6.4% in-scope false-reject, vs cosine max_sim's
+> 63.0% at 3.9%.
 
 The in-schema test is itself a noul-style decision (score against domain anchors +
 conformal set), reusing the same machinery — no new component type is introduced.

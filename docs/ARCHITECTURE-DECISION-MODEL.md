@@ -183,7 +183,12 @@ Scorer(Protocol):    name; scores(state_vec, option_vecs) -> (k,)
                      └── TaskHeadScorer    (fitted MLP per label schema; Noul-family,
                                             needs headroom + labeled data)
 
-ConformalGate(alpha=0.05, method="aps", policy="escalate", min_n=200)
+ConformalGate(alpha=0.05, method="aps", policy="escalate", min_n=200,
+              t_prob_floor=0.25, t_set=1.0, tau_answer=None)
+  # dual temperature: T_prob (floored) for reported probs, T_set for APS sets —
+  # log-loss-fitted T can sharpen to 0.02 and produce degenerate sets (s1_clinc150_oos);
+  # per-scorer calibration — fitted heads need their own T_prob/q̂ (s1_policy_v2);
+  # coverage must land in a band, not merely ≥ target (degenerate ≥ is the trap)
   .calibrate(scores_list, targets_list) -> dict   # raises below min_n
   .decide(scores, labels) -> GateResult(set, probabilities, action)
 
@@ -370,7 +375,7 @@ All decisions now live in `adr/`. Summary:
 | 0009 | Conformal abstention, asymmetric by domain | accepted |
 | 0010 | Ordinal `Score` is a trained component (was "the only"; joined by task-fitted heads per 0011) | accepted, rescoped |
 | 0011 | Benchmark admission requires a headroom check | **validated in practice** — gate admitted GoEmotions; the fitted head then won by +0.168 macro-F1 |
-| 0013 | Ambiguity-aware policy: `clarify` action + meta-routed heads | accepted — measurement prerequisite is the CLINC150 OOS run |
+| 0013 | Ambiguity-aware policy: `clarify` action + meta-routed heads | accepted; measured end-to-end (`s1_policy`, `s1_policy_v2`) — needs a confidence-meaningful scorer; on a task head the full policy resolves 0.918 |
 | 0012 | The encoder enforces a hard input-length cap | accepted |
 
 ---

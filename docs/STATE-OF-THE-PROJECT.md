@@ -62,6 +62,9 @@ the first time, tying Jev's tuned micro-F1 (0.386 vs 0.387).
 | 30 | **Log-loss temperature fitting can destroy conformal sets** | kernel fit T=0.02 → q̂=0.9975, mean set 56.7, trivial 0.997 coverage; scorer and gate need separate temperature treatment | **high** — the sharpening trap in a new guise |
 | 31 | **Set-size action triggers fail on flat softmaxes** | `s1_policy`: `answer`-on-singleton unreachable at T=1.0 (top prob ~0.008 < q̂=0.0235); ambiguity policy lost −0.26 to threshold gating; triggers must key on calibrated confidence | **high** |
 | 32 | **A linear TaskHead nearly solves 150-way CLINC150** | 0.970 in-scope, OOS AUROC 0.968 via head max_prob; but degenerate conformal sets (q̂≈1.0, mean set 29.7) — overconfident heads need their own set calibration | **high** |
+| 33 | **The ambiguity policy is scorer-dependent** | `s1_policy_v2` (confidence triggers, dual temps, 3-way splits): on flat cosine it still loses 0.482 vs 0.719 — a 90%-precision τ admits only ~33% of a flat 150-way softmax and `clarify` fired on 1% of items; honest uncertainty on wide schemas *is* escalation | **high** |
+| 34 | **The identical policy on a task head resolves 0.918** | +0.20 over threshold gating, +0.30 over always-answer; head also improves the in-schema check (86.9% OOS at 6.4% FPR vs cosine 63.0% at 3.9%). The full 3-action policy needs a confidence-meaningful scorer — head is prerequisite on wide schemas | **high** |
+| 35 | First non-degenerate conformal coverage on a policy run | 0.914 @ α=0.10 with dual temperatures (T_prob floored 0.25, T_set=1.0); head sets still degenerate (q̂≈1.0, coverage 0.9996) — 4th sharpening-pathology sighting, per-scorer set calibration is required | **high** |
 
 ---
 
