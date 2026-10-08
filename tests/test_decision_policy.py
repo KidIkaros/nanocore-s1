@@ -140,9 +140,8 @@ def test_calibrate_fails_closed_on_a_short_reference():
 
 def test_observe_row_is_the_states_only_input():
     """The reference stream is built with the same statistics the state sees."""
-    cfg = StreamConfig(t_prob=1.0, qhat=0.95, k_clarify=3)
     row = np.array([2.0, 0.1, 0.1, 0.1])
-    obs, members = observe_row(row, cfg)
+    obs, members = observe_row(row, t_prob=1.0, qhat=0.95)
     assert obs.pred == 0 and obs.max_score == 2.0
     assert obs.set_size == len(members) >= 1
     assert 0.0 <= obs.top_prob <= 1.0

@@ -28,6 +28,7 @@ import numpy as np
 from src.decision.scoring import CosineScorer, TaskHead, softmax_rows, aps_members
 from src.decision.gate import ConformalGate
 from src.decision.model import DecisionModel
+from src.decision.slow import SlowStateConfig, observe_row
 
 
 @dataclass
@@ -44,6 +45,7 @@ class AdaptConfig:
     head_kwargs: Dict = field(default_factory=dict)  # epochs, lr, ... (fit args)
     policy: str = "full"
     answer_precision: float = 0.90
+    glial: bool = False           # attach the label-free slow state to the gate
 
 
 @dataclass
@@ -174,6 +176,18 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
         Xo = Xo.detach().float().cpu().numpy() if hasattr(Xo, "detach") else np.asarray(Xo)
         tau_in = gate.fit_in_schema(head.logits(X[ci]), head.logits(Xo))
 
+    # ── optional slow state, calibrated on the same split the gate saw
+    #    (the calibration split is a healthy reference by construction)
+    glial = None
+    if cfg.glial:
+        cal_scores = head.logits(X[ci])
+        state = gate.attach_slow_state(SlowStateConfig(
+            reference_max_score=float(cal_scores.max(axis=1).mean())))
+        bar = state.calibrate([observe_row(row, gate.t_prob, gate.qhat)[0]
+                               for row in cal_scores])
+        glial = {"activate_at": bar, "n_reference": int(len(cal_scores)),
+                 "reference_max_score": state.config.reference_max_score}
+
     model = DecisionModel(encoder=encoder, scorer=head, gate=gate)
 
     # ── evaluate once, on the untouched test split
@@ -185,6 +199,7 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
         "head": {"kind": cfg.head_kind, **train_rec},
         "calibration": cal,
         "tau_in_schema": tau_in,
+        "glial": glial,
         "test": _report_metrics(head.logits(X[ti]), y_idx[ti], gate),
         "config": {"head_kind": cfg.head_kind, "alpha": cfg.alpha,
                    "fit_frac": cfg.fit_frac, "cal_frac": cfg.cal_frac,

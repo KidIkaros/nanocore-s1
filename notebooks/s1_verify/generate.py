@@ -669,6 +669,59 @@ except Exception as e:
 write_status("breadth")
 '''),
 
+    md('''## 5j. Cross-task shift — a genuinely different domain
+
+The breadth leg measures each dataset on its own terms. This one asks the
+deployment question: a **CLINC-calibrated** model meets **Banking77** input —
+a different intent taxonomy, so every arriving item is unanswerable by
+construction. The correct action is escalate, and the metric that matters is
+the unsafe-answer rate.
+
+Same arms as the local A/B (`src/decision/policy.py`): the frozen incumbent,
+the label-free slow state, and the label-driven baselines it must beat.
+'''),
+    code('''
+RESULTS["cross_task"] = {"status": "skipped"}
+try:
+    import datasets as _ds
+    from src.decision.policy import (GlialPolicy, PolicyThresholds,
+                                     RecalibrateConfig, RecalibratePolicy,
+                                     StaticPolicy, Stream, StreamConfig,
+                                     run_stream)
+    from src.decision.slow import SlowStateConfig, observe_row
+
+    N = 600
+    bank = _ds.load_dataset("mteb/banking77")["test"]["text"][:N]
+    Eb = to_numpy(encoder.encode(bank, prompt_name="SearchQuery", batch_size=64))
+    SC_bank = Eb @ LV.T                     # scored over CLINC's label space
+    stream = Stream(np.vstack([SC_te[te_in][:N], SC_bank]),
+                    np.concatenate([yt_c[te_in][:N], np.full(N, -1)]), N)
+
+    base = PolicyThresholds(gate.tau_answer, gate.k_clarify, gate.tau_in_schema)
+    cfg = StreamConfig(t_prob=gate.t_prob, qhat=gate.qhat, k_clarify=gate.k_clarify)
+    cal_rows = SC_val[val_in]
+    glial = GlialPolicy(base, SlowStateConfig(
+        reference_max_score=float(cal_rows.max(axis=1).mean())))
+    glial.calibrate_reference([observe_row(r, gate.t_prob, gate.qhat)[0]
+                               for r in cal_rows])
+    arms = [StaticPolicy(base), glial,
+            RecalibratePolicy(base, RecalibrateConfig(delay=200, refit_every=50,
+                                                      n_options=len(INTENT_TEXTS))),
+            RecalibratePolicy(base, RecalibrateConfig(delay=0, refit_every=50,
+                                                      n_options=len(INTENT_TEXTS)))]
+    RESULTS["cross_task"] = {"status": "ran", "n_per_phase": N,
+                             "arms": {p.name: run_stream(p, stream, cfg)
+                                      for p in arms}}
+    for arm, r in RESULTS["cross_task"]["arms"].items():
+        print(f"{arm:22} esc {r['phase1']['escalation_rate']:.3f}"
+              f"->{r['phase2']['escalation_rate']:.3f} "
+              f"unsafe {r['phase2']['wrong_answer_rate']:.3f}")
+except Exception as e:
+    RESULTS["cross_task"] = {"status": "failed", "error": repr(e)[:300]}
+    print("cross-task leg failed:", repr(e)[:200])
+write_status("cross-task")
+'''),
+
     md('''## 6. Live `decide()` — the typed interface on real input
 
 Full stack: encoder → scorer → gate → Prediction{probabilities, prediction_set,
@@ -730,6 +783,12 @@ verdict = {
     "memorization_ran": RESULTS["memorization"]["status"] == "ran",
     "breadth_ran": RESULTS["breadth"].get("status") in ("ran", "partial"),
     "breadth_datasets": RESULTS["breadth"].get("n_ran", 0),
+    "cross_task_ran": RESULTS["cross_task"].get("status") == "ran",
+    "cross_task_glial_safer": (
+        RESULTS["cross_task"].get("arms", {}).get("glial", {})
+        .get("phase2", {}).get("wrong_answer_rate", 1.0)
+        < RESULTS["cross_task"].get("arms", {}).get("static", {})
+        .get("phase2", {}).get("wrong_answer_rate", 0.0)),
     "breadth_head_ge_tfidf": all(
         r["blocks"]["taskhead"]["acc"]["point"]
         >= r["blocks"]["tfidf_lr"]["acc"]["point"]

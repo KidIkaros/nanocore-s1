@@ -20,50 +20,17 @@ Three measured traps are encoded as defaults:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
 from src.decision.scoring import aps_members, fit_temperature, mass_needed, softmax_rows
+from src.decision.slow import (Observation, PolicyThresholds, SlowState,
+                               SlowStateConfig, fit_answer_threshold,
+                               fit_in_schema_threshold, observe_row)
 
 ACTIONS = ("answer", "clarify", "escalate", "abstain")
-
-
-def fit_answer_threshold(top_prob: np.ndarray, correct: np.ndarray,
-                         precision: float, min_answered: int = 30) -> float:
-    """Smallest top-prob threshold reaching ``precision`` among answered items.
-
-    Module-level because policy arms (``src/decision/policy.py``) refit the
-    same threshold from delayed labels. Fails closed: below ``min_answered``
-    candidates the threshold answers the least, never the most.
-    """
-    top_prob = np.asarray(top_prob, dtype=np.float64)
-    correct = np.asarray(correct, dtype=bool)
-    for t in np.sort(np.quantile(top_prob, np.linspace(0, 0.95, 40))):
-        mask = top_prob >= t
-        if mask.sum() >= min_answered and correct[mask].mean() >= precision:
-            return float(t)
-    return float(np.quantile(top_prob, 0.9))
-
-
-def fit_in_schema_threshold(in_scores: np.ndarray, oos_scores: np.ndarray) -> float:
-    """Youden point on raw max score — the in-schema / out-of-schema boundary.
-
-    Module-level for the same reason as ``fit_answer_threshold``: policy arms
-    refit it from delayed labels. Operates on max scores, not probabilities —
-    the in-schema signal is the raw similarity (measured AUROC 0.934).
-    """
-    ins = np.asarray(in_scores, dtype=np.float64).max(axis=1)
-    oos = np.asarray(oos_scores, dtype=np.float64).max(axis=1)
-    y = np.concatenate([np.ones(len(ins)), np.zeros(len(oos))])
-    x = np.concatenate([ins, oos])
-    best_tau, best_j = float(np.median(ins)), -1.0
-    for t in np.unique(x):
-        j = float((x[y == 1] >= t).mean() + (x[y == 0] < t).mean() - 1)
-        if j > best_j:
-            best_j, best_tau = j, float(t)
-    return best_tau
 
 
 @dataclass
@@ -109,6 +76,7 @@ class ConformalGate:
         self.qhat: Optional[float] = None
         self.tau_in_schema: Optional[float] = None
         self.calibration: Dict = {}
+        self.slow: Optional[SlowState] = None
 
     # ── calibration ──────────────────────────────────────────────────────
 
@@ -170,6 +138,31 @@ class ConformalGate:
         self.calibration["tau_in_schema"] = self.tau_in_schema
         return self.tau_in_schema
 
+    # ── slow state (optional) ────────────────────────────────────────────
+
+    def attach_slow_state(self, cfg: Optional[SlowStateConfig] = None) -> SlowState:
+        """Modulate this gate's thresholds from label-free decision statistics.
+
+        The fitted values stay the base, so detaching restores the frozen
+        policy exactly. Call ``calibrate_slow`` with a healthy reference stream
+        before serving — the activation bar is fitted, not guessed.
+        """
+        self.slow = SlowState(self.base_thresholds(), cfg or SlowStateConfig())
+        return self.slow
+
+    def calibrate_slow(self, reference: Sequence[Observation]) -> int:
+        """Fit the slow state's activation bar on a healthy reference stream."""
+        if self.slow is None:
+            raise RuntimeError("no slow state attached")
+        return self.slow.calibrate(reference)
+
+    def base_thresholds(self) -> PolicyThresholds:
+        """The calibrated thresholds, before any slow-state movement."""
+        return PolicyThresholds(self.tau_answer, self.k_clarify, self.tau_in_schema)
+
+    def _active_thresholds(self) -> PolicyThresholds:
+        return self.slow.thresholds() if self.slow is not None else self.base_thresholds()
+
     # ── inference ────────────────────────────────────────────────────────
 
     def decide(self, scores: np.ndarray, labels: Sequence[str]) -> GateResult:
@@ -177,6 +170,8 @@ class ConformalGate:
 
         Order of checks (ADR-0013, corrected triggers): out-of-schema first,
         then calibrated-confidence answer, then small-set clarify, else escalate.
+        A slow state, when attached, observes this decision and moves the
+        thresholds the checks read — the gate's own fitted values stay the base.
         """
         labels = list(labels)
         scores = np.asarray(scores, dtype=np.float64).reshape(-1)
@@ -193,13 +188,23 @@ class ConformalGate:
         pred_set = [labels[i] for i in members]
         probs = {l: float(p) for l, p in zip(labels, P)}
 
+        thresholds = self._active_thresholds()
+        if self.slow is not None:
+            # observe_row recomputes what this method already has. That is
+            # deliberate: the state must see exactly the statistics a caller
+            # builds the healthy reference from, and two code paths for the
+            # same statistics is how the calibration drifted out of agreement
+            # twice already.
+            obs, _ = observe_row(scores, self.t_prob, self.qhat)
+            self.slow.observe(obs)
+
         if self.policy == "answer":
             action = "answer"
-        elif self.tau_in_schema is not None and max_score < self.tau_in_schema:
+        elif thresholds.tau_in_schema is not None and max_score < thresholds.tau_in_schema:
             action = "escalate"
-        elif top_prob >= self.tau_answer:
+        elif top_prob >= thresholds.tau_answer:
             action = "answer"
-        elif len(pred_set) <= self.k_clarify and self.policy == "full":
+        elif len(pred_set) <= thresholds.k_clarify and self.policy == "full":
             action = "clarify"
         else:
             action = "escalate"
@@ -222,6 +227,7 @@ class ConformalGate:
             "policy": self.policy, "t_prob": self.t_prob,
             "tau_answer": self.tau_answer, "qhat": self.qhat,
             "tau_in_schema": self.tau_in_schema, "calibration": self.calibration,
+            "slow_state": None if self.slow is None else asdict(self.slow.fitted_config()),
         }, indent=1))
 
     @classmethod
@@ -234,4 +240,9 @@ class ConformalGate:
                 answer_precision=d["answer_precision"], policy=d["policy"])
         g.t_prob, g.tau_answer, g.qhat = d["t_prob"], d["tau_answer"], d["qhat"]
         g.tau_in_schema, g.calibration = d["tau_in_schema"], d["calibration"]
+        if d.get("slow_state") is not None:
+            # The activation bar is fitted from a reference stream, which is a
+            # run-time input — a reloaded gate serves the config bar until the
+            # caller calls calibrate_slow().
+            g.attach_slow_state(SlowStateConfig(**d["slow_state"]))
         return g
