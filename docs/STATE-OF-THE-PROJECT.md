@@ -55,6 +55,7 @@ the first time, tying Jev's tuned micro-F1 (0.386 vs 0.387).
 | 23 | The dominant head win is label co-occurrence | +0.111 of +0.168 comes from joint linear fitting on 28-dim scores alone; raw state adds +0.036 | **high** |
 | 24 | The learned gain is real ranking, not thresholds | macro-AUROC climbs 0.824 → 0.901 → 0.908 → 0.914 → 0.922 with each arm | **high** |
 | 25 | Task-fitted `mlp_emb` reaches the fine-tuned-BERT frontier | 0.455 macro / 0.525 micro vs ~0.46 for trained BERT-era systems; above Jev tuned 0.353 and Qwen tuned 0.323 (different regime — task-fitted vs generative) | **high** |
+| 26 | **The head beats Platt at every data scale measured** | scaling curve n=100…43k on cached real embeddings: mlp_emb wins at n=100 (+0.08); Platt saturates at ~0.31 by 16k while heads still climb; `linear_emb` is the sweet spot below ~16k | **high** |
 
 ---
 
@@ -145,9 +146,8 @@ hardware — Laya's 421M ModernBERT does typed decisions in 33–40 ms on a T4 a
 
 1. **Ordinal `Score`** — temperature-scaled cosine has no notion of order at all. This is the
    strongest remaining candidate and the only capability that is categorically different.
-2. ~~Multilabel `Noul` heads~~ — **resolved**: the fitted head won (§4). Open follow-ups
-   are the data-scaling curve (does it win at 1k examples?) and head→conformal
-   composition.
+2. ~~Multilabel `Noul` heads~~ — **resolved**: the fitted head won, at every data scale
+   down to n=100 (§1 rows 22–26). Open follow-up is head→conformal composition only.
 3. **Composition** of multi-item states — unproven, prior leans negative for
    classification-shaped tasks, positive when relevance is uneven.
 
