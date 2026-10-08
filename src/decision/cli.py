@@ -89,6 +89,22 @@ def cmd_decide(args):
         print("-" * 60)
 
 
+def cmd_serve(args):
+    model = _build(args)
+    from src.decision.serve import serve
+
+    model_id = args.bundle or args.model
+    httpd = serve(model, host=args.host, port=args.port,
+                  log_path=args.log, model_id=str(model_id),
+                  policy=args.policy)
+    print(f"serving on http://{args.host}:{args.port} "
+          f"(model_id={model_id}, log={args.log})")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        httpd.shutdown()
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="nanocore", description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -109,6 +125,20 @@ def main(argv=None):
     d.add_argument("--max-tokens", type=int, default=512)
     d.add_argument("--json", action="store_true")
     d.set_defaults(func=cmd_decide)
+
+    s = sub.add_parser("serve", help="serve decisions over HTTP")
+    s.add_argument("--bundle", help="calibrated bundle dir (enables the gate)")
+    s.add_argument("--backend", default="st", choices=["st", "llamacpp"])
+    s.add_argument("--device", help="torch device for --backend st")
+    s.add_argument("--model", default=DEFAULT_MODEL, help="GGUF for llamacpp")
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=8000)
+    s.add_argument("--log", default=".nanocore-predictions.jsonl")
+    s.add_argument("--cache", default=".nanocore-cache")
+    s.add_argument("--no-cache", action="store_true")
+    s.add_argument("--max-tokens", type=int, default=512)
+    s.add_argument("--policy", default=None, choices=["full", "escalate", "answer"])
+    s.set_defaults(func=cmd_serve)
 
     args = ap.parse_args(argv)
     args.func(args)

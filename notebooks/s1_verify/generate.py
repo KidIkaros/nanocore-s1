@@ -393,6 +393,63 @@ except Exception as e:
 write_status("cli")
 '''),
 
+    md('''## 5e. Serve leg — the HTTP surface on a real subprocess
+
+Phase 4 acceptance in-kernel: `nanocore serve` starts the model server with
+the calibrated bundle; a real POST /decide returns an action and writes a
+prediction-log line with latency. This is the surface other programs call.
+'''),
+    code('''
+RESULTS["serve"] = {"status": "skipped"}
+try:
+    import urllib.request, socket
+    s = socket.socket(); s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]; s.close()
+    log_path = WORK / "serve-preds.jsonl"
+    srv = subprocess.Popen(
+        [sys.executable, "-m", "src.decision.cli", "serve",
+         "--bundle", str(bundle), "--backend", "st", "--device", "cuda",
+         "--port", str(port), "--log", str(log_path),
+         "--cache", str(WORK / "serve-cache")],
+        cwd=REPO, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        ok = False
+        for _ in range(120):
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz",
+                                       timeout=2)
+                ok = True; break
+            except Exception:
+                time.sleep(1)
+        assert ok, "server never became healthy"
+
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/decide",
+            data=json.dumps({"text": "i need to cancel my flight",
+                             "options": INTENT_TEXTS}).encode(),
+            headers={"Content-Type": "application/json"})
+        out = json.loads(urllib.request.urlopen(req, timeout=30).read())
+        assert out["action"] in ("answer", "clarify", "escalate", "abstain")
+        assert out["prediction_set"] and out["latency_ms"] > 0
+
+        rec = json.loads(log_path.read_text().strip().splitlines()[-1])
+        assert rec["action"] == out["action"] and rec["latency_ms"] > 0
+        stats = json.loads(urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/stats", timeout=10).read())
+        print(f"serve: POST /decide -> {out['action']} "
+              f"({out['latency_ms']:.0f}ms) | stats: {stats['requests']} req, "
+              f"p50={stats['latency_ms']['p50']:.0f}ms")
+        RESULTS["serve"] = {"status": "ran", "action": out["action"],
+                            "latency_ms": out["latency_ms"],
+                            "log_line": True}
+    finally:
+        srv.terminate(); srv.wait(timeout=30)
+except Exception as e:
+    RESULTS["serve"] = {"status": "failed", "error": repr(e)[:300]}
+    print("serve leg failed:", repr(e)[:200])
+write_status("serve")
+'''),
+
     md('''## 6. Live `decide()` — the typed interface on real input
 
 Full stack: encoder → scorer → gate → Prediction{probabilities, prediction_set,
@@ -444,6 +501,7 @@ verdict = {
                              > RESULTS["ordinal"].get("zeroshot_acc", 1)),
     "cli_ran": RESULTS["cli"]["status"] == "ran",
     "cli_inputs": RESULTS["cli"].get("n"),
+    "serve_ran": RESULTS["serve"]["status"] == "ran",
 }
 RESULTS["verdict"] = verdict
 print(json.dumps(verdict, indent=2))
