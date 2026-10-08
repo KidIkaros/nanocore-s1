@@ -51,6 +51,10 @@ the first time, tying Jev's tuned micro-F1 (0.386 vs 0.387).
 | 19 | Tuned micro-F1 on GoEmotions **ties Jev** | 0.386 vs Jev's 0.387; above Qwen 0.317 and Gemma 0.268 (Jev paper Table 4 protocol) | **high** |
 | 20 | `Noul` works as a scored primitive | 28 binary questions/comment on 5,427 test items — natural multilabel formulation | **high** |
 | 21 | Bare emotion names beat descriptive label templates | AUROC 0.824 vs 0.789 — extra words dilute the signal | **medium** (single task) |
+| 22 | **A task-fitted head wins decisively on a headroom-positive task** | five-arm ladder on GoEmotions: Platt 0.287 → `mlp_emb` 0.455 macro-F1 (+0.168, ±0.003 across seeds); every learned arm beats the oracle threshold bound (0.297) | **high** |
+| 23 | The dominant head win is label co-occurrence | +0.111 of +0.168 comes from joint linear fitting on 28-dim scores alone; raw state adds +0.036 | **high** |
+| 24 | The learned gain is real ranking, not thresholds | macro-AUROC climbs 0.824 → 0.901 → 0.908 → 0.914 → 0.922 with each arm | **high** |
+| 25 | Task-fitted `mlp_emb` reaches the fine-tuned-BERT frontier | 0.455 macro / 0.525 micro vs ~0.46 for trained BERT-era systems; above Jev tuned 0.353 and Qwen tuned 0.323 (different regime — task-fitted vs generative) | **high** |
 
 ---
 
@@ -78,7 +82,7 @@ protocol now exists as tested code with regression tests rather than as repeated
 |---|---|
 | `EmbeddingComposer` | implemented (28,315,392 params), contracts tested, **never trained** |
 | `Score` (ordinal) | schema tested, **never run on real data**; currently uses cross-entropy, the loss the ordinal literature says discards ordering |
-| `Noul` | **exercised** — GoEmotions battery (§1 rows 18–21); no trained variant yet |
+| `Noul` | **exercised** — GoEmotions battery + trained-head ladder (§1 rows 18–25) |
 | Multimodality | vision: 100-image smoke test. audio/video: **untested** |
 | End-to-end deployment | never attempted; every number comes from an offline split |
 
@@ -97,13 +101,16 @@ Both benchmarks we selected hit this wall. The practical consequence for any fut
 experiment: **measure zero-shot first, and refuse to draw architectural conclusions without
 headroom.** `protocol.headroom_check` now enforces that mechanically.
 
-**The wall has now been breached once.** GoEmotions (`s1_goemotions`) — a 28-label Noul
-battery — returns zero-shot macro-F1 **0.287** with macro-AUROC **0.824**: the ordering is
-strong, the placement is weak, and ~0.17 of F1 separates our tuned thresholds from
-trained-BERT-era systems (~0.46). That gap is real, and it is where trained components
-(learned multilabel heads exploiting label co-occurrence — something per-label thresholds
-structurally cannot capture) get their first **fair fight**. This is the task ADR-0011's
-gate was built to find.
+**The wall has now been breached once — and the fight is settled.** GoEmotions
+(`s1_goemotions`) — a 28-label Noul battery — returns zero-shot macro-F1 **0.287** with
+macro-AUROC **0.824**: strong ordering, weak placement. The follow-up ladder
+(`s1_goemotions_head`) shows the gap is *not* a calibration problem — Platt already sits
+at the score-thresholding ceiling (oracle bound 0.297) — and a task-fitted head wins
+decisively: `mlp_emb` reaches **0.455 macro / 0.525 micro / 0.922 AUROC** (+0.168 over
+Platt, ~the fine-tuned-BERT frontier). The dominant signal is label co-occurrence
+(+0.111 from a linear map on the 28 scores alone); the raw state adds +0.036. The head is
+label-schema-bound and data-hungry (43k examples) — a **per-deployment** component, not a
+universal one — but it is the first trained component with a measured win.
 
 ---
 
@@ -121,8 +128,12 @@ No trained head. This is not a defeat: it is a 270M-parameter, training-free dis
 routes at 93% with calibrated probabilities, and the whole cost argument (33–40 ms to decide
 versus ~2 s to generate) survives intact.
 
-**Not supported:** the trained head for `Choice` and for routing. Three experiments, no win
-over the best baseline on any proper metric.
+**Not supported:** the trained head for `Choice` and for routing *on saturated tasks*.
+Three experiments, no win over the best baseline on any proper metric — at 93% ceilings
+there is nothing to learn. **Supported, newly:** a task-fitted head for `Noul`-family
+tasks where labeled data and headroom coexist (§4): +0.168 macro-F1 on GoEmotions, at
+parity with fine-tuned-BERT-era results. The two findings are consistent — the head
+loses where the task is saturated and wins where it is not.
 
 **Newly qualified by measurement:** the latency claim holds **only with an accelerator**
 (56.9 ms on a T4 versus 420 ms on CPU). The design is accelerator-requiring, which weakens
@@ -134,8 +145,9 @@ hardware — Laya's 421M ModernBERT does typed decisions in 33–40 ms on a T4 a
 
 1. **Ordinal `Score`** — temperature-scaled cosine has no notion of order at all. This is the
    strongest remaining candidate and the only capability that is categorically different.
-2. **Multilabel `Noul` heads** — GoEmotions has real headroom (§4); a learned head exploiting
-   label co-occurrence is now a live hypothesis, not a dead one.
+2. ~~Multilabel `Noul` heads~~ — **resolved**: the fitted head won (§4). Open follow-ups
+   are the data-scaling curve (does it win at 1k examples?) and head→conformal
+   composition.
 3. **Composition** of multi-item states — unproven, prior leans negative for
    classification-shaped tasks, positive when relevance is uneven.
 

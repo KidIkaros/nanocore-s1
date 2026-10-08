@@ -1,0 +1,67 @@
+[{"stream_name":"stderr","time":5.870068822,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":5.870109441,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":6.753214696,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":6.753247995,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":6.753252938,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":6.753256704,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":7.335909136,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":7.33593864,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":7.335944251,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":7.335948234,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":10.376297909,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":10.376335767,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":10.376340286,"data":"\n"}
+,{"stream_name":"stdout","time":14.468481586,"data":"torch 2.11.0+cu128 | cuda: True\n"}
+,{"stream_name":"stdout","time":20.147967424,"data":"..........................                                               [100%]\n"}
+,{"stream_name":"stdout","time":20.1479963,"data":"26 passed in 1.73s\n"}
+,{"stream_name":"stdout","time":20.14800297,"data":"\n"}
+,{"stream_name":"stdout","time":23.806957724,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 4.0 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":24.008812373,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 4.0 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":24.117852254,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 58.6 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":24.194067829,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 41.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":24.319663528,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 58.6 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":24.319686803,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 41.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stderr","time":62.493718998,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":62.493748552,"data":"\n"}
+,{"stream_name":"stderr","time":62.493754335,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":90.389814398,"data":"encoder params: 271 M | dtype: torch.bfloat16\n"}
+,{"stream_name":"stdout","time":99.508253241,"data":"source: hf datasets | train 43410 | dev 5426 | test 5427\n"}
+,{"stream_name":"stdout","time":99.70875618,"data":"texts to encode: 54263\n"}
+,{"stream_name":"stdout","time":381.972930706,"data":"peak cuda GiB: 5.78 | S: (54263, 768) | LV: (28, 768)\n"}
+,{"stream_name":"stdout","time":412.886065894,"data":"saved goemotions_embeddings.npz — no future head run re-encodes\n"}
+,{"stream_name":"stdout","time":416.774304332,"data":"platt            test macro-F1 0.287 | micro 0.385 | auroc 0.824\n"}
+,{"stream_name":"stdout","time":427.221002757,"data":"linear_scores[s0] test macro-F1 0.397 | micro 0.462 | auroc 0.902\n"}
+,{"stream_name":"stdout","time":440.583913305,"data":"linear_scores[s1] test macro-F1 0.400 | micro 0.461 | auroc 0.902\n"}
+,{"stream_name":"stdout","time":452.70338935,"data":"linear_scores[s2] test macro-F1 0.397 | micro 0.467 | auroc 0.901\n"}
+,{"stream_name":"stdout","time":452.703419608,"data":"linear_scores    mean test macro 0.398±0.001 | micro 0.463±0.003 | auroc 0.901\n"}
+,{"stream_name":"stdout","time":465.981931419,"data":"mlp_scores[s0]   test macro-F1 0.422 | micro 0.487 | auroc 0.908\n"}
+,{"stream_name":"stdout","time":478.948702192,"data":"mlp_scores[s1]   test macro-F1 0.414 | micro 0.489 | auroc 0.908\n"}
+,{"stream_name":"stdout","time":491.072179982,"data":"mlp_scores[s2]   test macro-F1 0.423 | micro 0.492 | auroc 0.907\n"}
+,{"stream_name":"stdout","time":491.072219572,"data":"mlp_scores       mean test macro 0.419±0.004 | micro 0.489±0.002 | auroc 0.908\n"}
+,{"stream_name":"stdout","time":501.079120587,"data":"linear_emb[s0]   test macro-F1 0.448 | micro 0.525 | auroc 0.914\n"}
+,{"stream_name":"stdout","time":511.280170454,"data":"linear_emb[s1]   test macro-F1 0.449 | micro 0.527 | auroc 0.913\n"}
+,{"stream_name":"stdout","time":521.192667935,"data":"linear_emb[s2]   test macro-F1 0.442 | micro 0.526 | auroc 0.914\n"}
+,{"stream_name":"stdout","time":521.192704473,"data":"linear_emb       mean test macro 0.447±0.003 | micro 0.526±0.001 | auroc 0.914\n"}
+,{"stream_name":"stdout","time":527.651994946,"data":"mlp_emb[s0]      test macro-F1 0.459 | micro 0.523 | auroc 0.923\n"}
+,{"stream_name":"stdout","time":534.187450644,"data":"mlp_emb[s1]      test macro-F1 0.453 | micro 0.531 | auroc 0.922\n"}
+,{"stream_name":"stdout","time":540.514586562,"data":"mlp_emb[s2]      test macro-F1 0.452 | micro 0.521 | auroc 0.921\n"}
+,{"stream_name":"stdout","time":540.514621733,"data":"mlp_emb          mean test macro 0.455±0.003 | micro 0.525±0.004 | auroc 0.922\n"}
+,{"stream_name":"stdout","time":543.746642937,"data":"oracle (ceiling of thresholding on scores): 0.296807320395676 0.3950269763077645\n"}
+,{"stream_name":"stdout","time":543.946258452,"data":"arm               macro-F1  micro-F1   auroc  vs platt\n"}
+,{"stream_name":"stdout","time":543.94629883,"data":"platt                0.287     0.385   0.824         —\n"}
+,{"stream_name":"stdout","time":543.946307161,"data":"linear_scores        0.398     0.463   0.901    +0.111\n"}
+,{"stream_name":"stdout","time":543.946311923,"data":"mlp_scores           0.419     0.489   0.908    +0.133\n"}
+,{"stream_name":"stdout","time":543.946316885,"data":"linear_emb           0.447     0.526   0.914    +0.160\n"}
+,{"stream_name":"stdout","time":543.946321658,"data":"mlp_emb              0.455     0.525   0.922    +0.168\n"}
+,{"stream_name":"stdout","time":543.946326746,"data":"oracle(bound)        0.297     0.395\n"}
+,{"stream_name":"stdout","time":543.946342463,"data":"\n"}
+,{"stream_name":"stdout","time":543.94634664,"data":"verdict: \"linear_scores\"\n"}
+,{"stream_name":"stderr","time":552.279461674,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":552.279511016,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":552.462112004,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":552.46214443,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":553.184197726,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":553.299512631,"data":"[NbConvertApp] Writing 392321 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":555.68819072,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":556.285592685,"data":"[NbConvertApp] Writing 668210 bytes to __results__.html\n"}
+]

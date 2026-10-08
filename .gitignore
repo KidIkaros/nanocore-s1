@@ -11,3 +11,4 @@ data/*.pt
 .venv/
 *.egg-info/
 .pytest_cache/
+reports/runs/*/goemotions_embeddings.npz

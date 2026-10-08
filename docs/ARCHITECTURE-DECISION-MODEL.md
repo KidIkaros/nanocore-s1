@@ -108,6 +108,9 @@ spot of the category (Laya: Banking77 0.425).
         │  Scorer                                             │
         │    CosineScorer — temperature-scaled cosine (1 par) │ ADR-0008
         │    OrdinalScorer (CORN) — Score questions only      │ ADR-0010
+        │    TaskHead — fitted per deployment label schema    │ ADR-0011 gate
+        │      (evidence-backed: +0.168 macro-F1 on GoEmotions,
+        │       label-schema-bound, needs labeled data)
         │    ┄┄┄ ablations: DecisionHead (retired) · kNN ┄┄┄  │
         └──────────────────────┬──────────────────────────────┘
                                │ scores (k,)
@@ -124,9 +127,10 @@ spot of the category (Laya: Banking77 0.425).
         └─────────────────────────────────────────────────────┘
                           Choice / Score / Noul
 
-upgrade paths (uncommitted): per-instance α via CAP policy ·
-  customer-fitted heads (headroom check per deployment) ·
-  two-encoder split (fast text encoder / EG2 for multimodal)
+upgrade paths: task-fitted heads — evidence-backed (s1_goemotions_head),
+  gated by headroom check + labeled data per deployment ·
+  per-instance α via CAP policy (uncommitted) ·
+  two-encoder split (uncommitted)
 
 boundaries: everything loading weights runs on Kaggle      ADR-0006
             legacy decoder untouched — Route-4 path        src/model.py
@@ -138,6 +142,7 @@ boundaries: everything loading weights runs on Kaggle      ADR-0006
 | `SentenceTransformerEncoder` | `src/decision/encoder.py` | 271M / 439M | no | reference backend, works today |
 | `CosineScorer` | `src/decision/scoring.py` (Stage 2) | **1** | one temperature | **decided**, not yet implemented |
 | `OrdinalScorer` (CORN) | `src/decision/scoring.py` (Stage 4) | ordinal head | **yes** | decided, not yet implemented |
+| `TaskHead` | `src/decision/scoring.py` (post-Stage-3) | ~200k (768→256→k) | **yes**, per deployment | **evidence-backed** (s1_goemotions_head); not yet implemented |
 | `ConformalGate` | `src/decision/gate.py` (Stage 3) | — | calibrated + `min_n` guard | decided, not yet implemented |
 | `DecisionCache` | `src/decision/cache.py` (Stage 1) | — | stores, never trains | decided, not yet implemented |
 | `DecisionHead` | `src/decision/head.py` | 59,136 / ~148k | yes | **deprecated for Choice** (ADR-0008); retained as the ablation |
@@ -174,7 +179,9 @@ Scorer(Protocol):    name; scores(state_vec, option_vecs) -> (k,)
                      ├── CosineScorer      (1 fitted temperature)
                      ├── KNNScorer         (retained; wins on classification, collapses on routing)
                      ├── InteractionScorer (wraps the retired head; ablation only)
-                     └── OrdinalScorer     (CORN; Score only)
+                     ├── OrdinalScorer     (CORN; Score only)
+                     └── TaskHeadScorer    (fitted MLP per label schema; Noul-family,
+                                            needs headroom + labeled data)
 
 ConformalGate(alpha=0.05, method="aps", policy="escalate", min_n=200)
   .calibrate(scores_list, targets_list) -> dict   # raises below min_n
@@ -327,8 +334,10 @@ Written before deployment exists — deliberately. These are design commitments,
 
 ## 9. Open questions and risks
 
-1. **Both benchmarks are saturated** at ~93% zero-shot (ADR-0011). No architectural comparison
-   is meaningful until a headroom-positive task is found — a scoped follow-up.
+1. ~~Both benchmarks are saturated~~ — **resolved.** GoEmotions broke the saturation wall
+   (headroom 0.713), and the head-ladder run delivered the first measured trained-component
+   win: +0.168 macro-F1, label co-occurrence dominant. Residual risk: the win is
+   label-schema-bound and data-hungry — the data-scaling curve is unmapped.
 2. **`Score` may fail too.** It is the only remaining trained component; Stage 4's acceptance is
    explicit (CORN must beat cross-entropy on RPS, monotonicity must hold).
 3. **The conformal gate assumes exchangeability.** A domain shift breaks the guarantee.
@@ -359,8 +368,8 @@ All decisions now live in `adr/`. Summary:
 | 0007 | Serve the encoder through llama.cpp GGUFs | accepted |
 | 0008 | Cosine scoring; retire the head for Choice | accepted |
 | 0009 | Conformal abstention, asymmetric by domain | accepted |
-| 0010 | Ordinal `Score` is the only trained component | accepted |
-| 0011 | Benchmark admission requires a headroom check | accepted |
+| 0010 | Ordinal `Score` is a trained component (was "the only"; joined by task-fitted heads per 0011) | accepted, rescoped |
+| 0011 | Benchmark admission requires a headroom check | **validated in practice** — gate admitted GoEmotions; the fitted head then won by +0.168 macro-F1 |
 | 0012 | The encoder enforces a hard input-length cap | accepted |
 
 ---
