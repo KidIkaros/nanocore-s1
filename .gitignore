@@ -12,3 +12,4 @@ data/*.pt
 *.egg-info/
 .pytest_cache/
 reports/runs/*/goemotions_embeddings.npz
+reports/runs/*/verify_scores.npz

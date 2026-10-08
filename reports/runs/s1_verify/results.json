@@ -1,0 +1,70 @@
+{
+  "cosine_leg": {
+    "actions": {
+      "escalate": 3648,
+      "answer": 1797,
+      "clarify": 55
+    },
+    "resolved": 0.48163636363636364,
+    "encodes": 5555,
+    "cov_hits": 4113,
+    "n_in": 4500,
+    "encodes_per_item": 1.01,
+    "set_coverage_in_scope": 0.914
+  },
+  "taskhead_leg": {
+    "actions": {
+      "answer": 4381,
+      "escalate": 1119
+    },
+    "resolved": 0.9314545454545454,
+    "encodes": 5500,
+    "cov_hits": 4498,
+    "n_in": 4500,
+    "encodes_per_item": 1.0,
+    "set_coverage_in_scope": 0.9995555555555555
+  },
+  "head_in_scope_acc": 0.9693333333333334,
+  "demos": [
+    {
+      "input": "i need to cancel my flight tomorrow",
+      "action": "escalate",
+      "top_prob": 0.0096,
+      "set": [
+        "cancel",
+        "book flight",
+        "insurance change",
+        "income"
+      ]
+    },
+    {
+      "input": "what is the balance on my account",
+      "action": "answer",
+      "top_prob": 0.0163,
+      "set": [
+        "balance",
+        "bill balance",
+        "rewards balance"
+      ]
+    },
+    {
+      "input": "tell me something completely unrelated to banking intents xyz",
+      "action": "escalate",
+      "top_prob": 0.0107,
+      "set": [
+        "no",
+        "what can i ask you",
+        "meaning of life",
+        "definition"
+      ]
+    }
+  ],
+  "verdict": {
+    "suite_green_on_kaggle": true,
+    "cosine_resolved_in_band": true,
+    "head_resolved_in_band": true,
+    "coverage_in_band": true,
+    "head_coverage_reported": 0.9995555555555555,
+    "head_acc_in_band": true
+  }
+}
