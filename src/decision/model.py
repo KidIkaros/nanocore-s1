@@ -112,3 +112,93 @@ class NanoCoreS1:
             preds.append(self.head.predict(s, cache.get(key),
                                          qtype=q.qtype, labels=q.options))
         return preds
+
+
+class DecisionModel:
+    """The decided pipeline: encoder → scorer → gate → cache (ADR-0008/0009/0013).
+
+    Unlike ``NanoCoreS1`` (the deprecated head path), this wires the measured
+    architecture: a frozen encoder produces the state, a scorer produces raw
+    scores, and the gate owns calibration, prediction sets, and the action.
+
+    Args:
+        encoder: ``encode_state(items) -> (n, dim)`` and
+            ``encode_options(texts) -> (k, dim)`` — ``StateEncoder`` in
+            production, any stub in tests.
+        scorer: ``scores(state_vec, option_vecs) -> (k,)`` — ``CosineScorer``
+            or a fitted ``TaskHead`` (per the headroom gate, ADR-0011).
+        gate: ``ConformalGate`` or ``None`` (ungated — probs only).
+        cache: ``DecisionCache`` or ``None``.
+        encoder_id: Model identity string folded into cache keys.
+    """
+
+    def __init__(self, encoder=None, scorer=None, gate=None, cache=None,
+                 encoder_id: str = ""):
+        from src.decision.scoring import CosineScorer
+        self.encoder = encoder
+        self.scorer = scorer or CosineScorer()
+        self.gate = gate
+        self.cache = cache
+        self.encoder_id = encoder_id or getattr(encoder, "model_name", "stub")
+        self._option_cache: dict = {}
+
+    def _state_vec(self, state) -> np.ndarray:
+        items = state.items if isinstance(state, State) else [state]
+        embs = self.encoder.encode_state(list(items))
+        e = embs.detach().float().cpu().numpy() if hasattr(embs, "detach") else np.asarray(embs)
+        s = e.mean(axis=0)
+        return s / max(np.linalg.norm(s), 1e-12)
+
+    def _options(self, question: Question) -> np.ndarray:
+        key = tuple(question.options)
+        if key not in self._option_cache:
+            v = self.encoder.encode_options(list(question.options))
+            self._option_cache[key] = (v.detach().float().cpu().numpy()
+                                       if hasattr(v, "detach") else np.asarray(v))
+        return self._option_cache[key]
+
+    def decide(self, state: Union[State, Sequence[StateItem], str],
+               question: Question, policy: Optional[str] = None) -> Prediction:
+        """One typed, gated decision. Cache-hit returns the stored result."""
+        from src.decision.cache import decision_key
+        from src.decision.schema import normalized_entropy
+
+        key = decision_key(state, question, self.encoder_id,
+                           {"policy": policy or getattr(self.gate, "policy", None),
+                            "alpha": getattr(self.gate, "alpha", None)})
+        if self.cache is not None:
+            hit = self.cache.get(key)
+            if hit is not None:
+                return Prediction(**hit)
+
+        s = self._state_vec(state)
+        opts = self._options(question)
+        scores = self.scorer.scores(s, opts)
+        g = self.gate.decide(scores, question.options) if self.gate is not None else None
+
+        if g is not None:
+            probs, action = g.probabilities, g.action
+            pred_set, alpha, top, mx = g.prediction_set, g.alpha, g.top_prob, g.max_score
+        else:
+            p = self.scorer.probabilities(s, opts)
+            probs = {l: float(x) for l, x in zip(question.options, p)}
+            action, pred_set, alpha = "unevaluated", [], None
+            top, mx = float(p.max()), float(scores.max())
+
+        pred = Prediction(
+            qtype=question.qtype, labels=list(question.options),
+            probabilities=probs, answer_confidence=top,
+            entropy_confidence=normalized_entropy(list(probs.values())),
+            max_score=mx, prediction_set=pred_set, action=action, alpha=alpha)
+        if self.cache is not None:
+            self.cache.put(key, {
+                "qtype": pred.qtype, "labels": pred.labels,
+                "probabilities": pred.probabilities,
+                "answer_confidence": pred.answer_confidence,
+                "entropy_confidence": pred.entropy_confidence,
+                "abstention": pred.abstention,
+                "abstention_threshold": pred.abstention_threshold,
+                "max_score": pred.max_score,
+                "prediction_set": pred.prediction_set,
+                "action": pred.action, "alpha": pred.alpha})
+        return pred

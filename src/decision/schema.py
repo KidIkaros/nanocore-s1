@@ -82,6 +82,11 @@ class Prediction:
 
     ``max_score`` is the highest raw (pre-softmax) match — the open-set signal:
     a low max means no option matches, not that the model is unsure which.
+
+    Gate fields (ADR-0009/0013): ``prediction_set`` is the conformal candidate
+    set — doubles as the clarification payload when ``action == "clarify"``;
+    ``action`` is one of ``answer/clarify/escalate/abstain`` ("unevaluated"
+    when no gate ran); ``alpha`` is the miscoverage target the set was built at.
     """
     qtype: str
     labels: List[str]
@@ -91,6 +96,9 @@ class Prediction:
     abstention: str = "unevaluated"
     abstention_threshold: Optional[float] = None
     max_score: float = 0.0
+    prediction_set: List[str] = field(default_factory=list)
+    action: str = "unevaluated"
+    alpha: Optional[float] = None
 
     @property
     def choice(self) -> Optional[str]:
