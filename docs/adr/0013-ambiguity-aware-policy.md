@@ -30,6 +30,12 @@ This is directly supported by the project's measured evidence:
   temperature is invalid (0.1006, clamped) and its probabilities drift 0.85 under option
   permutation — it commits confidently to whichever intent it lands on. Speed at
   resolving context without honest uncertainty is the dangerous version of this idea.
+- **The "modulation layer" pattern has independent support.** The neuron–glia literature
+  (ANAN, NeurIPS 2024; Kozachkov et al., PNAS 2023; GliaNet, CVPR 2025) repeatedly finds
+  that a thin adaptive layer modulating a *frozen* substrate matches much larger learned
+  changes — the same split this design reached by measurement. The clarify/meta-routing
+  layer is our glial equivalent: it modulates how decisions are computed and which
+  components fire, without ever being the decision itself.
 
 ## Decision
 

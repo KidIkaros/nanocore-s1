@@ -121,6 +121,29 @@ Order invariance is **not** a differentiator vs Jev — the paper confirms rotat
 Jev's accuracy unchanged (per-option scoring, like ours). It's a differentiator vs Laya only
 (91.7% sequential layout). Claim it narrowly.
 
+### Convergent evidence — the "glial" lineage
+
+A separate research tradition independently lands on our architecture: **freeze a substrate,
+modulate at the edge**. CAM-Brain (de Garis, ATR 1993–2001) gave glial cells the modulation/
+maintenance role over an evolved CA neural substrate. The modern neuron–glia literature makes
+the same split measurable: ANAN (NeurIPS 2024 workshop) matches CNN fine-tuning by optimizing
+**4 astrocyte-modulation parameters on a frozen network**; Kozachkov et al. (PNAS 2023) show
+neuron–astrocyte networks implement the Transformer block's core computation; GliaNet (CVPR
+2025) uses glia-driven structure learning for SoTA accuracy with fewer parameters; cortical
+cell-type motifs improved ViT OOD generalization ~20% as a fixed module (PNAS 2025).
+
+Our equivalent, arrived at by measurement rather than bio-inspiration: frozen EG2 (substrate)
++ a thin adaptive layer — fitted temperature, conformal quantile, meta-routing, drift monitor
+(the glial/homeostatic functions). Two consequences:
+
+- **Cross-validation**: the architecture thesis has independent support from a field that
+  doesn't know we exist.
+- **What we deliberately don't adopt**: glial units *inside* the network target training
+  dynamics and structure learning — problems a frozen encoder doesn't have. The one idea
+  worth borrowing is already planned: glial modulation integrates slow-timescale activity
+  history — the CAP per-instance-α upgrade path is exactly that, driven by cache statistics
+  rather than the current input alone.
+
 ## 4. What needs the most work — ranked
 
 | # | Gap | Why first | Evidence |
@@ -128,7 +151,7 @@ Jev's accuracy unchanged (per-option scoring, like ours). It's a differentiator 
 | 1 | **Conformal gate implementation** | The claimed differentiator doesn't exist yet. Jev's selective prediction already proves the value (79.7→96.3%); conformal's *guarantee* is what nobody ships | ADR-0009; paper §selective |
 | 2 | **Multimodal verification** | Our only capability Jev/Laya categorically lack — never exercised once. One image- or audio-decision benchmark settles whether the claim is real | EG2 card; `reports/runs/` (none exist) |
 | 3 | **Ordinal Score (CORN/RPS)** | The only planned trained component; Jev sets the bar at ρ=0.851 SST-5 and explicitly calls SST-5 "solved considerably better" ordinally — our exact thesis | ADR-0010; paper §4.4 |
-| 4 | **A headroom-positive benchmark** | Saturated benchmarks can't show improvement. The Jev paper points at where all models degrade: **GoEmotions (Jev macro-F1 0.243)**, fine-grained/noisy labels, low-resource languages | ADR-0011; paper failure analysis |
+| 4 | ~~A headroom-positive benchmark~~ | **Done** — GoEmotions ran (headroom 0.713); the fitted head won by +0.168 macro-F1 at the fine-tuned-BERT frontier, and won at every data scale down to n=100 | `s1_goemotions`, `s1_goemotions_head`, `s1_goemotions_scaling` |
 | 5 | **Backend productization** | The llama.cpp recipe is proven in a kernel but not in `src/`; needs pinned commit, health probe, contract tests | Plan Stage 1 |
 | 6 | **Sequence-length cap benchmark** | Cheap; closes the 18× long-state penalty | ADR-0012 |
 
@@ -160,6 +183,7 @@ Jev's accuracy unchanged (per-option scoring, like ours). It's a differentiator 
 10. [aangelopoulos/conformal_classification](https://github.com/aangelopoulos/conformal_classification), [MAPIE RAPS](https://github.com/scikit-learn-contrib/MAPIE), [Husqvarna PMLR v204](https://proceedings.mlr.press/v204/uddin23a.html)
 11. Conformal-for-LLM research: [CIC](https://arxiv.org/html/2607.04430v1), [ExAUL](https://arxiv.org/html/2506.14067), [CAP](https://raw.githubusercontent.com/mlresearch/v304/main/assets/tayebati26a/tayebati26a.pdf), [CRC bounds](https://arxiv.org/html/2606.29054v1)
 12. Internal: `jev-stack/docs/adr/0001-laya-stack.md`, `jev-stack/reports/runs/benchmark/analysis.md`, `jev-stack/reports/runs/phase_b_interaction/analysis.md`, `jev-stack/AGENTS.md`
+13. Glial/neuromodulatory lineage: [CAM-Brain](https://www.jstage.jst.go.jp/article/sicejl1962/33/2/33_2_128/_article/-char/en) + [CBM](https://dl.acm.org/doi/10.1023/A:1011286308522); [ANAN](https://research.latinxinai.org/papers/neurips/2024/pdf/Ana_Ribas-Rodriguez.pdf); [neuron–astrocyte Transformers](https://www.pnas.org/doi/10.1073/pnas.2219150120); [GliaNet](https://openaccess.thecvf.com/content/CVPR2025/papers/Han_GliaNet_Adaptive_Neural_Network_Structure_Learning_with_Glia-Driven_CVPR_2025_paper.pdf); [cortical motifs + neuromorphic](https://www.pnas.org/doi/abs/10.1073/pnas.2504164122)
 
 ## Methodology
 
