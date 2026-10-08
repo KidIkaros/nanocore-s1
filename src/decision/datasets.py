@@ -114,6 +114,32 @@ def class_quota(split, field: str, cap: int) -> List[int]:
     return picked
 
 
+def class_halves(split, field: str, cap: int) -> Tuple[List[int], List[int]]:
+    """Two index lists, each covering every class, ~``cap`` rows combined.
+
+    The naive version — concatenate per-class runs, then split at the midpoint —
+    partitions *by class*: the first half is whole classes, so two retrains see
+    different label spaces and a downstream compare silently compares apples to
+    nothing. Split within each class's run instead.
+    """
+    values = np.asarray(split[field])
+    per_class = max(2, cap // max(1, len(np.unique(values))))
+    first: List[int] = []
+    second: List[int] = []
+    for cls in np.unique(values):
+        run = np.flatnonzero(values == cls)[:per_class]
+        if len(run) < 2:
+            # A singleton cannot be split; duplicating it keeps both label
+            # spaces complete, which is what the retrains are for.
+            first += run.tolist()
+            second += run.tolist()
+            continue
+        mid = len(run) // 2
+        first += run[:mid].tolist()
+        second += run[mid:].tolist()
+    return first, second
+
+
 def texts_of(split, text_field: str = "text",
              pair_field: Optional[str] = None) -> List[str]:
     """One text field, or a premise/hypothesis pair joined into one string."""

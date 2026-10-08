@@ -6,8 +6,8 @@ notebook cell, so each gets a test.
 import numpy as np
 import pytest
 
-from src.decision.datasets import (class_quota, label_field, label_space,
-                                   texts_of)
+from src.decision.datasets import (class_halves, class_quota, label_field,
+                                   label_space, texts_of)
 
 
 class FakeFeature:
@@ -122,6 +122,34 @@ def test_class_quota_prefers_at_least_three_rows_per_class():
     split = FakeSplit({"label": labels}, {"label": Plain()})
     picked = class_quota(split, "label", cap=10)     # cap smaller than classes
     assert len(set(np.asarray(labels)[picked].tolist())) == 50
+
+
+def test_class_halves_give_both_splits_every_class():
+    """The v16 shadow failure: splitting a concatenated per-class index at the
+    midpoint partitions by class, so the two halves have disjoint label spaces.
+    """
+    labels = [0] * 60 + [1] * 60 + [2] * 10
+    split = FakeSplit({"label": labels}, {"label": Plain()})
+    first, second = class_halves(split, "label", cap=120)
+    for half in (first, second):
+        assert sorted(set(np.asarray(labels)[half].tolist())) == [0, 1, 2]
+
+
+def test_class_halves_duplicate_a_singleton_into_both():
+    """A class with one row cannot be split; dropping it from a half silently
+    gives that retrain a smaller label space."""
+    labels = [0] * 30 + [1] * 30 + [2]
+    split = FakeSplit({"label": labels}, {"label": Plain()})
+    first, second = class_halves(split, "label", cap=120)
+    assert 60 in first and 60 in second
+
+
+def test_class_halves_cover_the_data_once():
+    labels = [0] * 30 + [1] * 30
+    split = FakeSplit({"label": labels}, {"label": Plain()})
+    first, second = class_halves(split, "label", cap=40)
+    assert not set(first) & set(second)
+    assert len(first) + len(second) <= 40
 
 
 def test_texts_of_joins_a_premise_hypothesis_pair():

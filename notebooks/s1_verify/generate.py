@@ -736,6 +736,7 @@ RESULTS["operate"] = {"status": "skipped"}
 try:
     import time as _time
     from src.decision.adapt import AdaptConfig, adapt
+    from src.decision.datasets import class_halves
     from src.decision.handlers import QueuedEscalation, handle
     from src.decision.monitor import Monitor, read_log, shadow_compare
     from src.decision.registry import Registry, data_fingerprint
@@ -788,20 +789,22 @@ try:
     #    train split is class-ordered, so head-of-file slices would give the two
     #    bundles different label spaces and make the shadow run meaningless.
     y_tr_arr = np.asarray(y_tr_i)
-    per_class = max(2, (2 * N_RT) // len(np.unique(y_tr_arr)))
-    idx = np.concatenate([np.flatnonzero(y_tr_arr == c)[:per_class]
-                          for c in np.unique(y_tr_arr)])
-    half = len(idx) // 2
-    # Option labels must be the intent *texts*, not the raw class ids: a bundle
-    # whose options read "11"/"42" cannot be served by anything that knows the
-    # task, and the incumbent's labels are the texts.
+    # Two caveats on the slices. (1) Split per class, not at a midpoint: a
+    # concatenated per-class index run is class-ordered, so halving it
+    # partitions by class and the second bundle silently knows a disjoint label
+    # space — that is what produced "scores and labels must be the same length"
+    # in v16. (2) Option labels must be the intent *texts*, not the raw class
+    # ids: a bundle whose options read "11"/"42" cannot be served by anything
+    # that knows the task, and the incumbent's labels are the texts.
+    idx_a, idx_b = class_halves({"label": y_tr_arr}, "label", cap=2 * N_RT)
     text_by_id = {int(i): t for i, t in zip(INTENT_IDS, INTENT_TEXTS)}
-    slices = [([X_tr_i[i] for i in idx[:half]],
-               [text_by_id[int(c)] for c in y_tr_arr[idx[:half]]]),
-              ([X_tr_i[i] for i in idx[half:]],
-               [text_by_id[int(c)] for c in y_tr_arr[idx[half:]]])]
-    print(f"retrain slices: {len(idx[:half])} + {len(idx[half:])} items, "
-          f"{len(np.unique(y_tr_arr))} classes each")
+    slices = [([X_tr_i[i] for i in idx_a],
+               [text_by_id[int(c)] for c in y_tr_arr[idx_a]]),
+              ([X_tr_i[i] for i in idx_b],
+               [text_by_id[int(c)] for c in y_tr_arr[idx_b]])]
+    for si, (_, labs) in enumerate(slices, start=1):
+        print(f"retrain slice {si}: {len(labs)} items, "
+              f"{len(set(labs))} classes")
     bundles = []
     for i, (texts, labels) in enumerate(slices, start=1):
         out = adapt(texts, labels, encoder, cfg=AdaptConfig(min_cal=150),
@@ -823,13 +826,17 @@ try:
         "versions": reg.versions("clinc"), "parent_of_v2": lineage.get("parent"),
         "promoted": after_promote, "rolled_back_to": restored,
         "current_after_rollback": reg.current("clinc"),
-        "shadow": {"n": shadow["n"], "agreement": shadow["agreement"],
+        "shadow": {"n": shadow["n"], "n_failed": shadow.get("n_failed", 0),
+                   "first_error": shadow.get("first_error"),
+                   "agreement": shadow["agreement"],
                    "transitions": shadow["action_transitions"]}}
     print(f"registry: versions={reg.versions('clinc')} "
           f"v2.parent={lineage.get('parent')} promote->{after_promote} "
           f"rollback->{restored} now={reg.current('clinc')}")
     print(f"shadow: n={shadow['n']} agreement={shadow['agreement']:.3f} "
-          f"{shadow['action_transitions']}")
+          f"failed={shadow.get('n_failed')} {shadow['action_transitions']}")
+    if shadow.get("first_error"):
+        print(f"  first_error: {shadow['first_error']}")
 except Exception as e:
     RESULTS["operate"] = {"status": "failed", "error": repr(e)[:300]}
     print("operate leg failed:", repr(e)[:200])

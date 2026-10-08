@@ -1,0 +1,22 @@
+{
+ "alpha": 0.1,
+ "min_n": 150,
+ "t_prob_floor": 0.25,
+ "t_set": 1.0,
+ "k_clarify": 3,
+ "answer_precision": 0.9,
+ "policy": "full",
+ "t_prob": 0.7338709677419355,
+ "tau_answer": 0.22925238443193305,
+ "qhat": 0.9991253928583916,
+ "tau_in_schema": null,
+ "calibration": {
+  "t_prob": 0.7338709677419355,
+  "tau_answer": 0.22925238443193305,
+  "qhat": 0.9991253928583916,
+  "t_set": 1.0,
+  "n_A": 487,
+  "n_B": 488
+ },
+ "slow_state": null
+}

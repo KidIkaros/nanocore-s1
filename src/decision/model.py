@@ -20,6 +20,7 @@ from src.decision.composer import EmbeddingComposer, MODALITY_IDS
 from src.decision.encoder import modality_of
 from src.decision.head import DecisionHead
 from src.decision.schema import Prediction, Question, State, StateItem
+from src.decision.scoring import softmax_rows
 
 
 class NanoCoreS1:
@@ -157,6 +158,26 @@ class DecisionModel:
                                        if hasattr(v, "detach") else np.asarray(v))
         return self._option_cache[key]
 
+    def _align_scores(self, scores: np.ndarray, options) -> np.ndarray:
+        """Reorder a schema-bound scorer's output to the question's order.
+
+        ``TaskHead`` and ``OrdinalScorer`` emit logits in their fitted label
+        order — ``np.unique`` order, not necessarily the question's — while the
+        gate pairs ``scores[i]`` with ``options[i]`` positionally. A cosine
+        scorer scores the option vectors directly and is already aligned.
+        Options outside the fitted space are a hard error, not a zero column.
+        """
+        labels_ = getattr(self.scorer, "labels_", None)
+        if labels_ is None or list(labels_) == list(options):
+            return scores
+        pos = {lab: i for i, lab in enumerate(labels_)}
+        missing = [o for o in options if o not in pos]
+        if missing:
+            raise ValueError(
+                f"question options outside the scorer's label space: "
+                f"{missing[:3]}{'...' if len(missing) > 3 else ''}")
+        return scores[[pos[o] for o in options]]
+
     def decide(self, state: Union[State, Sequence[StateItem], str],
                question: Question, policy: Optional[str] = None) -> Prediction:
         """One typed, gated decision. Cache-hit returns the stored result."""
@@ -173,14 +194,15 @@ class DecisionModel:
 
         s = self._state_vec(state)
         opts = self._options(question)
-        scores = self.scorer.scores(s, opts)
+        scores = self._align_scores(self.scorer.scores(s, opts), question.options)
         g = self.gate.decide(scores, question.options) if self.gate is not None else None
 
         if g is not None:
             probs, action = g.probabilities, g.action
             pred_set, alpha, top, mx = g.prediction_set, g.alpha, g.top_prob, g.max_score
         else:
-            p = self.scorer.probabilities(s, opts)
+            t = getattr(self.scorer, "temperature", 1.0)
+            p = softmax_rows(scores[None], t)[0]
             probs = {l: float(x) for l, x in zip(question.options, p)}
             action, pred_set, alpha = "unevaluated", [], None
             top, mx = float(p.max()), float(scores.max())

@@ -28,6 +28,9 @@ class StubEncoder:
         return np.array([[1.0 if f"intent{i}" in t else 0.05 for i in range(N_CLASSES)]
                          for t in texts], dtype=np.float32)
 
+    def encode_state(self, items):
+        return self.encode([str(i) for i in items])
+
     def encode_options(self, texts):
         return np.array([[1.0 if t == f"intent{i}" else 0.05
                           for i in range(N_CLASSES)] for t in texts], dtype=np.float32)
@@ -42,6 +45,36 @@ def corpus() -> tuple:
     texts = [f"intent{i} sample{j}" for i in range(N_CLASSES) for j in range(PER_CLASS)]
     labels = [f"intent{i}" for i in range(N_CLASSES) for _ in range(PER_CLASS)]
     return texts, labels
+
+
+class OrderedScorer:
+    """Schema-bound scorer: logits live in ``labels_`` order, not option order."""
+
+    labels_ = ["beta", "alpha"]
+    temperature = 1.0
+
+    def scores(self, state_vec, option_vecs=None):
+        return np.array([5.0, -5.0])   # strong logit for "beta"
+
+
+def test_decide_realigns_a_schema_bound_scorer_to_option_order():
+    """The v16 failure's next layer: a TaskHead fitted via np.unique returns
+    logits in sorted-label order while questions carry CLINC's order. Without
+    realignment every prediction silently maps to the wrong intent — no
+    exception, just garbage."""
+    from src.decision.model import DecisionModel
+    model = DecisionModel(encoder=StubEncoder(), scorer=OrderedScorer())
+    pred = model.decide("anything", Question(qtype="choice", options=["alpha", "beta"]))
+    assert pred.probabilities["beta"] > 0.99
+    assert pred.max_score == 5.0
+
+
+def test_decide_fails_loudly_on_options_outside_the_label_space():
+    from src.decision.model import DecisionModel
+    model = DecisionModel(encoder=StubEncoder(), scorer=OrderedScorer())
+    with pytest.raises(ValueError, match="outside the scorer's label space"):
+        model.decide("anything",
+                     Question(qtype="choice", options=["alpha", "gamma"]))
 
 
 def stub_decision(text: str, question: Question) -> Prediction:
