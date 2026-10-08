@@ -2,6 +2,10 @@
 
 Guidance for agents and humans working in this repository.
 
+> **Read `docs/ROADMAP.md` first.** It is the single source of truth for what is being
+> built and what "done" means. If a proposed action is not in the roadmap, add it there
+> with acceptance criteria before doing it. The stop-doing list in §6 is binding.
+
 ## Compute boundary — where things run
 
 | Work | Where |
