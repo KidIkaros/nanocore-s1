@@ -65,6 +65,11 @@ Rules:
   `notebooks/s1_clinc150_oos/generate.py` and `notebooks/s1_goemotions_head/generate.py`.
 - **`kaggle` lives in `.venv` without being on PATH** — call
   `/home/ikaaros/Coding/Gold/jev-stack/.venv/bin/kaggle`.
+- **OAuth tokens expire mid-session.** `~/.kaggle/credentials.json` carries an
+  `access_token` with ~1h TTL and the CLI does not refresh it — calls start
+  failing with `Permission 'kernels.get' was denied` or a bare auth prompt.
+  `kaggle auth print-access-token` mints a fresh token; pass it as
+  `KAGGLE_API_TOKEN` for subsequent calls (it does not update the stored file).
 
 ## Experiment conventions
 
