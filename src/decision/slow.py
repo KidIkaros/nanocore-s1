@@ -117,14 +117,23 @@ class SlowStateConfig:
     drift_margin: float = 0.10
 
 
-def observe_row(row: np.ndarray, t_prob: float, qhat: float) -> tuple:
+def observe_row(row: np.ndarray, t_prob: float, qhat: float,
+                t_set: float) -> tuple:
     """The label-free statistics of one decision row — the state's only input.
 
     Also how a caller builds the healthy reference stream the activation bar is
     fitted on, using exactly the statistics the state will see at run time.
+
+    ``t_prob`` and ``t_set`` are both required because they are genuinely
+    different temperatures: reported probabilities come from ``t_prob``, but
+    the conformal set — and therefore ``set_size``, which ``k_clarify`` reads —
+    is built at ``t_set`` exactly as ``ConformalGate.decide`` builds it. Taking
+    ``t_set`` as a required argument keeps a caller from silently measuring a
+    different set than the one the action was chosen on.
     """
     P = softmax_rows(row, t_prob)[0]
-    members = aps_members(P[None, :], qhat)[0]
+    P_set = softmax_rows(row, t_set)[0] if t_set != t_prob else P
+    members = aps_members(P_set[None, :], qhat)[0]
     top_two = np.sort(P)[-2:]
     obs = Observation(top_prob=float(P.max()), set_size=len(members),
                       entropy=float(-(P * np.log(P + 1e-12)).sum()),

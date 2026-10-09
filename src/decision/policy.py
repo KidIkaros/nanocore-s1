@@ -246,10 +246,16 @@ class Stream:
 
 @dataclass(frozen=True)
 class StreamConfig:
-    """The frozen calibration the runner reports against."""
+    """The frozen calibration the runner reports against.
+
+    ``t_set`` is required alongside ``t_prob`` for the same reason
+    ``slow.observe_row`` takes both: the conformal set the anomaly rule counts
+    must be the set the shipped gate would build.
+    """
     t_prob: float
     qhat: float
     k_clarify: int
+    t_set: float
     coverage_target: float = 0.8
     recovery_window: int = 100
 
@@ -286,7 +292,7 @@ def _as_stream_arrays(stream: Stream) -> tuple:
 def _step(policy: Policy, row: np.ndarray, label: int,
           cfg: StreamConfig) -> tuple:
     """One decision: probabilities, conformal set, action, observation."""
-    obs, members = observe_row(row, cfg.t_prob, cfg.qhat)
+    obs, members = observe_row(row, cfg.t_prob, cfg.qhat, cfg.t_set)
     policy.observe(obs)
     thresholds = policy.thresholds()
     action = action_for(obs, thresholds)

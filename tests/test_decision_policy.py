@@ -10,7 +10,8 @@ from src.decision.policy import (GlialPolicy, Observation, PolicyThresholds,
 
 
 BASE = PolicyThresholds(tau_answer=0.60, k_clarify=3, tau_in_schema=0.70)
-CFG = StreamConfig(t_prob=1.0, qhat=0.95, k_clarify=3, recovery_window=50)
+CFG = StreamConfig(t_prob=1.0, qhat=0.95, k_clarify=3, t_set=1.0,
+                   recovery_window=50)
 
 
 def _run(policy, scores, y, shift_at):
@@ -141,10 +142,23 @@ def test_calibrate_fails_closed_on_a_short_reference():
 def test_observe_row_is_the_states_only_input():
     """The reference stream is built with the same statistics the state sees."""
     row = np.array([2.0, 0.1, 0.1, 0.1])
-    obs, members = observe_row(row, t_prob=1.0, qhat=0.95)
+    obs, members = observe_row(row, t_prob=1.0, qhat=0.95, t_set=1.0)
     assert obs.pred == 0 and obs.max_score == 2.0
     assert obs.set_size == len(members) >= 1
     assert 0.0 <= obs.top_prob <= 1.0
+
+
+def test_observe_row_set_size_uses_the_set_temperature():
+    """Regression: set_size was computed at t_prob while the shipped gate
+    builds its conformal set at t_set — the anomaly rule read a different set
+    than the action did (measured 11 vs 19 members on a real row)."""
+    row = np.array([3.0, 0.5, 0.4, 0.3, 0.2, 0.1, -0.5, -1.0])
+    obs_a, members_a = observe_row(row, t_prob=0.5, qhat=0.95, t_set=0.5)
+    obs_b, members_b = observe_row(row, t_prob=0.5, qhat=0.95, t_set=8.0)
+    assert obs_a.set_size != obs_b.set_size
+    assert obs_b.set_size == len(members_b)
+    # The reported probabilities still come from t_prob — only the set moves.
+    assert obs_a.top_prob == pytest.approx(obs_b.top_prob)
 
 
 def test_calibrate_sets_the_bar_above_the_worst_healthy_window():

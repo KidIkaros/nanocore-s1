@@ -11,7 +11,7 @@ from src.decision.escalation import (Costs, calibrated_actions,
 def _features(n: int = 200, seed: int = 0):
     rng = np.random.default_rng(seed)
     scores = rng.standard_normal((n, 4)) * 0.5
-    return decision_features(scores, t_prob=1.0, qhat=0.9)
+    return decision_features(scores, t_prob=1.0, qhat=0.9, t_set=1.0)
 
 
 def test_features_are_named_and_shaped():
@@ -27,9 +27,9 @@ def test_features_come_from_the_one_source_of_decision_statistics():
 
     rng = np.random.default_rng(4)
     scores = rng.standard_normal((25, 5))
-    features = decision_features(scores, t_prob=0.7, qhat=0.9)
+    features = decision_features(scores, t_prob=0.7, qhat=0.9, t_set=0.7)
     for i, row in enumerate(scores):
-        obs, members = observe_row(row, t_prob=0.7, qhat=0.9)
+        obs, members = observe_row(row, t_prob=0.7, qhat=0.9, t_set=0.7)
         assert features.column("top_prob")[i] == pytest.approx(obs.top_prob)
         assert features.column("set_size")[i] == len(members)
         assert features.column("entropy")[i] == pytest.approx(obs.entropy)
@@ -39,7 +39,7 @@ def test_features_come_from_the_one_source_of_decision_statistics():
 
 def test_features_reject_a_score_vector():
     with pytest.raises(ValueError):
-        decision_features(np.array([1.0, 2.0]), t_prob=1.0, qhat=0.9)
+        decision_features(np.array([1.0, 2.0]), t_prob=1.0, qhat=0.9, t_set=1.0)
 
 
 def test_costs_ratio_is_the_threshold():

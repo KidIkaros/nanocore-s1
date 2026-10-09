@@ -227,7 +227,7 @@ class ConformalGate:
             # builds the healthy reference from, and two code paths for the
             # same statistics is how the calibration drifted out of agreement
             # twice already.
-            obs, _ = observe_row(scores, self.t_prob, self.qhat)
+            obs, _ = observe_row(scores, self.t_prob, self.qhat, self.t_set)
             self.slow.observe(obs)
 
         action = self._gate_action(top_prob, max_score, len(pred_set), thresholds)

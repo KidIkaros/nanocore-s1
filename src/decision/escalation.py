@@ -81,7 +81,7 @@ class DecisionFeatures:
 
 
 def decision_features(scores: np.ndarray, t_prob: float,
-                      qhat: float) -> DecisionFeatures:
+                      qhat: float, t_set: float) -> DecisionFeatures:
     """Every signal the escalation decision may use — none needs a label.
 
     Built from ``slow.observe_row`` so each statistic has one definition. The
@@ -91,7 +91,7 @@ def decision_features(scores: np.ndarray, t_prob: float,
     scores = np.asarray(scores, dtype=np.float64)
     if scores.ndim != 2:
         raise ValueError("scores must be a 2-D (n, n_options) matrix")
-    rows = [observe_row(row, t_prob, qhat)[0] for row in scores]
+    rows = [observe_row(row, t_prob, qhat, t_set)[0] for row in scores]
     return DecisionFeatures(FEATURE_NAMES, np.column_stack([
         [obs.margin for obs in rows], [obs.top_prob for obs in rows],
         [obs.set_size for obs in rows], [obs.entropy for obs in rows],

@@ -181,7 +181,8 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
         cal_scores = head.logits(X[ci])
         state = gate.attach_slow_state(SlowStateConfig(
             reference_max_score=float(cal_scores.max(axis=1).mean())))
-        bar = state.calibrate([observe_row(row, gate.t_prob, gate.qhat)[0]
+        bar = state.calibrate([observe_row(row, gate.t_prob, gate.qhat,
+                                          gate.t_set)[0]
                                for row in cal_scores])
         glial = {"activate_at": bar, "n_reference": int(len(cal_scores)),
                  "reference_max_score": state.config.reference_max_score}

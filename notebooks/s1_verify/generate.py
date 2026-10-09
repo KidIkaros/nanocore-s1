@@ -1134,11 +1134,12 @@ try:
                     np.concatenate([yt_c[te_in][:N], np.full(N, -1)]), N)
 
     base = PolicyThresholds(gate.tau_answer, gate.k_clarify, gate.tau_in_schema)
-    cfg = StreamConfig(t_prob=gate.t_prob, qhat=gate.qhat, k_clarify=gate.k_clarify)
+    cfg = StreamConfig(t_prob=gate.t_prob, qhat=gate.qhat, k_clarify=gate.k_clarify,
+                       t_set=gate.t_set)
     cal_rows = SC_val[val_in]
     glial = GlialPolicy(base, SlowStateConfig(
         reference_max_score=float(cal_rows.max(axis=1).mean())))
-    glial.calibrate_reference([observe_row(r, gate.t_prob, gate.qhat)[0]
+    glial.calibrate_reference([observe_row(r, gate.t_prob, gate.qhat, gate.t_set)[0]
                                for r in cal_rows])
     arms = [StaticPolicy(base), glial,
             RecalibratePolicy(base, RecalibrateConfig(delay=200, refit_every=50,
@@ -1172,6 +1173,7 @@ RESULTS["slow_shipped"] = {"status": "skipped"}
 try:
     import datasets as _ds
     from src.decision.gate import ConformalGate
+    from src.decision.schema import Question
     from src.decision.slow import SlowStateConfig, observe_row
 
     N_SHIP = 200
@@ -1187,7 +1189,8 @@ try:
             ref = LH_val[val_in]  # calibration rows are the healthy reference
             slow = g.attach_slow_state(SlowStateConfig(
                 reference_max_score=float(ref.max(axis=1).mean())))
-            g.calibrate_slow([observe_row(r, g.t_prob, g.qhat)[0] for r in ref])
+            g.calibrate_slow([observe_row(r, g.t_prob, g.qhat, g.t_set)[0]
+                              for r in ref])
         m = DecisionModel(encoder=encoder, scorer=head, gate=g, cache=None)
         q = Question(qtype="choice", options=INTENT_TEXTS)
         out = {"phase1": {"n": 0, "answered": 0, "correct": 0, "unsafe": 0},
