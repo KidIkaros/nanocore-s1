@@ -84,12 +84,12 @@ The full stack. Everything not marked `DONE` is roadmap work.
 | 25 | Benchmark breadth | ~15 datasets / 7 families | TODO | 7 |
 | 26 | Multimodal real-data proof | vision (+audio) | TODO | 7 |
 | 27 | Multilingual slice | language-gradient risk | TODO | 7 |
-| 28 | Continuous numeric output | requested-precision values | OPT | 8 |
+| 28 | Continuous numeric output | requested-precision values | **model half DONE** — `OrdinalScorer.expected()`; the refinement loop is harness | 8 |
 | 29 | llama.cpp parity + device latency | on-device runtime | TODO (you trigger) | 8 |
-| 30 | Harness integration contract | where it sits in an agent loop | TODO | 9 |
-| 31 | Agentic memory control | System-One memory plane | OPT | 10 |
+| 30 | Harness integration contract | where it sits in an agent loop | TODO — **harness by definition**; it binds 28/31/33 | 9 |
+| 31 | Agentic memory control | System-One memory plane | OPT — **harness**; the composition half is DONE (composer) | 10 |
 | 32 | README + ops runbook | how anyone uses/runs it | TODO | 11 |
-| 33 | Responsible design | bias per slice, privacy, compliance | TODO | 11 |
+| 33 | Responsible design | bias per slice, privacy, compliance | **model half DONE** (`modelcard.py`, privacy test); system card + oversight are harness | 11 |
 
 ---
 
@@ -218,6 +218,49 @@ commit and bundle digest it applies to.
 - Privacy: inputs never leave the device.
 - **Acceptance:** parity within tolerance; measured latency; memory gate passed.
 
+### The model/harness boundary — governs components 28, 30, 31, 33
+
+Researched rather than assumed. The field's operational definition, from a systematic
+review of 896 papers and 80+ regulatory documents (arXiv:2603.10023): **"models consist
+of trained parameters and architecture, while systems consist of the model plus
+additional components including an interface for processing inputs and outputs."**
+
+Every one of these four is a **harness** concern with a **thin model-side contract that
+is already built**. The line is the same in each case: the model provides *calibrated
+primitives over a given input*; the harness decides *what the input is* and *what to do
+with the output*. That is also the paper's additive design principle — the decision layer
+"can lower confidence, flag findings for review, or prune agents, but it cannot override
+a deterministic validator's rejection… the worst case of System One failure is equivalent
+to running without it."
+
+| # | harness owns | model side — already built |
+|---|---|---|
+| 28 | the requested-precision **refinement loop** (coarse-to-fine bisection) | the ordinal distribution and `OrdinalScorer.expected()`. `Noul` is the cheap calibrated binary query that bisection needs |
+| 30 | the integration contract itself — context hook, safety hook, orchestration surface | `decide(state, question) -> Prediction`, and nothing more |
+| 31 | retrieval, eviction, paging, **what to include** in a state | `State` (an ordered item list) and `EmbeddingComposer` — **how** a given set is composed |
+| 33 | system card, safeguards, routing, human oversight, monitoring, red-teaming the *assembled* thing | the model card and training-data disclosure; privacy (inputs never leave the device, tested) |
+
+**Two caveats recorded now so they are not discovered later:**
+
+1. **Continuous-output precision has a floor.** A single forward pass cannot exceed its
+   declared level granularity — *"the larger the number of categories, the smaller the
+   discretization error"* (Rothe et al.). Precision beyond that costs refinement queries.
+   "Requested precision" is a cost decision, not a free parameter.
+2. **Compliance is scope-dependent, and the model is not the regulated object.** The EU AI
+   Act regulates **systems**: *"the model provider is on the hook for the model card; the
+   system provider is on the hook for the system."* This model is not GPAI under the Act —
+   270M frozen encoder plus a fitted head, neither "significant generality" nor the
+   10^25-FLOP systemic-risk threshold. Obligations split three ways: model (ours),
+   system (the harness), deployer (whoever runs it). **Get counsel before relying on any
+   of this** — arXiv:2603.10023's whole premise is that the model/system boundary is
+   ambiguous in current regulation, and that ambiguity *is* the compliance risk.
+
+**What the harness inherits, as three named contracts rather than a blank page:**
+compose-a-given-state, answer-calibrated-binary-queries, report-provenance (the bundle
+digest). Design it against those.
+
+---
+
 ### Phase 9 — Harness integration contract
 **Where:** local code, Kaggle test. **Depends:** 4.
 
@@ -331,3 +374,4 @@ The project is complete when:
 | 2026-10-08 | 7 | **v20 multimodal: the first decision-level vision evidence, and my verdict asked the wrong question.** ScienceQA, 1500 fit / 600 test, 4-choice, vision tower loaded (peak 4.23 GiB). **image_only .4333 [.3983,.4735] vs 4-way chance .25 — the image alone carries real, significant decision information.** But `full` (image+question, mean-pooled) is **.4283**, *below* image_only, and text_only is the worst arm at .3950. So: (a) vision works at the decision level — new positive evidence; (b) mean-pooling image+text does **not** beat the best single modality, which is exactly the deficiency ADR-0003's composer exists to fix and is now empirically motivated rather than hypothetical. **My `multimodal_image_helps` verdict tested `full > text_only`, which is the wrong operationalization** — it can be false while the image carries signal. Corrected in v21 to two pre-registered claims: does the image beat chance, and does the combination beat **both** singles. |
 | 2026-10-08 | 7 | v20 conformal sets on the multimodal task are degenerate (mean set 4.00 = the whole 4-option space, coverage 1.000) because the scorer is near-uniform there (log ≈ 1.35 vs uniform 1.386). The v19 `mean_set_size` diagnostic surfaces this correctly, and the `t_set` fit declined to pick a temperature — the documented fallback, since no temperature helps a score with no signal. This is the diagnostic doing its job on a task where the model has nothing to say. |
 | 2026-10-08 | — | **v21 DONE — 44 verdicts, 43 true.** The one false is the *correct* answer: `multimodal_combination_beats_both_singles` fails while `multimodal_image_carries_signal` passes, which is exactly the pair the corrected operationalization produces. **`cli_adapt` ran: 1500 rows / 150 classes, headroom 0.709 (below 0.85, so a head is justified), test accuracy .904, coverage .9467, mean set 2.02 of 150, round-trip action `answer`** — definition-of-done #1 verified on Kaggle through the CLI with the real encoder, and the v19 conformal fix holding on a freshly adapted bundle. |
+| 2026-10-08 | — | **Researched the model/harness boundary for components 28, 30, 31, 33 rather than assuming it.** All four are **harness** concerns with a thin model-side contract that is **already built** — which is why deferring them is architecturally correct, not just sequencing. The line is the same in each case: the model provides *calibrated primitives over a given input*; the harness decides *what the input is* and *what to do with the output*. Operational definition from arXiv:2603.10023 (896 papers, 80+ regulatory documents): models are "trained parameters and architecture", systems are "the model plus additional components including an interface for processing inputs and outputs". Model-side halves already in place: `OrdinalScorer.expected()` for 28 (the refinement loop is harness, and `Noul` is the calibrated binary query it needs), `EmbeddingComposer` for 31 (retrieval/eviction is harness), `modelcard.py` + the privacy test for 33 (system card, oversight and monitoring are harness). Two caveats recorded: continuous-output precision has a hard floor at the declared level granularity, and compliance is scope-dependent — the EU AI Act regulates *systems*, and this model is not GPAI under it. |
