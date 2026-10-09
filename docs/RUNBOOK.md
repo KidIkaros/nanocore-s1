@@ -101,6 +101,103 @@ prediction log, which is what `monitor.py` and the Phase 6 release loop consume.
 | `st` | sentence-transformers EG2 | Kaggle / dev (needs a GPU for real data) |
 | `llamacpp` | a GGUF file | the on-device deployment path (ADR-0007) |
 
+## 5. Phase 8 — run it on your own machine, and measure it
+
+The last definition-of-done item: **"it runs on the target device with measured
+latency."** Four steps, no new code.
+
+### 5.1 The runtime
+
+```bash
+pip install llama-cpp-python
+```
+
+Compiles from source unless a prebuilt wheel matches your platform. It is the only
+optional dependency; everything else runs on numpy/torch.
+
+### 5.2 The encoder, ~300 MB
+
+```bash
+python -c "from huggingface_hub import hf_hub_download as d; \
+  print(d('ggml-org/embeddinggemma-300m-GGUF','embeddinggemma-300M-Q8_0.gguf',local_dir='models'))"
+```
+
+The CLI prints this exact command if the file is missing, rather than failing obscurely.
+
+### 5.3 A bundle
+
+Either pull one from a kernel run, or fit your own on your data:
+
+```bash
+nanocore adapt --data yours.csv --text-col text --label-col intent \
+    --out models/mine --backend llamacpp --model models/embeddinggemma-300M-Q8_0.gguf
+```
+
+### 5.4 Run it, then measure it
+
+```bash
+# a decision, through the GGUF
+nanocore decide "i need to cancel my flight" --options "cancel,book,balance" \
+    --backend llamacpp --model models/embeddinggemma-300M-Q8_0.gguf \
+    --bundle models/mine/bundle
+
+# the acceptance run: parity against the PyTorch reference, plus latency percentiles
+nanocore parity --inputs demos.txt --options "cancel,book,balance" \
+    --bundle models/mine/bundle --backend llamacpp \
+    --model models/embeddinggemma-300M-Q8_0.gguf
+```
+
+`parity` reports the two things the acceptance criterion names:
+
+- **cosine agreement** between the two backends' embeddings — the *primary* metric,
+  because argmax agreement hides a backend that shifted every vector while permuting
+  no decisions (and that surfaces later as unexplained calibration drift)
+- **latency percentiles** for both backends, and their p50 ratio
+
+**Note:** `parity`'s `--reference` defaults to `st`, which loads PyTorch weights too.
+Pass `--reference stub` to exercise the wiring without loading anything.
+
+### What to expect
+
+Prior measurements, so you know whether your number is sane:
+
+| measurement | value | source |
+|---|---|---|
+| llama.cpp Q8_0 vs PyTorch, same CPU | **4.08× faster** (89.2 ms vs 363.5 ms) | ADR-0007 |
+| quality after the swap | no measurable loss (93.41% vs 92.92% zero-shot) | ADR-0007 |
+| throughput, 4-core Xeon | llama.cpp **9.9** vs PyTorch **2.4** texts/s (4.12×) | ADR-0007 |
+| memory needed for the 300 MB GGUF | **0.51 GB free** (0.34 resident × 1.5 headroom) | `guard.py` |
+
+**On parity, read this before interpreting the number.** The roadmap carried a row
+reading *"llama.cpp GGUF argmax agreement 0.815 (QAT Q8_0) — below the ≥0.999 bar"*.
+**That figure has no artifact behind it.** The `s1_llamacpp` kernel measured GGUF sizes,
+thread scaling, load time, encode latency and Banking77 quality — it never implemented an
+agreement measurement at all, and no file under `reports/runs/` contains the number.
+
+So the honest position is: **GGUF parity is unmeasured, and `nanocore parity` is the first
+implementation of that measurement.** Run it and you will be the first to know. Treat the
+0.815 as a *rumour* about a quantised variant, not a result — and note that it is an
+*argmax* agreement, which the roadmap's own reasoning says is the wrong metric anyway
+(argmax hides a backend that shifted every embedding while permuting no decisions).
+
+### Acceptance
+
+1. **parity** — cosine agreement ≥ 0.99 mean, action agreement ≥ 0.95 (both are flags,
+   `--min-cosine` / `--min-action-agreement`). These thresholds are ours, not a
+   standard's: no published protocol defines backend-swap parity for this model shape.
+2. **latency** — p50/p95/p99 on *your* hardware, recorded as an artifact
+3. **memory gate passed** — the gate runs *before* any weights load, and refuses
+   rather than taking the machine down
+
+### Failure modes specific to this path
+
+| message | cause |
+|---|---|
+| `refusing to load weights: N GB free < M GB needed` | the memory gate. Check what else is resident, or `--ignore-memory` (it warns) |
+| `llama-cpp-python is required for the GGUF backend: pip install …` | step 5.1 |
+| `model file not found: …` | step 5.2; the error prints the download command |
+| `LlamaCppEncoder is text-only; 'image' items need StateEncoder` | the GGUF path is text-only by design; media states go through the PyTorch encoder |
+
 ## Failure modes, and what they mean
 
 | message | cause |

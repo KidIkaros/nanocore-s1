@@ -43,11 +43,30 @@ All verified in `reports/runs/s1_verify/` (Kaggle T4, v4 green):
 | Bundle save→load round-trip | 200/200 identical decisions |
 | SST-5 ordinal (CORN) vs zero-shot | 0.432 / 0.732 MAE vs 0.318 / 0.875 |
 | GoEmotions macro-F1 (head ladder) | 0.455 (`mlp_emb`) vs 0.287 Platt |
-| llama.cpp GGUF argmax agreement | 0.815 (QAT Q8_0) — below the ≥0.999 bar |
+| llama.cpp GGUF parity | **UNMEASURED** — see the correction below |
 
 **Blunt summary:** the decision layer (scorer + gate + cache + bundle) is implemented and
 verified. It is *not* yet a usable model — there is no adaptation path, no runnable entry
 point, no escalation handling, no serving, no monitoring.
+
+> **Correction (2026-10-08, v23).** Two things in the table above are wrong, and both were
+> found while preparing Phase 8.
+>
+> 1. **The GGUF parity row was unsourced.** It read *"argmax agreement 0.815 (QAT Q8_0) —
+>    below the ≥0.999 bar"*, but **no artifact contains that number** and the `s1_llamacpp`
+>    kernel never implemented an agreement measurement — it measured sizes, thread scaling,
+>    load time, encode latency and Banking77 quality. The figure violated the stop-doing
+>    rule against claiming a number without an artifact, and it was the most consequential
+>    number in the table, because it asserted that the on-device path fails parity.
+>    **`src/decision/parity.py` (built for Phase 8) is the first implementation of that
+>    measurement.** Phase 8 will answer a question this table had been answering by
+>    assertion.
+> 2. **The "not yet a usable model" summary is stale by ~19 versions.** Adaptation
+>    (`adapt`), a runnable entry point (the CLI), escalation handling (`handlers`),
+>    serving (`serve`) and monitoring (`monitor`) all exist and are verified — see the
+>    progress log from v5 onward, and the definition of done below, where six of seven
+>    items are done. The section is kept for the record of what was true at v4; do not
+>    read it as current.
 
 ---
 
