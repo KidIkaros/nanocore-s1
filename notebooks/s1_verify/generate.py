@@ -1217,11 +1217,14 @@ try:
     _bundled = DecisionModel(encoder=encoder, scorer=head, gate=gate_h)
     try:
         _bundled.decide(X_te[0], Question(qtype="noul"))
-        _refusal = {"refused": False}
+        _refused = False
     except ValueError as e:
-        _refusal = {"refused": "label space" in str(e)}
+        _refused = "label space" in str(e)
 
-    # Arm 2 — real binary judgments through the cosine path.
+    # Arm 2 — real binary judgments through the cosine path. Stratified per
+    # proposition: head-of-file indices on class-ordered data would give the
+    # gold column ~zero positives (the datasets.py trap), which reads as
+    # degenerate accuracy rather than a measured AUROC.
     _nm = DecisionModel(encoder=encoder, scorer=None, gate=None, cache=None)
     _props = [(c, f"the user's intent is to {c}") for c in
               ("transfer", "restaurant reservation", "weather")
@@ -1229,31 +1232,37 @@ try:
     if len(_props) < 2:
         _props = [(n, f"the user's intent is to {n}")
                   for n in INTENT_TEXTS[::40][:3]]
-    _idx = np.where(te_in)[0][:120]
+    _in = np.where(te_in)[0]
+    _rng_n = np.random.default_rng(0)
     _arms = {"prop_in_state": {}, "prop_in_options": {}}
     for _cand, _prop in _props:
+        _pos = np.array([i for i in _in if INTENT_TEXTS[yt_c[i]] == _cand])[:40]
+        _rest = np.array([i for i in _in if INTENT_TEXTS[yt_c[i]] != _cand])
+        _neg = _rng_n.choice(_rest, size=min(80, len(_rest)), replace=False)
+        _idx = np.concatenate([_pos, _neg])
         _gold = np.array([INTENT_TEXTS[yt_c[i]] == _cand for i in _idx])
         _q_b = Question(qtype="noul",
                         options=[_prop, "the user's intent is something else"])
-        _pa, _pb = [], []
+        _pyes_state, _pyes_opts = [], []
         for i in _idx:
-            _pa.append(_nm.decide([X_te[i], _prop],
-                                  Question(qtype="noul")).noul)
-            _pb.append(_nm.decide(X_te[i], _q_b).probabilities[_prop])
-        for _arm, _pys in (("prop_in_state", _pa), ("prop_in_options", _pb)):
+            _pyes_state.append(_nm.decide([X_te[i], _prop],
+                                          Question(qtype="noul")).noul)
+            _pyes_opts.append(_nm.decide(X_te[i], _q_b).probabilities[_prop])
+        for _arm, _pys in (("prop_in_state", _pyes_state),
+                           ("prop_in_options", _pyes_opts)):
             _pys = np.asarray(_pys, dtype=float)
             _arms[_arm][_cand] = {
                 "auroc": (float(roc_auc_score(_gold, _pys))
                           if 0 < _gold.sum() < len(_gold) else None),
                 "acc_at_half": float(((_pys > 0.5) == _gold).mean()),
                 "base_rate": float(_gold.mean())}
-    RESULTS["noul"] = {"status": "ran", "n": int(len(_idx)),
-                       "bundle_refuses": _refusal["refused"], "arms": _arms,
+    RESULTS["noul"] = {"status": "ran", "n_per_prop": int(len(_idx)),
+                       "bundle_refuses": _refused, "arms": _arms,
                        "gate": "none — a noul gate needs its own calibration"}
     for _arm, _rows in _arms.items():
         print(_arm + ": " + "  ".join(
             f"{k} auroc={v['auroc']}" for k, v in _rows.items()))
-    print(f"bundle refuses out-of-schema noul: {_refusal['refused']}")
+    print(f"bundle refuses out-of-schema noul: {_refused}")
 except Exception as e:
     RESULTS["noul"] = {"status": "failed", "error": repr(e)[:300]}
     print("noul leg failed:", repr(e)[:200])
@@ -1670,7 +1679,8 @@ try:
         if _aurocs:
             eval_rows.append(eval_row(
                 "clinc150-noul", "auroc", sum(_aurocs) / len(_aurocs),
-                split="test", metric_name=f"mean AUROC [noul, {_arm}]",
+                dataset_type="clinc150", split="test",
+                metric_name=f"mean AUROC [noul, {_arm}]",
                 source={"name": "s1_verify kernel (self-reported)"}))
     _anchor = RESULTS.get("mteb_anchor", {})
     _src = {"name": f"MTEB harness v{_anchor.get('mteb_version', '?')}",

@@ -189,7 +189,7 @@ def _anchor_recorded(evidence: Dict) -> Optional[bool]:
     return None if status is None else status == "ran"
 
 
-def _both_ran(evidence: Dict) -> Optional[bool]:
+def _non_choice_qtypes_measured(evidence: Dict) -> Optional[bool]:
     """Score and Noul — the contract's other two output types — were exercised."""
     statuses = [_v(evidence, leg, "status") for leg in ("ordinal", "noul")]
     if any(s is None for s in statuses):
@@ -300,7 +300,7 @@ CRITERIA: tuple = (
               _anchor_recorded),
     Criterion("B4", "B", "the contract's non-choice qtypes produce measured evidence",
               REPORT, "ordinal.status == ran and noul.status == ran",
-              lambda e: _both_ran(e)),
+              _non_choice_qtypes_measured),
     # ── C. risk control — the differentiator ─────────────────────────────────
     Criterion("C1", "C", "cosine-path conformal coverage meets its target",
               MUST_PASS, "coverage >= 1 - alpha", _coverage_holds("cosine_leg")),
