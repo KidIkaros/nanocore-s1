@@ -203,6 +203,16 @@ def _out_of_schema_refused(evidence: Dict) -> Optional[bool]:
     return None if refused is None else bool(refused)
 
 
+def _glial_not_less_safe(evidence: Dict) -> Optional[bool]:
+    """The slow-state arm must not make phase-2 less safe than the frozen
+    incumbent — the property the component exists for. `None` when the
+    cross-task leg did not run; a stricter "strictly safer" signal stays in
+    the verdict's `cross_task_glial_safer` boolean."""
+    g = _v(evidence, "cross_task", "arms", "glial", "phase2", "wrong_answer_rate")
+    s = _v(evidence, "cross_task", "arms", "static", "phase2", "wrong_answer_rate")
+    return None if g is None or s is None else g <= s
+
+
 def _slice_coverage_holds(tol: float = 0.15):
     """No populated confidence band is catastrophically undercovered.
 
@@ -329,6 +339,9 @@ CRITERIA: tuple = (
               _combination_beats_singles),
     Criterion("E5", "E", "the two-field path supports entailment",
               MUST_FIX, "mnli accuracy >= 0.60", _two_field_supported()),
+    Criterion("E6", "E", "the slow-state arm is not less safe than static under shift",
+              MUST_PASS, "glial phase-2 wrong_answer_rate <= static's",
+              _glial_not_less_safe),
     # ── F. operational readiness ─────────────────────────────────────────────
     Criterion("F1", "F", "a retrain can be promoted and rolled back",
               MUST_PASS, "registry round trip with a non-empty shadow comparison",

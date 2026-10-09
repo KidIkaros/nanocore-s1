@@ -175,6 +175,23 @@ def test_readiness_criteria_defer_when_the_leg_did_not_run():
     assert not ({"G1", "G2", "G4"} & set(rep["passed"]))
 
 
+def test_the_glial_arm_must_not_be_less_safe_under_shift():
+    """The slow state's reason to exist: deferral under distribution shift.
+    A glial arm *less* safe than the frozen incumbent is a defect, not noise."""
+    ev = _good()  # no cross_task leg -> deferred, not passed
+    rows = {r["id"]: r for r in evaluate(ev)["criteria"]}
+    assert rows["E6"]["status"] == "deferred"
+
+    ev["cross_task"] = {"status": "ran", "arms": {
+        "glial": {"phase2": {"wrong_answer_rate": 0.019}},
+        "static": {"phase2": {"wrong_answer_rate": 0.304}}}}
+    rows = {r["id"]: r for r in evaluate(ev)["criteria"]}
+    assert rows["E6"]["status"] == "pass"
+
+    ev["cross_task"]["arms"]["glial"]["phase2"]["wrong_answer_rate"] = 0.40
+    assert "E6" in evaluate(ev)["must_pass_failed"]
+
+
 def test_the_qtype_criteria_cover_the_whole_typed_contract():
     """The contract declares choice/score/noul — score and noul must have real
     evidence, and a schema-bound bundle must refuse a noul question loudly."""
