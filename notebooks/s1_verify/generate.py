@@ -1374,6 +1374,88 @@ except Exception as e:
 write_status("noul")
 '''),
 
+    md('''## 6b. Jev-harness anchor — same protocol, same requests
+
+The reference evaluation (`AppliedMachineLearning-Lab/jev-benchmarking`,
+arXiv:2609.37647) publishes its task builders, its metrics, and its per-dataset
+results for Jev, Qwen3.8-27B and Gemma-4-E4B — 37 datasets, 346k requests,
+frozen templates. Running NanoCore through the *same* `Task.examples` /
+`evaluate.compute` path is the strongest anchor available: identical requests,
+identical scoring, only the probabilities differ.
+
+This is a **zero-shot arm**: ungated cosine scorer, because Jev's answer
+format carries no abstention — comparing our gate to a model that cannot
+abstain would compare the wrong things. (The fitted head stays schema-bound;
+it answers only its own label space.) Subset of tasks, bounded `limit` —
+this is an anchor, not the full 346k; the published per-task numbers are
+read alongside for a same-protocol table.
+'''),
+    code('''
+RESULTS["jev_anchor"] = {"status": "skipped"}
+try:
+    import json as _json
+    import subprocess as _sp
+    import urllib.request as _urlreq
+
+    _sp.run([sys.executable, "-m", "pip", "install", "-q",
+             "jev-benchmarking @ git+https://github.com/"
+             "AppliedMachineLearning-Lab/jev-benchmarking"],
+            check=True, capture_output=True)
+    from jev_benchmarking.tasks import TASKS as _JEV_TASKS
+    from src.decision.jevbench import run_task as _jev_run
+
+    _zm = DecisionModel(encoder=encoder, scorer=None, gate=None, cache=None)
+    _ANCHOR = ["banking77", "clinc150", "ag_news", "sst2", "imdb",
+               "boolq", "paws", "sst5", "stsb"]
+    _LIMIT = 300
+    _RAW = ("https://raw.githubusercontent.com/AppliedMachineLearning-Lab/"
+            "jev-benchmarking/main/results/eval")
+
+    def _published(task_name):
+        out = {}
+        for model_dir, tag in (("", "jev"),
+                               ("open_models/Qwen__Qwen3.8-27B", "qwen"),
+                               ("open_models/google__gemma-4-E4B-it", "gemma")):
+            try:
+                with _urlreq.urlopen(
+                        f"{_RAW}/{model_dir + '/' if model_dir else ''}"
+                        f"{task_name}.json", timeout=30) as _r:
+                    out[tag] = _json.loads(_r.read())["primary"]["value"]
+            except Exception:
+                out[tag] = None
+        return out
+
+    _tasks, _comparison = {}, {}
+    for _name in _ANCHOR:
+        try:
+            _r = _jev_run(_zm, _JEV_TASKS[_name], split="eval", limit=_LIMIT)
+            _primary = _JEV_TASKS[_name].primary
+            _src = (_r["aggregate"] if _primary.head == "*"
+                    else _r["heads"].get(_primary.head, {}))
+            _ours = _src.get(_primary.metric)
+            _tasks[_name] = {"n": _r["n_examples"], "primary": {
+                "head": _primary.head, "metric": _primary.metric,
+                "value": _ours}, "heads": _r["heads"],
+                "aggregate": _r["aggregate"]}
+            _comparison[_name] = {"metric": _primary.metric, "nanocore": _ours,
+                                  **_published(_name)}
+            print(f"{_name}: {_primary.metric} ours={_ours} "
+                  f"published={_comparison[_name]}")
+        except Exception as _te:
+            _tasks[_name] = {"status": "failed", "error": repr(_te)[:200]}
+            print(f"{_name}: failed {repr(_te)[:150]}")
+    _ran = {k: v for k, v in _comparison.items()
+            if v.get("nanocore") is not None}
+    RESULTS["jev_anchor"] = {"status": "ran", "tasks": _tasks,
+                             "comparison": _comparison,
+                             "n_tasks_ran": len(_ran), "limit": _LIMIT,
+                             "arm": "zero-shot cosine, ungated"}
+except Exception as e:
+    RESULTS["jev_anchor"] = {"status": "failed", "error": repr(e)[:300]}
+    print("jev_anchor leg failed:", repr(e)[:200])
+write_status("jev_anchor")
+'''),
+
     md('''## 7. Operate the system — log, monitor, retrain, release
 
 The parts a *system* needs and a model does not, none of which had ever run on
