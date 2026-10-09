@@ -1204,14 +1204,17 @@ Two arms, both honest:
    P(yes) against real intent membership, in two representations:
    proposition-in-state (the shipped contract) vs proposition-in-options (the
    diagnostic that separates "the mechanism fails" from "the representation
-   choice is weak"). Gate is None here: a noul conformal gate needs its own
-   calibration data — recorded as unmeasured rather than borrowed from a
-   150-way calibration that does not apply.
+   choice is weak"). The reference eval found binary P(yes) *ranks well but is
+   poorly placed at a fixed 0.5* — tuned thresholds recovered F1 0.50 → 0.75 —
+   so we report F1 at 0.5 and at a threshold tuned on the first half of the
+   sample, evaluated on the second. Gate is None here: a noul conformal gate
+   needs its own calibration data — recorded as unmeasured rather than borrowed
+   from a 150-way calibration that does not apply.
 '''),
     code('''
 RESULTS["noul"] = {"status": "skipped"}
 try:
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import f1_score, roc_auc_score
     from src.decision.schema import Question
 
     # Arm 1 — a schema-bound bundle must fail loudly on out-of-space options.
@@ -1252,17 +1255,37 @@ try:
         for _arm, _pys in (("prop_in_state", _pyes_state),
                            ("prop_in_options", _pyes_opts)):
             _pys = np.asarray(_pys, dtype=float)
+            # The reference eval (arXiv:2609.37647) shows binary P(yes) ranks
+            # well but is poorly placed at a fixed 0.5 — tuned thresholds
+            # recover the F1 gap (0.50 → 0.75 on their UNFAIR-ToS). So AUROC is
+            # the primary metric here; acc@0.5 alone would read a good ranker
+            # as broken. Tune the threshold on a shuffled half of the sample,
+            # evaluate on the other — _idx is pos-then-neg concatenated, so an
+            # unshuffled split would leave the eval half with no positives.
+            _perm = _rng_n.permutation(len(_idx))
+            _half = len(_idx) // 2
+            _tune, _eval = _perm[:_half], _perm[_half:]
+            _t_star = max(np.linspace(0.05, 0.95, 19),
+                          key=lambda t: float(
+                              f1_score(_gold[_tune], _pys[_tune] > t,
+                                       zero_division=0)))
             _arms[_arm][_cand] = {
                 "auroc": (float(roc_auc_score(_gold, _pys))
                           if 0 < _gold.sum() < len(_gold) else None),
-                "acc_at_half": float(((_pys > 0.5) == _gold).mean()),
+                "f1_at_half": float(f1_score(_gold, _pys > 0.5,
+                                             zero_division=0)),
+                "f1_tuned": float(f1_score(_gold[_eval], _pys[_eval] > _t_star,
+                                           zero_division=0)),
+                "tuned_threshold": float(_t_star),
                 "base_rate": float(_gold.mean())}
     RESULTS["noul"] = {"status": "ran", "n_per_prop": int(len(_idx)),
                        "bundle_refuses": _refused, "arms": _arms,
                        "gate": "none — a noul gate needs its own calibration"}
     for _arm, _rows in _arms.items():
         print(_arm + ": " + "  ".join(
-            f"{k} auroc={v['auroc']}" for k, v in _rows.items()))
+            f"{k} auroc={v['auroc']} f1@0.5={v['f1_at_half']:.2f}"
+            f" f1@t={v['f1_tuned']:.2f}(t{v['tuned_threshold']:.2f})"
+            for k, v in _rows.items()))
     print(f"bundle refuses out-of-schema noul: {_refused}")
 except Exception as e:
     RESULTS["noul"] = {"status": "failed", "error": repr(e)[:300]}
