@@ -1343,6 +1343,81 @@ verdict = {
 RESULTS["verdict"] = verdict
 print(json.dumps(verdict, indent=2))
 (WORK / "results.json").write_text(json.dumps(RESULTS, indent=2))
+write_status("verdict")
+'''),
+
+    md('''## 10. Qualification — may this build ship?
+
+Every leg above *measured* something. This one asks the different question, with
+criteria fixed in advance (`src/decision/qualify.py`): may this build ship?
+
+It also runs the **refusal battery** — the safety property as behaviour, with a
+positive control, because a model that refuses everything would otherwise pass a
+refusal test perfectly. And it emits the two delivery artifacts: the sign-off
+(`qualification.json`) and the **model card** a recipient expects to receive.
+
+The artifact is named by **content** (`bundle_digest`), so "the thing we tested"
+and "the thing we ship" are provably the same object.
+'''),
+    code('''
+RESULTS["qualification"] = {"status": "skipped"}
+try:
+    from src.decision import rubric
+    from src.decision.model import bundle_digest
+    from src.decision.modelcard import build_card, render_markdown
+    from src.decision.qualify import evaluate
+    from src.decision.refusals import battery_is_meaningful, run_refusal_battery
+
+    GIT_COMMIT = "unknown"
+
+    # 1. refusals, against the real model and its own label space — a
+    #    schema-bound scorer asked about a label it was never fitted on must
+    #    raise, so a battery with hardcoded labels would pass for the wrong reason
+    refusals = run_refusal_battery(model, INTENT_TEXTS)
+    RESULTS["refusals"] = refusals
+    print(f"refusals: {refusals['passed']}/{refusals['n']} cases | "
+          f"unsafe answers {refusals['unsafe_answers']} | "
+          f"control passed {refusals['positive_control_passed']}")
+    for r in refusals["results"]:
+        print(f"  {r['case']:16} must={r['must']:10} got={r['action']:10} "
+              f"{'ok' if r['pass'] else 'FAIL'}")
+
+    # 2. name the artifact, then qualify it
+    digest = bundle_digest(bundle)
+    prov = {"git_commit": GIT_COMMIT, "kernel": "s1_verify",
+            "bundle_sha256": digest, "dataset": "CLINC150 (150 intents)"}
+    qual = evaluate(RESULTS, provenance=prov)
+    qual["rubric"] = rubric.coverage()
+    RESULTS["qualification"] = qual
+    (WORK / "qualification.json").write_text(json.dumps(qual, indent=2))
+
+    print(f"\\nqualification: {qual['verdict']}  (bundle {digest[:16]}...)")
+    print(f"  must_pass failed : {qual['must_pass_failed']}")
+    print(f"  must_fix open    : {qual['must_fix_open']}")
+    print(f"  deferred         : {qual['deferred']}")
+    print(rubric.render(qual["rubric"]))
+
+    # 3. the delivery artifact
+    built = build_card(qual, RESULTS.get("cli_adapt", {}),
+                       dataset="CLINC150 (150 intents)", encoder_id=encoder.model_name)
+    (WORK / "MODEL_CARD.md").write_text(render_markdown(built))
+    print(f"model card written: {len(built['card'])} sections, "
+          f"{len(built['metrics'])} eval metrics in model-index")
+
+    RESULTS["verdict"].update({
+        "qualification_ran": True,
+        "qualification_named_artifact": bool(digest),
+        "refusals_ran": True,
+        "refusals_no_unsafe_answers": refusals["unsafe_answers"] == 0,
+        "refusals_battery_meaningful": bool(battery_is_meaningful(refusals)),
+        "model_card_written": (WORK / "MODEL_CARD.md").exists(),
+    })
+except Exception as e:
+    RESULTS["qualification"] = {"status": "failed", "error": repr(e)[:300]}
+    RESULTS["verdict"].update({"qualification_ran": False})
+    print("qualification leg failed:", repr(e)[:200])
+
+(WORK / "results.json").write_text(json.dumps(RESULTS, indent=2))
 write_status(done=True)
 '''),
 ]

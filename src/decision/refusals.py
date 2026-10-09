@@ -23,41 +23,48 @@ from typing import Dict, List, Optional, Sequence, Tuple
 #: Actions that count as declining to answer.
 DECLINED = ("clarify", "escalate", "abstain", "unevaluated")
 
-#: Labels a refusal case is written against, so the cases read as products of
-#: something rather than as strings floating free.
-BANKING = ("cancel transfer", "card arrival", "balance", "exchange rate",
-           "lost card", "top up")
-
 
 @dataclass(frozen=True)
 class RefusalCase:
-    """One pathological state and the action it must produce."""
+    """One pathological state and the action it must produce.
+
+    ``options`` are **not** hardcoded: the battery is fed the model's own label
+    space, because a schema-bound scorer asked about a label it was never fitted
+    on *must* raise (``model._align_scores``), and a battery whose every case
+    raised would report a refusal pass for entirely the wrong reason. Cases
+    declare how much of that space they need instead.
+    """
 
     name: str
-    state: str
-    options: Tuple[str, ...]
     must: str            # "not_answer" | "answer" | "not_crash"
     why: str
+    state: str = ""                     # literal state text
+    state_from_options: bool = False    # use the first option text as the state
+    n_options: Optional[int] = None     # None -> the model's whole label space
 
 
 CASES: Tuple[RefusalCase, ...] = (
-    RefusalCase("empty", "", BANKING, "not_answer",
+    RefusalCase("empty", "not_answer",
                 "an empty state matches no option; answering it is a guess"),
-    RefusalCase("whitespace", "  \t \n ", BANKING, "not_answer",
-                "whitespace carries no content, so it cannot select an option"),
-    RefusalCase("unicode_noise", "\U0001f991\u26a1\ufe0f\u6f22\u5b57 \U0001f300\U0001f300",
-                BANKING, "not_answer",
-                "symbols outside the schema must not resolve to a label"),
-    RefusalCase("out_of_schema", "how do i file my taxes in portugal", BANKING,
-                "not_answer",
-                "the known case: an item from another domain must escalate"),
-    RefusalCase("verbatim_option", "cancel transfer", BANKING, "answer",
+    RefusalCase("whitespace", "not_answer",
+                "whitespace carries no content, so it cannot select an option",
+                state="  \t \n "),
+    RefusalCase("unicode_noise", "not_answer",
+                "symbols outside the schema must not resolve to a label",
+                state="\U0001f991\u26a1\ufe0f\u6f22\u5b57 \U0001f300\U0001f300"),
+    RefusalCase("out_of_schema", "not_answer",
+                "the known case: an item from another domain must escalate",
+                state="how do i file my taxes in portugal"),
+    RefusalCase("verbatim_option", "answer",
                 "POSITIVE CONTROL — the correct label is present verbatim, so a "
-                "model that declines here has simply been made useless"),
-    RefusalCase("single_option", "anything at all", ("only option",), "not_crash",
-                "a one-option question is degenerate and must not raise"),
-    RefusalCase("long_input", "transfer " * 2000, BANKING, "not_crash",
-                "long states must be capped (ADR-0012), not error"),
+                "model that declines here has simply been made useless",
+                state_from_options=True),
+    RefusalCase("single_option", "not_crash",
+                "a one-option question is degenerate and must not raise",
+                n_options=1),
+    RefusalCase("long_input", "not_crash",
+                "long states must be capped (ADR-0012), not error",
+                state="transfer " * 2000),
 )
 
 
@@ -69,27 +76,36 @@ def _passed(action: str, must: str, error: Optional[str]) -> bool:
     return error is None                          # "not_crash": raising IS the failure
 
 
-def run_refusal_battery(model, cases: Sequence[RefusalCase] = CASES) -> Dict:
+def run_refusal_battery(model, options: Sequence[str],
+                        cases: Sequence[RefusalCase] = CASES) -> Dict:
     """Feed each case to ``model.decide`` and check the action it produced.
+
+    ``options`` is the model's own label space — the battery must ask questions
+    the model is *able* to answer, or every case fails for the wrong reason.
 
     ``model`` is duck-typed (``decide(state, question)``), so this runs against
     the stub locally and the real bundle on Kaggle without a second harness.
-    A case that *raises* counts as a failure unless it is a ``not_crash`` case,
-    where raising is the one thing being tested for.
     """
     from src.decision.schema import Question
 
+    options = [str(o) for o in options]
+    if not options:
+        raise ValueError("refusal battery needs the model's label space")
+
     results: List[Dict] = []
     for case in cases:
-        question = Question(qtype="choice", options=list(case.options))
+        case_options = options[:case.n_options] if case.n_options else list(options)
+        state = options[0] if case.state_from_options else case.state
+        question = Question(qtype="choice", options=case_options)
         try:
-            pred = model.decide(case.state, question)
+            pred = model.decide(state, question)
             action, error = pred.action, None
         except Exception as exc:
             action, error = "RAISED", repr(exc)[:200]
         ok = _passed(action, case.must, error)
         results.append({"case": case.name, "must": case.must, "action": action,
-                        "pass": bool(ok), "error": error, "why": case.why})
+                        "pass": bool(ok), "error": error, "why": case.why,
+                        "n_options": len(case_options)})
 
     must_decline = [r for r in results if r["must"] == "not_answer"]
     unsafe = [r for r in must_decline if r["action"] == "answer"]

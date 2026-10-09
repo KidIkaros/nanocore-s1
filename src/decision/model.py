@@ -10,6 +10,8 @@ Kaggle-class hardware (see docs/DECISION-MODEL.md, compute boundary).
 """
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
 import numpy as np
@@ -18,6 +20,29 @@ import torch.nn.functional as F
 
 from src.decision.composer import EmbeddingComposer, MODALITY_IDS
 from src.decision.encoder import modality_of, to_numpy
+
+
+def bundle_digest(bundle_dir) -> str:
+    """Content-addressed SHA-256 of a saved bundle.
+
+    This is what makes "the artifact we qualified" and "the artifact we ship"
+    provably the same object — a qualification that cannot name its subject is
+    not a qualification. Hashes *contents* in sorted path order, so a copy at a
+    different path, or a touched mtime, does not change the digest, while any
+    change to the scorer or the gate calibration does.
+    """
+    root = Path(bundle_dir)
+    if not root.is_dir():
+        raise FileNotFoundError(f"no bundle at {root}")
+    h = hashlib.sha256()
+    files = sorted(p for p in root.rglob("*") if p.is_file())
+    if not files:
+        raise ValueError(f"bundle at {root} has no files")
+    for path in files:
+        h.update(path.relative_to(root).as_posix().encode())
+        h.update(b"\0")
+        h.update(path.read_bytes())
+    return h.hexdigest()
 from src.decision.head import DecisionHead
 from src.decision.schema import Prediction, Question, State, StateItem
 from src.decision.scoring import softmax_rows

@@ -39,8 +39,30 @@ def build_zip(root: Path) -> bytes:
     return buf.getvalue()
 
 
-def inject(nb_path: Path, blob: str) -> tuple:
-    """Replace the bundle placeholder and syntax-check every code cell."""
+def git_provenance(root: Path) -> str:
+    """The revision the notebook will report, with a dirty marker.
+
+    A qualification that cannot say which revision it qualified is not
+    reproducible, and a *dirty* tree is worse: the bundle the kernel runs comes
+    from the working tree, not from the commit, so the two can differ. Recording
+    the marker is the honest option — it makes the difference visible.
+    """
+    try:
+        commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root,
+                                capture_output=True, text=True, check=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain"], cwd=root,
+                               capture_output=True, text=True, check=True).stdout.strip()
+    except Exception:
+        return "unknown"
+    # The notebook is the build product of this very step, so its own
+    # uncommitted state says nothing about the tree the kernel will run. What
+    # matters is whether the *sources* differ from the commit.
+    dirty = "\n".join(l for l in dirty.splitlines() if not l.endswith(".ipynb")).strip()
+    return commit + ("+dirty" if dirty else "")
+
+
+def inject(nb_path: Path, blob: str, provenance: str = "unknown") -> tuple:
+    """Replace the bundle/provenance placeholders and syntax-check every cell."""
     nb = json.loads(nb_path.read_text())
     injected, checked, bad = 0, 0, 0
     for index, cell in enumerate(nb["cells"]):
@@ -51,6 +73,10 @@ def inject(nb_path: Path, blob: str) -> tuple:
             source = re.sub(r'BUNDLE = "[^"]*"', f'BUNDLE = "{blob}"', source, count=1)
             cell["source"] = [source]
             injected += 1
+        if 'GIT_COMMIT = "' in source:
+            source = re.sub(r'GIT_COMMIT = "[^"]*"',
+                            f'GIT_COMMIT = "{provenance}"', source, count=1)
+            cell["source"] = [source]
         checked += 1
         try:
             ast.parse(source)
@@ -75,9 +101,11 @@ def main() -> None:
     nb_path = nb_dir / f"{args.family}.ipynb"
 
     blob = base64.b64encode(build_zip(root)).decode()
-    checked, bad = inject(nb_path, blob)
+    provenance = git_provenance(root)
+    checked, bad = inject(nb_path, blob, provenance)
     print(f"{nb_path.relative_to(root)}: bundle {len(blob) // 1024}KB from "
-          f"{', '.join(BUNDLE_DIRS)}, {checked} code cells, {bad} syntax errors")
+          f"{', '.join(BUNDLE_DIRS)}, {checked} code cells, {bad} syntax errors, "
+          f"provenance {provenance}")
     if bad:
         raise SystemExit(1)
 
