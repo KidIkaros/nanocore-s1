@@ -14,6 +14,7 @@ construction, so a scorer must never ship probabilities it sharpened itself.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Dict, Optional, Sequence
 
@@ -53,6 +54,64 @@ def mass_needed(P: np.ndarray, true_idx: np.ndarray) -> np.ndarray:
     i = np.arange(len(P))
     rank = (srt > P[i, true_idx][:, None]).sum(axis=1)
     return cum[i, np.minimum(rank, srt.shape[1] - 1)]
+
+
+def qhat_from_scores(scores: np.ndarray, true_idx: np.ndarray,
+                     t_set: float, alpha: float) -> float:
+    """Split-conformal quantile of the APS score at ``t_set``.
+
+    One definition, used by both the gate's calibration and the set-temperature
+    search: this formula *is* the coverage guarantee, so two copies of it would
+    be two chances to disagree about what the gate promises.
+    """
+    m = mass_needed(softmax_rows(scores, t_set), true_idx)
+    n = len(m)
+    return float(np.quantile(m, min(1.0, math.ceil((n + 1) * (1 - alpha)) / n)))
+
+
+def fit_set_temperature(scores: np.ndarray, true_idx: np.ndarray, alpha: float,
+                        grid: Sequence[float] = (1.0, 2.0, 4.0, 8.0, 16.0, 32.0),
+                        seed: int = 0) -> float:
+    """APS temperature fitted to shrink sets while keeping coverage ≥ 1 − alpha.
+
+    ``t_set`` was fixed at 1.0 because 1.0 "measured sane" — true for a cosine
+    scorer, whose similarities are already spread across the label set. It is
+    *not* sane for a trained head: measured on the v18 head path, the conformal
+    score (cumulative mass at the true label) sits in [0.99, 1.0] for ~75% of
+    items, so the 0.90 quantile saturates at 0.9999 and every set becomes the
+    whole label space — mean 31 of 150 labels at coverage 1.0000 against a 0.90
+    target, which makes the guarantee vacuous and ``k_clarify`` unreachable.
+
+    Softening spreads the mass, which spreads the score, which makes the
+    quantile discriminative again (measured: t=8 → mean set 2.4, coverage
+    0.9907). The grid therefore runs *upward* only — sharpening compresses the
+    score further and worsens the degeneracy.
+
+    Selection is out-of-sample by construction: the passed data is halved, the
+    quantile is fitted on one half and the coverage/size trade-off measured on
+    the other, so the choice cannot be bought with an in-sample quantile.
+
+    The returned temperature only affects *efficiency*. Coverage comes from the
+    quantile at whatever temperature is chosen, so falling back to ``grid[0]``
+    when nothing clears the bar cannot weaken the guarantee — it just declines
+    to optimise set size.
+    """
+    scores = np.asarray(scores, dtype=np.float64)
+    true_idx = np.asarray(true_idx, dtype=int).reshape(-1)
+    perm = np.random.default_rng(seed).permutation(len(scores))
+    half = len(perm) // 2
+    q_idx, c_idx = perm[:half], perm[half:]
+
+    best_t, best_size = float(grid[0]), np.inf
+    for t in grid:
+        q = qhat_from_scores(scores[q_idx], true_idx[q_idx], t, alpha)
+        members = aps_members(softmax_rows(scores[c_idx], t), q)
+        sizes = np.array([len(m) for m in members])
+        covered = np.mean([true_idx[c_idx][i] in members[i]
+                           for i in range(len(members))])
+        if covered >= 1 - alpha and sizes.mean() < best_size:
+            best_t, best_size = float(t), float(sizes.mean())
+    return best_t
 
 
 def fit_temperature(scores: np.ndarray, true_idx: np.ndarray,

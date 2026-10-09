@@ -19,13 +19,14 @@ Three measured traps are encoded as defaults:
 """
 from __future__ import annotations
 
-import math
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
-from src.decision.scoring import aps_members, fit_temperature, mass_needed, softmax_rows
+from src.decision.scoring import (aps_members, fit_set_temperature,
+                                  fit_temperature, mass_needed,
+                                  qhat_from_scores, softmax_rows)
 from src.decision.slow import (Observation, PolicyThresholds, SlowState,
                                SlowStateConfig, fit_answer_threshold,
                                fit_in_schema_threshold, observe_row)
@@ -82,13 +83,16 @@ class ConformalGate:
     def __init__(self, alpha: float = 0.10, min_n: int = 200,
                  t_prob_floor: float = 0.25, t_set: float = 1.0,
                  k_clarify: int = 3, answer_precision: float = 0.90,
-                 policy: str = "full"):
+                 policy: str = "full", fit_t_set: bool = True):
         if not 0 < alpha < 1:
             raise ValueError(f"alpha must be in (0, 1), got {alpha}")
         if policy not in ("full", "escalate", "answer"):
             raise ValueError(f"policy must be full/escalate/answer, got {policy!r}")
         self.alpha, self.min_n = float(alpha), int(min_n)
         self.t_prob_floor, self.t_set = float(t_prob_floor), float(t_set)
+        #: Fit t_set from the calibration data instead of trusting the 1.0
+        #: default. Off only to reproduce pre-v19 behaviour.
+        self.fit_t_set = bool(fit_t_set)
         self.k_clarify, self.answer_precision = int(k_clarify), float(answer_precision)
         self.policy = policy
         self.t_prob: Optional[float] = None
@@ -137,10 +141,18 @@ class ConformalGate:
         correct = scores_A.argmax(axis=1) == targets_A
         self.tau_answer = fit_answer_threshold(top, correct, self.answer_precision)
 
-        m = mass_needed(softmax_rows(scores_B, self.t_set), targets_B)
-        n = len(m)
-        self.qhat = float(np.quantile(
-            m, min(1.0, math.ceil((n + 1) * (1 - self.alpha)) / n)))
+        # Select t_set on B, but keep q̂ fitted on ALL of B: the *choice* of
+        # temperature is what needs out-of-sample validation (fit_set_temperature
+        # halves its input internally to do that), while the quantile is the
+        # thing carrying the coverage guarantee and wants every row. Halving B
+        # here instead moved q̂ 0.0239 → 0.0254 on the policy_v2 fixture and
+        # pushed mean set size 3.80 → 3.99, which is enough to lose every
+        # clarify decision at k_clarify=3.
+        if self.fit_t_set:
+            self.t_set = fit_set_temperature(scores_B, targets_B, self.alpha,
+                                             seed=seed)
+
+        self.qhat = qhat_from_scores(scores_B, targets_B, self.t_set, self.alpha)
 
         self.calibration = {"t_prob": self.t_prob, "tau_answer": self.tau_answer,
                             "qhat": self.qhat, "t_set": self.t_set,

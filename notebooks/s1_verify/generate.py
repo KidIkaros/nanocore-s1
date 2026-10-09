@@ -205,7 +205,8 @@ LABELS = INTENT_TEXTS  # score column i ↔ INTENT_TEXTS[i]
 yv_c, yt_c = to_cols(y_val), to_cols(y_te)
 
 def policy_eval(scores_test, g, y_col, in_mask):
-    out = {"actions": {}, "resolved": 0.0, "encodes": 0, "cov_hits": 0, "n_in": 0}
+    out = {"actions": {}, "resolved": 0.0, "encodes": 0, "cov_hits": 0, "n_in": 0,
+           "set_sizes_in_scope": []}
     argmax = scores_test.argmax(1)
     for i in range(len(y_col)):
         r = g.decide(scores_test[i], LABELS)
@@ -221,9 +222,16 @@ def policy_eval(scores_test, g, y_col, in_mask):
         if in_mask[i]:
             out["n_in"] += 1
             out["cov_hits"] += int(LABELS[y_col[i]] in r.prediction_set)
+            out["set_sizes_in_scope"].append(len(r.prediction_set))
     out["resolved"] /= len(y_col)
     out["encodes_per_item"] = out["encodes"] / len(y_col)
     out["set_coverage_in_scope"] = out["cov_hits"] / max(out["n_in"], 1)
+    # Set SIZE is the observable that coverage hides: a saturated quantile
+    # reports coverage 1.0000 (looks like success) while every set is the whole
+    # label space. Reported so the degeneracy can never hide again.
+    sizes = np.asarray(out.pop("set_sizes_in_scope"), dtype=float)
+    out["mean_set_size"] = float(sizes.mean()) if sizes.size else 0.0
+    out["singleton_rate"] = float((sizes == 1).mean()) if sizes.size else 0.0
     return out
 
 v_cos = policy_eval(SC_te, gate, yt_c, te_in)
@@ -259,6 +267,15 @@ print("head leg:", json.dumps({k: round(v, 3) if isinstance(v, float) else v
                                for k, v in v_head.items()}))
 RESULTS["taskhead_leg"] = v_head
 RESULTS["head_in_scope_acc"] = head_acc
+# Persist the head's own scores. `verify_scores.npz` holds only the *cosine*
+# scores (`S @ LV.T`), so the head path could not be re-evaluated offline — the
+# v19 conformal-set audit had to recover the head from its bundle and re-derive
+# the raw-id → column mapping by hand, which is how a false 53% accuracy was
+# read before the mapping was found. Two extra arrays make that avoidable.
+np.savez_compressed(WORK / "head_scores.npz",
+                    scores_val=LH_val, scores_test=head.logits(S_te),
+                    y_val=y_val, y_test=y_te)
+print("head scores saved for offline re-evaluation")
 write_status("policy-eval")
 '''),
 
@@ -866,6 +883,11 @@ try:
     #      arm comparison is genuinely per-arm, not the incumbent's numbers.
     gold = ["oos" if int(c) == OOS else text_by_id[int(c)]
             for c in y_te[:N_LOG]]
+    # The incumbent served these same 300 items moments ago, so every re-decide
+    # would be a DecisionCache hit (measured p95 0.45 ms) while the freshly
+    # loaded candidate pays the real ~58 ms — a 130x "latency regression" that
+    # is purely the cache. Both arms must be cache-free before timing.
+    model.cache = None
     inc_preds, cand_preds, inc_ms, cand_ms = [], [], [], []
     for r in records:
         qq = Question(qtype=r.get("qtype", "choice"), options=r["labels"])
@@ -928,7 +950,12 @@ verdict = {
     "cosine_resolved_in_band": abs(v_cos["resolved"] - 0.482) < 0.05,
     "head_resolved_in_band": abs(v_head["resolved"] - 0.918) < 0.06,
     "coverage_in_band": 0.85 <= v_cos["set_coverage_in_scope"] <= 0.95,
-    "head_coverage_reported": v_head["set_coverage_in_scope"],  # expected ~1.0 (degenerate)
+    "head_coverage_reported": v_head["set_coverage_in_scope"],
+    # v19: the head path used to report coverage 1.0000 with mean sets of 31 of
+    # 150 labels — a vacuous guarantee that coverage alone could not reveal.
+    # These two make set size a first-class, checked outcome.
+    "cosine_sets_small": v_cos["mean_set_size"] < 8,
+    "head_sets_small": v_head["mean_set_size"] < 10,
     "head_acc_in_band": head_acc > 0.94,
     "bundle_roundtrip_identical": RESULTS["bundle_roundtrip"]["identical"] == 200,
     "ordinal_ran": RESULTS["ordinal"]["status"] == "ran",
