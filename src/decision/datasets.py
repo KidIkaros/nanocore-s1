@@ -225,3 +225,18 @@ def _is_numeric(values: Sequence) -> bool:
     except (TypeError, ValueError):
         return False
     return True
+
+
+def dataset_revision(repo_id: str, revision: Optional[str] = None) -> Optional[str]:
+    """The git SHA a Hub dataset resolves to — the pin an eval number needs.
+
+    A score is only reproducible against the dataset revision it ran on, which
+    is why Hub eval results carry ``dataset.revision``. Returns ``None`` when
+    the Hub cannot be reached: "not recorded" is the honest field value, and a
+    metadata lookup must never sink a dataset that already loaded.
+    """
+    try:
+        from huggingface_hub import HfApi
+        return HfApi().dataset_info(repo_id, revision=revision).sha
+    except Exception:
+        return None

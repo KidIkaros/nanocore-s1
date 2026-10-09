@@ -39,15 +39,51 @@ def _table(rows: List[List[str]], header: List[str]) -> str:
     return "\n".join(out)
 
 
+def eval_row(dataset_name: str, metric_type: str, value, *,
+             dataset_type: Optional[str] = None, config: Optional[str] = None,
+             split: Optional[str] = None, revision: Optional[str] = None,
+             metric_name: Optional[str] = None, task: str = "text-classification",
+             source: Optional[Dict] = None, verified: bool = False) -> Dict:
+    """One eval result with the provenance that makes a number interpretable.
+
+    On the Hub a bare scalar means nothing: the EvalResult fields say which
+    dataset (id *and* git revision), which config and split, and who computed
+    the number. ``verified`` is never set here — it means Hub-side eval compute
+    re-ran the metric, and every number we emit is self-reported. The honest
+    shape is ``verified=False`` plus a ``source`` pointing at the run artifact.
+    """
+    return {"task": task, "dataset": dataset_name,
+            "dataset_type": dataset_type or dataset_name,
+            "dataset_config": config, "dataset_split": split,
+            "dataset_revision": revision,
+            "metric": metric_type, "metric_name": metric_name,
+            "value": value, "verified": verified, "source": source}
+
+
 def model_index(name: str, metrics: List[Dict]) -> Dict:
     """The structured block the Hub parses. One entry per (task, dataset, metric)."""
-    return {"name": name,
-            "results": [{"task": {"type": r.get("task", "text-classification"),
-                                  "name": r.get("task_name")},
-                         "dataset": {"name": r["dataset"], "type": r.get("dataset_type",
-                                                                         r["dataset"])},
-                         "metrics": [{"type": r["metric"], "value": r["value"]}]}
-                        for r in metrics]}
+    results = []
+    for r in metrics:
+        dataset = {"name": r["dataset"],
+                   "type": r.get("dataset_type", r["dataset"])}
+        for key, field in (("dataset_config", "config"),
+                           ("dataset_split", "split"),
+                           ("dataset_revision", "revision")):
+            if r.get(key) is not None:
+                dataset[field] = r[key]
+        task = {"type": r.get("task", "text-classification")}
+        if r.get("task_name"):
+            task["name"] = r["task_name"]
+        result = {"task": task,
+                  "dataset": dataset,
+                  "metrics": [{"type": r["metric"],
+                               "name": r.get("metric_name") or r["metric"],
+                               "value": r["value"],
+                               "verified": bool(r.get("verified", False))}]}
+        if r.get("source"):
+            result["source"] = r["source"]
+        results.append(result)
+    return {"name": name, "results": results}
 
 
 def _headroom_value(adapt_report: Optional[Dict]) -> Optional[float]:
@@ -65,10 +101,11 @@ def _headroom_value(adapt_report: Optional[Dict]) -> Optional[float]:
     return headroom
 
 
-def _metrics_from_adapt(adapt_report: Optional[Dict], dataset: str) -> List[Dict]:
+def _metrics_from_adapt(adapt_report: Optional[Dict], dataset: str,
+                        **provenance) -> List[Dict]:
     """Hub-shaped eval rows from an adapt report's held-out block."""
     test = (adapt_report or {}).get("test", {})
-    return [{"dataset": dataset or "user-supplied", "metric": metric, "value": test[key]}
+    return [eval_row(dataset or "user-supplied", metric, test[key], **provenance)
             for key, metric in (("accuracy", "accuracy"), ("brier", "brier"),
                                 ("conformal_coverage", "coverage"),
                                 ("mean_set_size", "mean set size"))
@@ -100,14 +137,19 @@ def _analyses_from_qualification(qualification: Dict) -> Dict:
 def build_card(qualification: Dict, adapt_report: Optional[Dict] = None,
                *, model_name: str = "nanocore-s1", dataset: str = "",
                license: str = "apache-2.0",
-               encoder_id: str = "google/embeddinggemma-2") -> Dict:
+               encoder_id: str = "google/embeddinggemma-2",
+               eval_rows: Optional[List[Dict]] = None) -> Dict:
     """Assemble the card's content as data, before any rendering.
 
     Returning a dict keeps the sections testable — a rendered string can only be
     checked by eye, which is how a card ends up with an empty "Limitations".
+
+    ``eval_rows`` are caller-assembled ``eval_row`` dicts — the breadth legs and
+    the MTEB anchor — each carrying its own dataset revision/split/source so the
+    card's numbers are pinned to the exact data they ran on.
     """
     prov = qualification.get("provenance", {}) or {}
-    metrics = _metrics_from_adapt(adapt_report, dataset)
+    metrics = _metrics_from_adapt(adapt_report, dataset) + list(eval_rows or [])
 
     card = {
         "model_details": {

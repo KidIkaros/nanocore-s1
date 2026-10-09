@@ -178,6 +178,17 @@ def _operational_ready(evidence: Dict) -> Optional[bool]:
                 and reg.get("shadow", {}).get("n", 0) > 0)
 
 
+def _anchor_recorded(evidence: Dict) -> Optional[bool]:
+    """A shared-harness result exists, so the card has one comparable number.
+
+    Every other eval row is self-reported on our splits; only a harness result
+    (MTEB) sits on the same footing as published leaderboard rows. Absent leg
+    evidence is ``None`` — "not measured", never a pass.
+    """
+    status = _v(evidence, "mteb_anchor", "status")
+    return None if status is None else status == "ran"
+
+
 def _slice_coverage_holds(tol: float = 0.15):
     """No populated confidence band is catastrophically undercovered.
 
@@ -260,6 +271,9 @@ CRITERIA: tuple = (
     Criterion("B2", "B", "headroom is recorded, so a saturated task cannot be read as a win",
               REPORT, "ADR-0011 headroom present for the primary dataset",
               lambda e: _v(e, "cosine_leg", "resolved") is not None),
+    Criterion("B3", "B", "a shared-harness anchor is recorded for comparability",
+              REPORT, "mteb_anchor.status == ran; the card can cite leaderboard terms",
+              _anchor_recorded),
     # ── C. risk control — the differentiator ─────────────────────────────────
     Criterion("C1", "C", "cosine-path conformal coverage meets its target",
               MUST_PASS, "coverage >= 1 - alpha", _coverage_holds("cosine_leg")),

@@ -175,6 +175,19 @@ def test_readiness_criteria_defer_when_the_leg_did_not_run():
     assert not ({"G1", "G2", "G4"} & set(rep["passed"]))
 
 
+def test_the_anchor_criterion_defers_without_a_shared_harness_run():
+    """Self-reported numbers alone are not comparable claims — but the anchor
+    is REPORT severity, so its absence is listed, not blocking."""
+    ev = _good()
+    rep = evaluate(ev)
+    row = next(r for r in rep["criteria"] if r["id"] == "B3")
+    assert row["status"] == "deferred" and row["severity"] == "report"
+
+    ev["mteb_anchor"] = {"status": "ran", "tasks": {}}
+    row = next(r for r in evaluate(ev)["criteria"] if r["id"] == "B3")
+    assert row["status"] == "pass"
+
+
 def test_an_undercovered_slice_fails_g1_even_with_a_good_marginal():
     """The whole point of G1: the marginal can be over target while a populated
     slice is catastrophically under-covered."""

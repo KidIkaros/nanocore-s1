@@ -96,7 +96,7 @@ write_status("tests-green")
     code('''
 subprocess.run([sys.executable, "-m", "pip", "install", "-q",
                 "sentence-transformers>=6.1.0", "transformers>=5.19.0",
-                "datasets>=2.20.0", "scikit-learn>=1.4"], check=True)
+                "datasets>=2.20.0", "scikit-learn>=1.4", "mteb>=1.38"], check=True)
 
 import numpy as np
 from src.decision.encoder import StateEncoder, to_numpy
@@ -721,8 +721,8 @@ and skipped rather than aborting the leg.
     code('''
 import datasets as _ds
 from src.decision.adapt import split_indices
-from src.decision.datasets import (class_quota, label_field, label_space,
-                                   texts_of)
+from src.decision.datasets import (class_quota, dataset_revision, label_field,
+                                   label_space, texts_of)
 from src.decision.evaluate import dataset_suite
 
 CAP_TR, CAP_TE = 2000, 1000
@@ -768,7 +768,10 @@ def run_dataset_cfg(cfg, cap_tr=CAP_TR, cap_te=CAP_TE):
     r = dataset_suite(E_fit, ytr_all[fi], E_cal, ytr_all[ci],
                       E_te, yte, [Xtr_all[i] for i in fi], Xte,
                       LVb, len(names))
-    summary = {"status": "ran", "n_classes": len(names), "n_test": len(Xte), **r}
+    summary = {"status": "ran", "n_classes": len(names), "n_test": len(Xte),
+               "hf_id": cfg["hf"], "config": cfg.get("config"),
+               "split": cfg.get("test_split", "test"),
+               "revision": dataset_revision(cfg["hf"]), **r}
     arrays = {"E_fit": E_fit, "y_fit": ytr_all[fi], "E_te": E_te, "y_te": yte,
               "names": names}
     return summary, arrays
@@ -819,6 +822,62 @@ except Exception as e:
     RESULTS["breadth"] = {"status": "failed", "error": repr(e)[:300]}
     print("breadth leg failed:", repr(e)[:200])
 write_status("breadth")
+'''),
+
+    md('''## 5h. MTEB anchor — the encoder on the shared harness
+
+Everything so far is **self-reported**: our pipeline, our splits, our scorer.
+That is the only claim class a fitted decision layer can make — but on the Hub,
+self-reported numbers are uninterpretable unless they pin dataset id, revision,
+split and metric, and they are never *comparable* to leaderboard rows computed
+by a different protocol.
+
+MTEB is the shared harness that makes numbers comparable: every leaderboard row
+is computed by the same code (fit logistic regression on frozen train
+embeddings, score the test split). Several breadth datasets above are literally
+MTEB tasks, so running ``mteb.evaluate`` on the raw encoder yields rows that
+sit on the same footing as every published embedding model — the anchor that
+says "our foundation is a known quantity".
+
+Two honest caveats this leg must not blur:
+
+- **It measures the encoder, not the decision layer.** The MTEB classifier is
+  MTEB's own logistic regression; our TaskHead + conformal gate are not in the
+  loop. The card labels these rows as encoder-anchor results.
+- **It is still self-reported.** We ran the harness; `verified` stays false —
+  Hub-side eval compute is the only path to a verified row.
+'''),
+    code('''
+RESULTS["mteb_anchor"] = {"status": "skipped"}
+try:
+    import mteb
+
+    # Small/medium tasks only: DBpedia's 560k-train encode would eat the session.
+    # Each task evaluates in its own loop so partial results survive a failure.
+    MTEB_TASKS = ["Banking77Classification", "EmotionClassification",
+                  "MassiveIntentClassification", "ImdbClassification"]
+    task_rows = {}
+    for tname in MTEB_TASKS:
+        try:
+            task = mteb.get_task(tname, languages=["eng"])
+            res = mteb.evaluate(encoder.model, tasks=[task])
+            tr = res.task_results[0]
+            task_rows[tname] = {
+                "main_score": float(tr.get_score()),
+                "dataset_revision": getattr(tr, "dataset_revision", None),
+                "hf_id": task.metadata.dataset.get("path"),
+            }
+            print(f"{tname:30} main_score={task_rows[tname]['main_score']:.4f} "
+                  f"rev={str(task_rows[tname]['dataset_revision'])[:8]}")
+        except Exception as e:
+            task_rows[tname] = {"status": "failed", "error": repr(e)[:200]}
+            print(f"{tname:30} failed: {repr(e)[:140]}")
+    RESULTS["mteb_anchor"] = {"status": "ran", "mteb_version": mteb.__version__,
+                              "model": encoder.model_name, "tasks": task_rows}
+except Exception as e:
+    RESULTS["mteb_anchor"] = {"status": "failed", "error": repr(e)[:300]}
+    print("mteb anchor leg failed:", repr(e)[:200])
+write_status("mteb_anchor")
 '''),
 
     md('''## 5i. Multilingual slice — the language gradient
@@ -1495,9 +1554,39 @@ try:
     print(f"  deferred         : {qual['deferred']}")
     print(rubric.render(qual["rubric"]))
 
-    # 3. the delivery artifact
+    # 3. the delivery artifact — eval rows carry full Hub provenance (dataset
+    #    id + revision + split + who computed it), because a bare scalar is not
+    #    an interpretable claim. Breadth rows are self-reported on our splits;
+    #    MTEB rows are the shared-harness anchor and are labelled as such.
+    from src.decision.modelcard import eval_row
+
+    eval_rows = []
+    for _name, _ds in RESULTS["breadth"].get("datasets", {}).items():
+        if _ds.get("status") != "ran":
+            continue
+        for _arm, _block in _ds["blocks"].items():
+            for _key, _m in (("acc", "accuracy"), ("log", "log_score"),
+                             ("brier", "brier")):
+                eval_rows.append(eval_row(
+                    _name, _m, _block[_key]["point"],
+                    dataset_type=_ds.get("hf_id"), config=_ds.get("config"),
+                    split=_ds.get("split"), revision=_ds.get("revision"),
+                    metric_name=f"{_m} [{_arm}]",
+                    source={"name": "s1_verify kernel (self-reported)"}))
+    _anchor = RESULTS.get("mteb_anchor", {})
+    _src = {"name": f"MTEB harness v{_anchor.get('mteb_version', '?')}",
+            "url": "https://github.com/embeddings-benchmark/mteb"}
+    for _tname, _row in _anchor.get("tasks", {}).items():
+        if "main_score" in _row:
+            eval_rows.append(eval_row(
+                _tname, "accuracy", _row["main_score"],
+                dataset_type=_row.get("hf_id"), split="test",
+                revision=_row.get("dataset_revision"),
+                metric_name="main_score [encoder, MTEB harness]",
+                source=_src))
     built = build_card(qual, RESULTS.get("cli_adapt", {}),
-                       dataset="CLINC150 (150 intents)", encoder_id=encoder.model_name)
+                       dataset="CLINC150 (150 intents)", encoder_id=encoder.model_name,
+                       eval_rows=eval_rows)
     (WORK / "MODEL_CARD.md").write_text(render_markdown(built))
     print(f"model card written: {len(built['card'])} sections, "
           f"{len(built['metrics'])} eval metrics in model-index")

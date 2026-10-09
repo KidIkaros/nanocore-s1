@@ -6,8 +6,8 @@ notebook cell, so each gets a test.
 import numpy as np
 import pytest
 
-from src.decision.datasets import (class_halves, class_quota, label_field,
-                                   label_space, texts_of)
+from src.decision.datasets import (class_halves, class_quota, dataset_revision,
+                                   label_field, label_space, texts_of)
 
 
 class FakeFeature:
@@ -157,3 +157,27 @@ def test_texts_of_joins_a_premise_hypothesis_pair():
                        "label": [0]}, {"premise": Plain(), "hypothesis": Plain()})
     assert texts_of(split, "premise", "hypothesis") == ["a cat sits an animal is here"]
     assert texts_of(split, "premise") == ["a cat sits"]
+
+
+def test_dataset_revision_pins_the_hub_sha(monkeypatch):
+    """The sha is what makes a reported number reproducible on the Hub."""
+    import types
+    import huggingface_hub
+
+    class _FakeApi:
+        def dataset_info(self, repo_id, revision=None):
+            return types.SimpleNamespace(sha="deadbeef")
+
+    monkeypatch.setattr(huggingface_hub, "HfApi", lambda: _FakeApi())
+    assert dataset_revision("mteb/banking77") == "deadbeef"
+
+
+def test_dataset_revision_fails_soft_to_unrecorded(monkeypatch):
+    """A metadata lookup must never sink a loaded dataset's evaluation."""
+    import huggingface_hub
+
+    def _boom():
+        raise RuntimeError("no network")
+
+    monkeypatch.setattr(huggingface_hub, "HfApi", _boom)
+    assert dataset_revision("mteb/banking77") is None

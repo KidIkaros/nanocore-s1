@@ -11,7 +11,8 @@ import pytest
 
 from src.decision import rubric
 from src.decision.model import bundle_digest
-from src.decision.modelcard import REQUIRED_SECTIONS, build_card, render_markdown
+from src.decision.modelcard import (REQUIRED_SECTIONS, build_card, eval_row,
+                                    render_markdown)
 
 
 # ── the bundle digest ────────────────────────────────────────────────────────
@@ -145,6 +146,42 @@ def test_model_index_is_hub_shaped():
     mi = built["model_index"]
     assert mi["name"] and mi["results"][0]["dataset"]["name"] == "clinc150"
     assert mi["results"][0]["metrics"][0]["type"] == "accuracy"
+
+
+def test_eval_rows_carry_the_full_provenance_tuple():
+    """A bare scalar is not an interpretable claim: revision, split, who
+    computed it, and the honest verified=False are what a Hub reader needs."""
+    row = eval_row("banking77", "accuracy", 0.931,
+                   dataset_type="mteb/banking77", split="test",
+                   revision="deadbeef", metric_name="accuracy [taskhead]",
+                   source={"name": "s1_verify kernel (self-reported)"})
+    r = build_card(_qualification(), {}, dataset="d",
+                   eval_rows=[row])["model_index"]["results"][0]
+    assert r["dataset"] == {"name": "banking77", "type": "mteb/banking77",
+                            "split": "test", "revision": "deadbeef"}
+    assert r["metrics"][0]["name"] == "accuracy [taskhead]"
+    assert r["metrics"][0]["verified"] is False
+    assert r["source"]["name"] == "s1_verify kernel (self-reported)"
+
+
+def test_unpinned_fields_are_omitted_not_fabricated():
+    """No revision recorded means no revision field — never a placeholder."""
+    row = eval_row("custom", "accuracy", 0.5)
+    r = build_card(_qualification(), {}, dataset="d",
+                   eval_rows=[row])["model_index"]["results"][0]
+    assert "revision" not in r["dataset"] and "split" not in r["dataset"]
+    assert "source" not in r
+
+
+def test_a_shared_harness_row_can_name_its_source():
+    row = eval_row("Banking77Classification", "accuracy", 0.86,
+                   metric_name="main_score [encoder, MTEB harness]",
+                   source={"name": "MTEB harness v1.38",
+                           "url": "https://github.com/embeddings-benchmark/mteb"})
+    r = build_card(_qualification(), {}, dataset="d",
+                   eval_rows=[row])["model_index"]["results"][0]
+    assert r["source"]["url"].startswith("https://github.com/")
+    assert r["metrics"][0]["verified"] is False  # we ran it; not Hub-verified
 
 
 def test_render_markdown_is_front_matter_plus_sections():
