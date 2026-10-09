@@ -21,12 +21,7 @@ from typing import List, Optional, Sequence
 import numpy as np
 
 from src.decision import metrics as M
-from src.decision.schema import Prediction
-
-
-def answer_labels(preds: Sequence[Prediction]) -> List[str]:
-    """The label each prediction asserts when it answers — the top-probability one."""
-    return [max(p.probabilities, key=p.probabilities.get) for p in preds]
+from src.decision.schema import Prediction, answer_labels  # noqa: F401  (re-export)
 
 
 def unsafe_answers(preds: Sequence[Prediction], gold: Sequence[str],

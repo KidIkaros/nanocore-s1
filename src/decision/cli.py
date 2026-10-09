@@ -205,14 +205,13 @@ def cmd_refusals(args):
     ``--inputs`` supplies real texts for the invariants to run over; ``--cases``
     adds your own should-not-do rules, which this layer will not invent for you.
     """
-    from src.decision.refusals import (LossMatrix, battery_is_meaningful,
+    from src.decision.refusals import (BatterySpec, LossMatrix,
                                        battery_report, load_policy_cases,
                                        run_policy_cases)
     from src.decision.schema import Question
 
     model = _build(args)
     options = _split_options(args.options)
-    loss = LossMatrix(cfp=args.cfp, cfn=args.cfn, cr=args.cr)
     texts = _texts(args) if (args.inputs or args.text != "-") else []
 
     rows = []
@@ -221,15 +220,20 @@ def cmd_refusals(args):
         rows.append({"top_prob": pred.answer_confidence, "max_score": pred.max_score,
                      "action": pred.action})
 
-    report = battery_report(model, options, rows, sample_texts=texts,
-                            gate=model.gate, loss=loss)
+    report = battery_report(model, options, rows, BatterySpec(
+        loss=LossMatrix(cfp=args.cfp, cfn=args.cfn, cr=args.cr),
+        sample_texts=texts, gate=model.gate))
     if args.cases:
         report["policy"] = run_policy_cases(model, load_policy_cases(args.cases), options)
 
     if args.json:
         print(json.dumps(report, indent=2))
-        return
+    else:
+        _print_refusal_report(report)
 
+
+def _print_refusal_report(report: dict) -> None:
+    """The refusal battery as a human reads it: cost posture, reasons, invariants."""
     th = report["loss"]
     print(f"cost posture   cfp={th['cfp']} cfn={th['cfn']} cr={th['cr']}  ->  "
           f"discard below p={th['discard_below']:.3f}, "
@@ -244,7 +248,7 @@ def cmd_refusals(args):
             print(f"             {i['detail'][:96]}")
     print(f"probes         unsafe answers {report['unsafe_answers']} "
           f"| over-refusals {report['over_refusals'] or 'none'}")
-    print(f"meaningful     {battery_is_meaningful(report)} "
+    print(f"meaningful     {report['positive_control_passed']} "
           f"(False means the battery was passed by asserting nothing)")
     if report.get("policy") is not None:
         bad = [p["case"] for p in report["policy"] if not p["pass"]]

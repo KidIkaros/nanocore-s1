@@ -169,3 +169,13 @@ class DecisionExample:
             ]
             if len(self.option_embeddings) != len(self.labels):
                 raise ValueError("option_embeddings must have one vector per label")
+
+
+def answer_labels(preds: Sequence["Prediction"]) -> List[str]:
+    """The label each prediction asserts when it answers — the top-probability one.
+
+    Lives with ``Prediction`` rather than in whichever module first needed it:
+    three modules ask what a decision *claims*, and a decision's own contract is
+    the place that question belongs.
+    """
+    return [max(p.probabilities, key=p.probabilities.get) for p in preds]

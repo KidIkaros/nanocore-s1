@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from src.decision.causal import (answer_labels, escalations, paired_readout,
-                                 unsafe_answers)
+from src.decision.causal import escalations, paired_readout, unsafe_answers
+from src.decision.schema import answer_labels
 from src.decision.schema import Prediction
 
 

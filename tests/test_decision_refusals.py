@@ -10,7 +10,7 @@ import json
 import numpy as np
 import pytest
 
-from src.decision.refusals import (ACTION_TO_LOSS, CANNOT_DO, PROBES, REASONS,
+from src.decision.refusals import (ACTION_TO_LOSS, BatterySpec, CANNOT_DO, PROBES, REASONS,
                                    SHOULD_NOT_DO, TAXONOMY, Invariant, LossMatrix,
                                    PolicyCase, Probe, battery_is_meaningful,
                                    battery_report, check_invariants,
@@ -267,8 +267,8 @@ def test_probes_reject_an_empty_label_space():
 
 def test_report_is_keyed_by_reason_with_statuses():
     rows = _rows((0.99, 1.0, "answer"), (0.5, 1.0, "escalate"), (0.01, 1.0, "abstain"))
-    rep = battery_report(WellBehaved(), LABELS, rows, ["some text"],
-                         gate=_Gate(tau_answer=0.5), loss=LossMatrix())
+    rep = battery_report(WellBehaved(), LABELS, rows, BatterySpec(
+        sample_texts=["some text"], gate=_Gate(tau_answer=0.5)))
     assert set(rep["reasons"]) == set(REASONS)
     assert rep["loss"]["assert_above"] == pytest.approx(0.9)
     assert all(v["status"] in ("pass", "fail", "deferred", "unverified")
@@ -277,14 +277,16 @@ def test_report_is_keyed_by_reason_with_statuses():
 
 def test_the_policy_reason_is_reported_unverified_not_passed():
     rows = _rows((0.99, 1.0, "answer"))
-    rep = battery_report(WellBehaved(), LABELS, rows, [], gate=_Gate(tau_answer=0.5))
+    rep = battery_report(WellBehaved(), LABELS, rows,
+                         BatterySpec(gate=_Gate(tau_answer=0.5)))
     assert rep["reasons"]["policy"]["status"] == "unverified"
     assert "policy" in rep["unverified_reasons"]
 
 
 def test_over_refusal_is_reported_separately_from_unsafe_answers():
     rows = _rows((0.99, 1.0, "answer"))
-    rep = battery_report(Always("escalate"), LABELS, rows, [], gate=_Gate(tau_answer=0.5))
+    rep = battery_report(Always("escalate"), LABELS, rows,
+                         BatterySpec(gate=_Gate(tau_answer=0.5)))
     assert rep["unsafe_answers"] == 0
     assert "verbatim_option" in rep["over_refusals"]
 

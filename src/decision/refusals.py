@@ -40,7 +40,7 @@ ignore capability ones — while a decision layer is almost entirely the latter.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -279,8 +279,7 @@ def order_invariance(model, options: Sequence[str], sample_texts: Sequence[str],
     """
     import numpy as np
 
-    from src.decision.causal import answer_labels
-    from src.decision.schema import Question
+    from src.decision.schema import Question, answer_labels
 
     if not sample_texts:
         return None
@@ -378,22 +377,24 @@ PROBES: Tuple[Probe, ...] = (
 )
 
 
-def _passed(action: str, must: str, error: Optional[str],
-            answered: Optional[str], expect: Optional[str]) -> bool:
+def _passed(outcome: Dict) -> bool:
+    """Did one probe outcome satisfy what it was testing for?"""
+    must = outcome["must"]
     if must == "not_answer":
-        return action != "answer"
+        return outcome["action"] != "answer"
     if must == "answer":
         # Answering the WRONG label is not a pass: a control that only asked
         # "did it assert" would accept a confident answer to the wrong option.
-        return action == "answer" and (expect is None or answered == expect)
-    return error is None                      # "not_crash": raising IS the failure
+        expect = outcome["expect_option"]
+        return (outcome["action"] == "answer"
+                and (expect is None or outcome["answered"] == expect))
+    return outcome["error"] is None           # "not_crash": raising IS the failure
 
 
 def run_probes(model, options: Sequence[str], sample_texts: Sequence[str] = (),
                probes: Sequence[Probe] = PROBES) -> List[Dict]:
     """Run every probe against the model's own label space."""
-    from src.decision.causal import answer_labels
-    from src.decision.schema import Question
+    from src.decision.schema import Question, answer_labels
 
     options = [str(o) for o in options]
     if not options:
@@ -406,52 +407,80 @@ def run_probes(model, options: Sequence[str], sample_texts: Sequence[str] = (),
             action, error, answered = pred.action, None, answer_labels([pred])[0]
         except Exception as exc:
             action, error, answered = "RAISED", repr(exc)[:200], None
-        expect = opts[0] if p.expect_option else None
-        out.append({"probe": p.id, "reason": p.reason, "must": p.must,
-                    "action": action, "answered": answered, "expect_option": expect,
-                    "pass": bool(_passed(action, p.must, error, answered, expect)),
-                    "why": p.why, "error": error})
+        row = {"probe": p.id, "reason": p.reason, "must": p.must,
+               "action": action, "answered": answered, "error": error,
+               "expect_option": opts[0] if p.expect_option else None,
+               "why": p.why}
+        row["pass"] = bool(_passed(row))
+        out.append(row)
     return out
 
 
 # ── the report ───────────────────────────────────────────────────────────────
 
-def battery_report(model, options: Sequence[str], rows: Sequence[Dict],
-                   sample_texts: Sequence[str] = (), gate=None,
-                   loss: Optional[LossMatrix] = None, scores=None,
-                   probes: Sequence[Probe] = PROBES, seed: int = 0) -> Dict:
-    """Everything, keyed by *reason* — the unit a deployment reasons about.
+@dataclass
+class BatterySpec:
+    """What the battery needs beyond the model and its label space.
 
-    ``rows`` are real evaluation decisions; invariants run over those, probes are
-    generated from the label space, and both fold into a per-reason verdict.
+    Grouped rather than passed as six optional keywords: a caller who gets one of
+    them wrong (``scores`` vs ``rows``, say) would otherwise get a silently
+    deferred invariant instead of an error.
     """
-    loss = loss or LossMatrix()
-    ctx = {"gate": gate, "loss": loss}
-    invariants = check_invariants(rows, ctx)
 
-    extra = (("I3", "position_bias", "option order must not change the action",
-              lambda: order_invariance(model, options, sample_texts, seed=seed)),
-             ("I6", "no_discriminating_signal",
-              "raising the bar must not increase assertions",
-              lambda: threshold_monotonicity(scores, getattr(gate, "t_prob", 1.0), loss)))
-    for iid, reason, statement, fn in extra:
+    loss: LossMatrix = field(default_factory=LossMatrix)
+    probes: Sequence[Probe] = PROBES
+    sample_texts: Sequence[str] = ()
+    gate: object = None
+    scores: object = None
+    seed: int = 0
+
+
+def _invariant_record(iid: str, reason: str, statement: str, status: str,
+                      detail: str, n_checked: Optional[int] = None) -> Dict:
+    """One invariant's result — built in one place, since two call sites build it."""
+    rec = {"id": iid, "reason": reason, "status": status, "statement": statement,
+           "detail": detail}
+    if n_checked is not None:
+        rec["n_checked"] = n_checked
+    return rec
+
+
+def _run_extra_invariants(model, options: Sequence[str],
+                          spec: BatterySpec) -> List[Dict]:
+    """I3 and I6 — the two that need the model or the scores, not just the rows."""
+    checks = (
+        ("I3", "position_bias", "option order must not change the action",
+         lambda: order_invariance(model, options, spec.sample_texts, seed=spec.seed)),
+        ("I6", "no_discriminating_signal",
+         "raising the bar must not increase assertions",
+         lambda: threshold_monotonicity(spec.scores,
+                                        getattr(spec.gate, "t_prob", 1.0), spec.loss)),
+    )
+    out: List[Dict] = []
+    for iid, reason, statement, fn in checks:
         try:
             result = fn()
         except Exception as exc:
-            invariants.append({"id": iid, "reason": reason, "status": "error",
-                               "statement": statement, "detail": repr(exc)[:160]})
+            out.append(_invariant_record(iid, reason, statement, "error",
+                                         repr(exc)[:160]))
             continue
         if result is None:
-            invariants.append({"id": iid, "reason": reason, "status": "deferred",
-                               "statement": statement, "detail": "not evaluable here"})
+            out.append(_invariant_record(iid, reason, statement, "deferred",
+                                         "not evaluable here"))
             continue
         ok, n, detail = result
-        invariants.append({"id": iid, "reason": reason,
-                           "status": "pass" if ok else "fail",
-                           "statement": statement, "n_checked": n, "detail": detail})
+        out.append(_invariant_record(iid, reason, statement,
+                                     "pass" if ok else "fail", detail, n))
+    return out
 
-    probe_rows = run_probes(model, options, sample_texts, probes)
 
+def _fold_by_reason(invariants: Sequence[Dict],
+                    probe_rows: Sequence[Dict]) -> Dict[str, Dict]:
+    """Fold invariant and probe results into a status per reason.
+
+    A reason is ``unverified`` when nothing checks it — which is the honest
+    verdict for a deployment's own policy, and must not be rounded up to a pass.
+    """
     by_reason: Dict[str, Dict] = {}
     for reason in REASONS.values():
         invs = [i for i in invariants if i["reason"] == reason.id]
@@ -470,21 +499,37 @@ def battery_report(model, options: Sequence[str], rows: Sequence[Dict],
                                 "verified_by": reason.verified_by,
                                 "invariants": [i["id"] for i in invs],
                                 "probes": [p["probe"] for p in prs]}
+    return by_reason
+
+
+def battery_report(model, options: Sequence[str], rows: Sequence[Dict],
+                   spec: Optional[BatterySpec] = None) -> Dict:
+    """Everything, keyed by *reason* — the unit a deployment reasons about.
+
+    ``rows`` are real evaluation decisions; invariants run over those, probes are
+    generated from the label space, and both fold into a per-reason verdict.
+    """
+    spec = spec or BatterySpec()
+    invariants = check_invariants(rows, {"gate": spec.gate, "loss": spec.loss})
+    invariants += _run_extra_invariants(model, options, spec)
+    probe_rows = run_probes(model, options, spec.sample_texts, spec.probes)
+    by_reason = _fold_by_reason(invariants, probe_rows)
 
     controls = [p for p in probe_rows if p["must"] == "answer"]
-    decline = [p for p in probe_rows if p["must"] == "not_answer"]
+    declined = [p for p in probe_rows if p["must"] == "not_answer"]
     return {
-        "loss": {"cfp": loss.cfp, "cfn": loss.cfn, "cr": loss.cr,
-                 **loss.thresholds()},
+        "loss": {"cfp": spec.loss.cfp, "cfn": spec.loss.cfn, "cr": spec.loss.cr,
+                 **spec.loss.thresholds()},
         "reasons": by_reason,
         "invariants": invariants,
         "probes": probe_rows,
         "n_rows": len(rows),
-        "unsafe_answers": sum(1 for p in decline if p["action"] == "answer"),
-        "unsafe_probes": [p["probe"] for p in decline if p["action"] == "answer"],
+        "unsafe_answers": sum(1 for p in declined if p["action"] == "answer"),
+        "unsafe_probes": [p["probe"] for p in declined if p["action"] == "answer"],
         "over_refusals": [p["probe"] for p in controls if not p["pass"]],
         "positive_control_passed": all(p["pass"] for p in controls) if controls else None,
-        "unverified_reasons": [r for r, v in by_reason.items() if v["status"] == "unverified"],
+        "unverified_reasons": [r for r, v in by_reason.items()
+                               if v["status"] == "unverified"],
     }
 
 

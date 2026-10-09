@@ -1366,8 +1366,7 @@ try:
     from src.decision.model import bundle_digest
     from src.decision.modelcard import build_card, render_markdown
     from src.decision.qualify import evaluate
-    from src.decision.refusals import (LossMatrix, battery_is_meaningful,
-                                       battery_report)
+    from src.decision.refusals import BatterySpec, LossMatrix, battery_report
 
     GIT_COMMIT = "unknown"
     # The deployment's risk posture. The refusal boundary is derived from these
@@ -1381,9 +1380,8 @@ try:
         _p = model.decide(_t, q)
         ref_rows.append({"top_prob": _p.answer_confidence,
                          "max_score": _p.max_score, "action": _p.action})
-    refusals = battery_report(model, INTENT_TEXTS, ref_rows,
-                              sample_texts=X_te[:60], gate=model.gate,
-                              loss=REFUSAL_LOSS)
+    refusals = battery_report(model, INTENT_TEXTS, ref_rows, BatterySpec(
+        loss=REFUSAL_LOSS, sample_texts=X_te[:60], gate=model.gate))
     RESULTS["refusals"] = refusals
     _th = refusals["loss"]
     print(f"refusal costs: cfp={_th['cfp']} cfn={_th['cfn']} cr={_th['cr']} -> "
