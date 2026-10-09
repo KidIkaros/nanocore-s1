@@ -175,6 +175,24 @@ def test_readiness_criteria_defer_when_the_leg_did_not_run():
     assert not ({"G1", "G2", "G4"} & set(rep["passed"]))
 
 
+def test_the_qtype_criteria_cover_the_whole_typed_contract():
+    """The contract declares choice/score/noul — score and noul must have real
+    evidence, and a schema-bound bundle must refuse a noul question loudly."""
+    ev = _good()  # no ordinal/noul legs -> both criteria defer, not pass
+    rows = {r["id"]: r for r in evaluate(ev)["criteria"]}
+    assert rows["B4"]["status"] == "deferred"
+    assert rows["D4"]["status"] == "deferred"
+
+    ev["ordinal"] = {"status": "ran"}
+    ev["noul"] = {"status": "ran", "bundle_refuses": True}
+    rows = {r["id"]: r for r in evaluate(ev)["criteria"]}
+    assert rows["B4"]["status"] == "pass" and rows["D4"]["status"] == "pass"
+
+    ev["noul"]["bundle_refuses"] = False
+    rep = evaluate(ev)
+    assert "D4" in rep["must_pass_failed"]  # silent out-of-schema scoring
+
+
 def test_the_anchor_criterion_defers_without_a_shared_harness_run():
     """Self-reported numbers alone are not comparable claims — but the anchor
     is REPORT severity, so its absence is listed, not blocking."""

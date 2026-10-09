@@ -313,7 +313,10 @@ from src.decision import readiness
 
 def _slice_block(rec, alpha):
     band = readiness.confidence_bands(rec["top_prob"])
+    _u, _c = np.unique(rec["action"], return_counts=True)
     return {
+        # The full action histogram — a dead clarify band is data, not a pass.
+        "action_counts": dict(zip(_u.tolist(), _c.tolist())),
         "coverage_by_band": readiness.group_coverage(rec["covered"], band, alpha),
         "coverage_by_intent": readiness.group_coverage(
             rec["covered"], rec["intent"], alpha, min_group_n=30),
@@ -358,7 +361,8 @@ for _leg in ("cosine_leg", "taskhead_leg"):
         + f" | undercovered {_cb['undercovered'] or 'none'}")
     print(f"{'':12} assert={_dq.get('acc_asserted')} "
           f"deferred={_dq.get('acc_deferred')} "
-          f"enrichment={_dq.get('error_enrichment')}")
+          f"enrichment={_dq.get('error_enrichment')} "
+          f"actions={_b['action_counts']}")
 print("memorization:", json.dumps(RESULTS["readiness"]["memorization"]))
 write_status("readiness")
 '''),
@@ -824,7 +828,7 @@ except Exception as e:
 write_status("breadth")
 '''),
 
-    md('''## 5h. MTEB anchor — the encoder on the shared harness
+    md('''## 5i-bis. MTEB anchor — the encoder on the shared harness
 
 Everything so far is **self-reported**: our pipeline, our splits, our scorer.
 That is the only claim class a fitted decision layer can make — but on the Hub,
@@ -1183,6 +1187,79 @@ for t in demos:
 write_status("live-decide")
 '''),
 
+    md('''## 6b. Noul qtype — the third declared output type, exercised end to end
+
+`noul` is the binary judgment: ``options=["yes","no"]`` and ``Prediction.noul``
+reports P(yes). The contract has a non-obvious constraint worth testing:
+``decide()`` embeds **state items**, never the question text — so the
+proposition has to live in the state, and the options stay literally yes/no.
+
+Two arms, both honest:
+
+1. **the fitted bundle must refuse it loudly** — "yes"/"no" is outside a
+   schema-bound TaskHead's label space, and `_align_scores` must raise rather
+   than score an out-of-schema question against noise (fail-closed contract);
+2. **the cosine path measures whether the judgment carries signal** — AUROC of
+   P(yes) against real intent membership, in two representations:
+   proposition-in-state (the shipped contract) vs proposition-in-options (the
+   diagnostic that separates "the mechanism fails" from "the representation
+   choice is weak"). Gate is None here: a noul conformal gate needs its own
+   calibration data — recorded as unmeasured rather than borrowed from a
+   150-way calibration that does not apply.
+'''),
+    code('''
+RESULTS["noul"] = {"status": "skipped"}
+try:
+    from sklearn.metrics import roc_auc_score
+    from src.decision.schema import Question
+
+    # Arm 1 — a schema-bound bundle must fail loudly on out-of-space options.
+    _bundled = DecisionModel(encoder=encoder, scorer=head, gate=gate_h)
+    try:
+        _bundled.decide(X_te[0], Question(qtype="noul"))
+        _refusal = {"refused": False}
+    except ValueError as e:
+        _refusal = {"refused": "label space" in str(e)}
+
+    # Arm 2 — real binary judgments through the cosine path.
+    _nm = DecisionModel(encoder=encoder, scorer=None, gate=None, cache=None)
+    _props = [(c, f"the user's intent is to {c}") for c in
+              ("transfer", "restaurant reservation", "weather")
+              if c in INTENT_TEXTS]
+    if len(_props) < 2:
+        _props = [(n, f"the user's intent is to {n}")
+                  for n in INTENT_TEXTS[::40][:3]]
+    _idx = np.where(te_in)[0][:120]
+    _arms = {"prop_in_state": {}, "prop_in_options": {}}
+    for _cand, _prop in _props:
+        _gold = np.array([INTENT_TEXTS[yt_c[i]] == _cand for i in _idx])
+        _q_b = Question(qtype="noul",
+                        options=[_prop, "the user's intent is something else"])
+        _pa, _pb = [], []
+        for i in _idx:
+            _pa.append(_nm.decide([X_te[i], _prop],
+                                  Question(qtype="noul")).noul)
+            _pb.append(_nm.decide(X_te[i], _q_b).probabilities[_prop])
+        for _arm, _pys in (("prop_in_state", _pa), ("prop_in_options", _pb)):
+            _pys = np.asarray(_pys, dtype=float)
+            _arms[_arm][_cand] = {
+                "auroc": (float(roc_auc_score(_gold, _pys))
+                          if 0 < _gold.sum() < len(_gold) else None),
+                "acc_at_half": float(((_pys > 0.5) == _gold).mean()),
+                "base_rate": float(_gold.mean())}
+    RESULTS["noul"] = {"status": "ran", "n": int(len(_idx)),
+                       "bundle_refuses": _refusal["refused"], "arms": _arms,
+                       "gate": "none — a noul gate needs its own calibration"}
+    for _arm, _rows in _arms.items():
+        print(_arm + ": " + "  ".join(
+            f"{k} auroc={v['auroc']}" for k, v in _rows.items()))
+    print(f"bundle refuses out-of-schema noul: {_refusal['refused']}")
+except Exception as e:
+    RESULTS["noul"] = {"status": "failed", "error": repr(e)[:300]}
+    print("noul leg failed:", repr(e)[:200])
+write_status("noul")
+'''),
+
     md('''## 7. Operate the system — log, monitor, retrain, release
 
 The parts a *system* needs and a model does not, none of which had ever run on
@@ -1483,6 +1560,10 @@ verdict = {
         >= r["blocks"]["tfidf_lr"]["acc"]["point"]
         for r in RESULTS["breadth"].get("datasets", {}).values()
         if r.get("status") == "ran"),
+    # The third qtype: exercised, and the fitted bundle refuses it loudly.
+    "noul_ran": RESULTS.get("noul", {}).get("status") == "ran",
+    "noul_bundle_refuses_out_of_schema": bool(
+        RESULTS.get("noul", {}).get("bundle_refuses")),
 }
 RESULTS["verdict"] = verdict
 print(json.dumps(verdict, indent=2))
@@ -1583,6 +1664,14 @@ try:
                     split=_ds.get("split"), revision=_ds.get("revision"),
                     metric_name=f"{_m} [{_arm}]",
                     source={"name": "s1_verify kernel (self-reported)"}))
+    _noul = RESULTS.get("noul", {})
+    for _arm, _rows in _noul.get("arms", {}).items():
+        _aurocs = [v["auroc"] for v in _rows.values() if v.get("auroc") is not None]
+        if _aurocs:
+            eval_rows.append(eval_row(
+                "clinc150-noul", "auroc", sum(_aurocs) / len(_aurocs),
+                split="test", metric_name=f"mean AUROC [noul, {_arm}]",
+                source={"name": "s1_verify kernel (self-reported)"}))
     _anchor = RESULTS.get("mteb_anchor", {})
     _src = {"name": f"MTEB harness v{_anchor.get('mteb_version', '?')}",
             "url": "https://github.com/embeddings-benchmark/mteb"}

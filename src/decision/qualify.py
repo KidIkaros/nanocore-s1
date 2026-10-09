@@ -189,6 +189,20 @@ def _anchor_recorded(evidence: Dict) -> Optional[bool]:
     return None if status is None else status == "ran"
 
 
+def _both_ran(evidence: Dict) -> Optional[bool]:
+    """Score and Noul — the contract's other two output types — were exercised."""
+    statuses = [_v(evidence, leg, "status") for leg in ("ordinal", "noul")]
+    if any(s is None for s in statuses):
+        return None
+    return all(s == "ran" for s in statuses)
+
+
+def _out_of_schema_refused(evidence: Dict) -> Optional[bool]:
+    """A schema-bound bundle must not silently score an out-of-space question."""
+    refused = _v(evidence, "noul", "bundle_refuses")
+    return None if refused is None else bool(refused)
+
+
 def _slice_coverage_holds(tol: float = 0.15):
     """No populated confidence band is catastrophically undercovered.
 
@@ -274,6 +288,9 @@ CRITERIA: tuple = (
     Criterion("B3", "B", "a shared-harness anchor is recorded for comparability",
               REPORT, "mteb_anchor.status == ran; the card can cite leaderboard terms",
               _anchor_recorded),
+    Criterion("B4", "B", "the contract's non-choice qtypes produce measured evidence",
+              REPORT, "ordinal.status == ran and noul.status == ran",
+              lambda e: _both_ran(e)),
     # ── C. risk control — the differentiator ─────────────────────────────────
     Criterion("C1", "C", "cosine-path conformal coverage meets its target",
               MUST_PASS, "coverage >= 1 - alpha", _coverage_holds("cosine_leg")),
@@ -295,6 +312,9 @@ CRITERIA: tuple = (
     Criterion("D3", "D", "answerable inputs are not declined (over-refusal)",
               MUST_PASS, "no positive control was over-refused",
               _no_over_refusal),
+    Criterion("D4", "D", "out-of-schema questions are refused loudly",
+              MUST_PASS, "noul.bundle_refuses is true — _align_scores fails loud",
+              _out_of_schema_refused),
     # ── E. slices, robustness, and the open capability gaps ──────────────────
     Criterion("E1", "E", "the pipeline holds off-English",
               MUST_PASS, "in-language accuracy > 0.5 for every language that ran",
