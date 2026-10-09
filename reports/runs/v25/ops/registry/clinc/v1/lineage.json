@@ -1,0 +1,17 @@
+{
+  "name": "clinc",
+  "version": "v1",
+  "created": 1791561352.580064,
+  "data_hash": "fe26d17140bcba37",
+  "config": {},
+  "metrics": {
+    "n": 1050,
+    "accuracy": 0.9447619047619048,
+    "brier": 0.08348534726459983,
+    "resolved_at_tau": 1.0,
+    "conformal_coverage": 0.9780952380952381,
+    "mean_set_size": 1.9476190476190476,
+    "median_set_size": 2.0
+  },
+  "parent": null
+}
