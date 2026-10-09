@@ -1366,21 +1366,37 @@ try:
     from src.decision.model import bundle_digest
     from src.decision.modelcard import build_card, render_markdown
     from src.decision.qualify import evaluate
-    from src.decision.refusals import battery_is_meaningful, run_refusal_battery
+    from src.decision.refusals import (LossMatrix, battery_is_meaningful,
+                                       battery_report)
 
     GIT_COMMIT = "unknown"
+    # The deployment's risk posture. The refusal boundary is derived from these
+    # costs rather than fitted to a precision target (arXiv:2609.28940).
+    REFUSAL_LOSS = LossMatrix(cfp=10.0, cfn=20.0, cr=1.0)
 
-    # 1. refusals, against the real model and its own label space — a
-    #    schema-bound scorer asked about a label it was never fitted on must
-    #    raise, so a battery with hardcoded labels would pass for the wrong reason
-    refusals = run_refusal_battery(model, INTENT_TEXTS)
+    # 1. refusals, over the real decisions the legs above already made, plus
+    #    probes generated from the model's own label space
+    ref_rows = []
+    for _t in X_te[:N_LOG]:
+        _p = model.decide(_t, q)
+        ref_rows.append({"top_prob": _p.answer_confidence,
+                         "max_score": _p.max_score, "action": _p.action})
+    refusals = battery_report(model, INTENT_TEXTS, ref_rows,
+                              sample_texts=X_te[:60], gate=model.gate,
+                              loss=REFUSAL_LOSS)
     RESULTS["refusals"] = refusals
-    print(f"refusals: {refusals['passed']}/{refusals['n']} cases | "
-          f"unsafe answers {refusals['unsafe_answers']} | "
-          f"control passed {refusals['positive_control_passed']}")
-    for r in refusals["results"]:
-        print(f"  {r['case']:16} must={r['must']:10} got={r['action']:10} "
-              f"{'ok' if r['pass'] else 'FAIL'}")
+    _th = refusals["loss"]
+    print(f"refusal costs: cfp={_th['cfp']} cfn={_th['cfn']} cr={_th['cr']} -> "
+          f"discard<{_th['discard_below']:.3f} assert>{_th['assert_above']:.3f}")
+    print(f"  unsafe answers {refusals['unsafe_answers']} | "
+          f"over-refusals {refusals['over_refusals'] or 'none'} | "
+          f"control {refusals['positive_control_passed']}")
+    for _i in refusals["invariants"]:
+        print(f"  {_i['status']:9} {_i['id']:3} {_i['statement'][:56]}")
+        if _i["status"] in ("fail", "error"):
+            print(f"            {_i['detail'][:92]}")
+    print(f"  reasons: " + ", ".join(f"{k}={v['status']}"
+                                     for k, v in refusals["reasons"].items()))
 
     # 2. name the artifact, then qualify it
     digest = bundle_digest(bundle)

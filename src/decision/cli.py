@@ -59,6 +59,19 @@ def _backend_args() -> argparse.ArgumentParser:
     return p
 
 
+def _model_args() -> argparse.ArgumentParser:
+    """``_backend_args`` plus caching, for commands that build a ``DecisionModel``.
+
+    Separate from the encoder-only parent because ``parity`` builds encoders and
+    never a model — carrying cache flags it cannot use is how a flag ends up
+    documented and ignored.
+    """
+    p = argparse.ArgumentParser(add_help=False, parents=[_backend_args()])
+    p.add_argument("--cache", default=".nanocore-cache")
+    p.add_argument("--no-cache", action="store_true")
+    return p
+
+
 def _require_memory(backend: str, model: str, ignore: bool) -> None:
     """Refuse to load weights without RAM to spare. Exits; returns no verdict.
 
@@ -180,6 +193,65 @@ def cmd_serve(args):
         httpd.shutdown()
 
 
+def cmd_refusals(args):
+    """Run the refusal battery — what this layer must decline, and must not.
+
+    *Decision abstentions*, not content moderation: the model carries no content
+    policy, so where the refusal boundary falls is a question about your risk
+    posture. It is declared as costs (``--cfp/--cfn/--cr``) and the boundary
+    follows — "assert when p is high, discard when it is low, review when it is
+    intermediate" (Barbosa, arXiv:2609.28940).
+
+    ``--inputs`` supplies real texts for the invariants to run over; ``--cases``
+    adds your own should-not-do rules, which this layer will not invent for you.
+    """
+    from src.decision.refusals import (LossMatrix, battery_is_meaningful,
+                                       battery_report, load_policy_cases,
+                                       run_policy_cases)
+    from src.decision.schema import Question
+
+    model = _build(args)
+    options = _split_options(args.options)
+    loss = LossMatrix(cfp=args.cfp, cfn=args.cfn, cr=args.cr)
+    texts = _texts(args) if (args.inputs or args.text != "-") else []
+
+    rows = []
+    for text in texts:
+        pred = model.decide(text, Question(qtype="choice", options=options))
+        rows.append({"top_prob": pred.answer_confidence, "max_score": pred.max_score,
+                     "action": pred.action})
+
+    report = battery_report(model, options, rows, sample_texts=texts,
+                            gate=model.gate, loss=loss)
+    if args.cases:
+        report["policy"] = run_policy_cases(model, load_policy_cases(args.cases), options)
+
+    if args.json:
+        print(json.dumps(report, indent=2))
+        return
+
+    th = report["loss"]
+    print(f"cost posture   cfp={th['cfp']} cfn={th['cfn']} cr={th['cr']}  ->  "
+          f"discard below p={th['discard_below']:.3f}, "
+          f"assert above p={th['assert_above']:.3f}, review between")
+    print(f"reasons ({len(report['reasons'])}):")
+    for rid, v in report["reasons"].items():
+        print(f"  {v['status']:10} {rid:26} [{v['family']:13}] via {v['verified_by']}")
+    print("invariants:")
+    for i in report["invariants"]:
+        print(f"  {i['status']:10} {i['id']:3} {i['statement'][:58]}")
+        if i["status"] in ("fail", "error"):
+            print(f"             {i['detail'][:96]}")
+    print(f"probes         unsafe answers {report['unsafe_answers']} "
+          f"| over-refusals {report['over_refusals'] or 'none'}")
+    print(f"meaningful     {battery_is_meaningful(report)} "
+          f"(False means the battery was passed by asserting nothing)")
+    if report.get("policy") is not None:
+        bad = [p["case"] for p in report["policy"] if not p["pass"]]
+        print(f"policy cases   {len(report['policy'])} run, "
+              f"{'all declined' if not bad else f'NOT declined: {bad}'}")
+
+
 def cmd_parity(args):
     """Compare the reference backend against the target one on the same inputs.
 
@@ -299,6 +371,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="nanocore", description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     backend = _backend_args()
+    model_args = _model_args()
 
     a = sub.add_parser("adapt", parents=[backend],
                        help="labeled data → calibrated bundle")
@@ -317,7 +390,7 @@ def main(argv=None):
     a.add_argument("--json", action="store_true")
     a.set_defaults(func=cmd_adapt)
 
-    d = sub.add_parser("decide", parents=[backend],
+    d = sub.add_parser("decide", parents=[model_args],
                        help="one typed decision (per line with --inputs)")
     d.add_argument("text", nargs="?", default="-", help="input text (ignored with --inputs)")
     d.add_argument("--inputs", help="file with one input text per line")
@@ -326,10 +399,23 @@ def main(argv=None):
     d.add_argument("--scale", help="numeric scale for score questions")
     d.add_argument("--policy", default=None, choices=["full", "escalate", "answer"])
     d.add_argument("--bundle", help="calibrated bundle dir (enables the gate)")
-    d.add_argument("--cache", default=".nanocore-cache")
-    d.add_argument("--no-cache", action="store_true")
     d.add_argument("--json", action="store_true")
     d.set_defaults(func=cmd_decide)
+
+    r = sub.add_parser("refusals", parents=[model_args],
+                       help="run the refusal battery (decision abstention)")
+    r.add_argument("text", nargs="?", default="-", help="ignored; use --inputs")
+    r.add_argument("--bundle", required=True, help="the calibrated bundle to test")
+    r.add_argument("--options", required=True, help="the model's option labels")
+    r.add_argument("--inputs", help="real texts for the invariants to run over")
+    r.add_argument("--cases", help="JSON file of your own should-not-do rules")
+    r.add_argument("--cfp", type=float, default=10.0,
+                   help="cost of asserting a FALSE finding")
+    r.add_argument("--cfn", type=float, default=20.0,
+                   help="cost of discarding a REAL finding")
+    r.add_argument("--cr", type=float, default=1.0, help="cost of routing to review")
+    r.add_argument("--json", action="store_true")
+    r.set_defaults(func=cmd_refusals)
 
     p = sub.add_parser("parity", parents=[backend],
                        help="compare two backends on the same inputs (Phase 8)")
@@ -347,14 +433,12 @@ def main(argv=None):
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_parity)
 
-    s = sub.add_parser("serve", parents=[backend],
+    s = sub.add_parser("serve", parents=[model_args],
                        help="serve decisions over HTTP")
     s.add_argument("--bundle", help="calibrated bundle dir (enables the gate)")
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8000)
     s.add_argument("--log", default=".nanocore-predictions.jsonl")
-    s.add_argument("--cache", default=".nanocore-cache")
-    s.add_argument("--no-cache", action="store_true")
     s.add_argument("--policy", default=None, choices=["full", "escalate", "answer"])
     s.set_defaults(func=cmd_serve)
 

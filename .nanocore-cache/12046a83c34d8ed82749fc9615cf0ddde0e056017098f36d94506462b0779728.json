@@ -1,0 +1,1 @@
+{"qtype": "choice", "labels": ["block ip"], "probabilities": {"block ip": 1.0}, "answer_confidence": 1.0, "entropy_confidence": 0.0, "abstention": "unevaluated", "abstention_threshold": null, "max_score": -0.11366669833660126, "prediction_set": ["block ip"], "action": "answer", "alpha": 0.1}
