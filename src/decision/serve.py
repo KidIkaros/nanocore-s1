@@ -58,9 +58,13 @@ class PredictionLogger:
 # ── server ───────────────────────────────────────────────────────────────────
 
 class _Stats:
-    def __init__(self):
+    """Request counters. Latencies are bounded: percentiles over a long-running
+    server should describe *recent* service, and an unbounded list is a leak."""
+
+    def __init__(self, window: int = 10_000):
+        from collections import deque
         self.n = 0
-        self.latencies = []
+        self.latencies = deque(maxlen=window)
         self.actions = {}
         self.t0 = time.time()
 
@@ -70,7 +74,7 @@ class _Stats:
         self.actions[action] = self.actions.get(action, 0) + 1
 
     def summary(self) -> dict:
-        lat = np.asarray(self.latencies) if self.latencies else np.zeros(1)
+        lat = np.asarray(list(self.latencies)) if self.latencies else np.zeros(1)
         return {"requests": self.n, "uptime_s": round(time.time() - self.t0, 1),
                 "actions": dict(sorted(self.actions.items())),
                 "latency_ms": {"p50": float(np.percentile(lat, 50)),

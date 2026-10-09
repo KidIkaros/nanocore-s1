@@ -12,9 +12,8 @@ from pathlib import Path
 from typing import Sequence, Union
 
 import numpy as np
-import torch
 
-MEDIA_KEYS = ("image", "audio", "video")
+from src.decision.items import MEDIA_KEYS
 
 # Task prefixes mirroring encoder.TASK_PROMPTS — llama.cpp gets raw strings,
 # so the instruction prefix is folded into the text itself.
@@ -71,14 +70,14 @@ class LlamaCppEncoder:
         raise TypeError(f"state items must be str or dict, got {type(item)}")
 
     def encode_state(self, items: Sequence[Union[str, dict]],
-                     prompt_name: str | None = "Classification") -> torch.Tensor:
+                     prompt_name: str | None = "Classification") -> np.ndarray:
         rows = [self._embed_text(self._prep(i, prompt_name)) for i in items]
-        return torch.from_numpy(np.stack(rows))
+        return np.stack(rows)
 
     def encode_options(self, option_texts: Sequence[str],
-                       prompt_name: str | None = "Document") -> torch.Tensor:
+                       prompt_name: str | None = "Document") -> np.ndarray:
         rows = [self._embed_text(self._prep(t, prompt_name)) for t in option_texts]
-        return torch.from_numpy(np.stack(rows))
+        return np.stack(rows)
 
 
 class StubEncoder:

@@ -249,7 +249,7 @@ def test_the_deprecated_path_is_not_the_front_door():
     """Still importable from its own module for the record it holds; not offered
     as the model."""
     import src.decision as d
-    from src.decision.model import NanoCoreS1       # module import still works
+    from src.decision.legacy import NanoCoreS1       # module import still works
 
     assert NanoCoreS1 is not None
     assert "NanoCoreS1" not in d.__all__

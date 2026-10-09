@@ -27,8 +27,8 @@ should not offer them: a public API that leads with the abandoned architecture
 does not describe the model.
 """
 from src.decision.adapt import AdaptConfig, AdaptResult, adapt
-from src.decision.encoder import StateEncoder, to_numpy
 from src.decision.gate import ACTIONS, ConformalGate, action_for
+from src.decision.items import to_numpy
 from src.decision.model import DecisionModel, bundle_digest
 from src.decision.scoring import CosineScorer, OrdinalScorer, TaskHead
 from src.decision.schema import (
@@ -67,3 +67,18 @@ __all__ = [
     # kept for the audit trail of the earlier path
     "DecisionExample",
 ]
+
+_LAZY = {"StateEncoder": "src.decision.encoder"}
+
+
+def __getattr__(name):
+    """Torch-bound exports resolve on first use, not at import.
+
+    The llama.cpp/GGUF runtime ships no PyTorch (ADR-0007); an eager
+    ``StateEncoder`` import would make ``import src.decision`` — and therefore
+    ``DecisionModel.load`` — impossible there.
+    """
+    if name in _LAZY:
+        import importlib
+        return getattr(importlib.import_module(_LAZY[name]), name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

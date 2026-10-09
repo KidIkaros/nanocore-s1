@@ -26,7 +26,7 @@ from typing import Dict, Optional, Sequence
 import numpy as np
 
 from src.decision.scoring import CosineScorer, TaskHead, softmax_rows, aps_members
-from src.decision.encoder import to_numpy
+from src.decision.items import to_numpy
 from src.decision.gate import ConformalGate
 from src.decision.model import DecisionModel
 from src.decision.slow import SlowStateConfig, observe_row

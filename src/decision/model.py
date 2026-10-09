@@ -1,12 +1,18 @@
-"""NanoCoreS1 — the assembled decision model.
+"""DecisionModel — the assembled decision model.
 
-    state items → StateEncoder (frozen EG2) → EmbeddingComposer (or mean-pool)
-                → DecisionHead → Prediction
+    state items → encoder (frozen EG2) → composer (or mean-pool)
+                → scorer → gate → Prediction
 
 The encoder is injectable: contract tests pass any object with
 ``encode_state``/``encode_options`` returning tensors, so the package is
 testable without model weights. The real encoder is only constructed on
 Kaggle-class hardware (see docs/DECISION-MODEL.md, compute boundary).
+
+This module deliberately imports no torch at top level: the shipped bundle
+must load under a torch-free runtime (llama.cpp/GGUF, ADR-0007). Torch-dependent
+pieces — the optional composer and torch scorer weights — are imported lazily,
+only when a bundle actually carries them. The deprecated ``NanoCoreS1`` path
+lives in ``legacy.py``.
 """
 from __future__ import annotations
 
@@ -16,11 +22,10 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
 import numpy as np
-import torch
-import torch.nn.functional as F
 
-from src.decision.composer import ComposerConfig, EmbeddingComposer, MODALITY_IDS
-from src.decision.encoder import modality_of, to_numpy
+from src.decision.items import to_numpy
+from src.decision.schema import Prediction, Question, State, StateItem
+from src.decision.scoring import softmax_rows
 
 
 def bundle_digest(bundle_dir) -> str:
@@ -44,118 +49,27 @@ def bundle_digest(bundle_dir) -> str:
         h.update(b"\0")
         h.update(path.read_bytes())
     return h.hexdigest()
-from src.decision.head import DecisionHead
-from src.decision.schema import Prediction, Question, State, StateItem
-from src.decision.scoring import softmax_rows
-
-
-class NanoCoreS1:
-    """Typed decision model over frozen multimodal embeddings.
-
-    Args:
-        encoder: Object with ``encode_state(items) -> (n, dim)`` and
-            ``encode_options(texts) -> (k, dim)``. ``StateEncoder`` in
-            production; any stub in tests.
-        head: ``DecisionHead``. Its ``dim`` must equal the state-vector dim.
-        composer: ``EmbeddingComposer`` or ``None`` — ``None`` means masked
-            mean-pooling, which is the honest baseline the composer must beat.
-        normalize_state: L2-normalize the composed state vector. Keeps the
-            fingerprint head's ``<s, f>`` on a comparable scale.
-    """
-
-    def __init__(self, encoder=None, composer: Optional[EmbeddingComposer] = None,
-                 head: Optional[DecisionHead] = None, normalize_state: bool = True):
-        self.encoder = encoder
-        self.composer = composer
-        self.head = head or DecisionHead()
-        self.normalize_state = normalize_state
-
-    # ── encoding ─────────────────────────────────────────────────────────
-
-    def encode_state_items(self, items: Sequence[StateItem]) -> torch.Tensor:
-        """Items → ``(n, dim)`` item embeddings via the frozen encoder."""
-        return self.encoder.encode_state(list(items))
-
-    @torch.no_grad()
-    def state_vector(self, state: Union[State, Sequence[StateItem]]) -> torch.Tensor:
-        """State → one ``(dim,)`` state vector.
-
-        Without a composer this is the mean over item embeddings — the
-        baseline path. With one, the composed output of the item sequence.
-        """
-        items = state.items if isinstance(state, State) else list(state)
-        item_embs = self.encode_state_items(items)
-        if item_embs.dim() == 1:
-            item_embs = item_embs.unsqueeze(0)
-
-        if self.composer is None:
-            s = item_embs.mean(dim=0)
-        else:
-            modality_ids = torch.tensor(
-                [MODALITY_IDS[modality_of(i)] for i in items],
-                dtype=torch.long, device=item_embs.device)
-            s = self.composer(item_embs.unsqueeze(0), modality_ids.unsqueeze(0))[0]
-
-        return F.normalize(s.float(), dim=-1) if self.normalize_state else s.float()
-
-    def option_vectors(self, question: Question) -> np.ndarray:
-        """Option label texts → ``(k, dim)`` numpy matrix (cached by caller ideally)."""
-        vecs = self.encoder.encode_options(list(question.options))
-        return to_numpy(vecs)
-
-    # ── the typed interface ──────────────────────────────────────────────
-
-    def decide(self, state: Union[State, Sequence[StateItem], str],
-               question: Question,
-               option_embeddings: Optional[np.ndarray] = None) -> Prediction:
-        """One typed decision.
-
-        Args:
-            state: ``State``, item list, or a bare string (one text item).
-            question: ``Question`` — choice/score/noul.
-            option_embeddings: Precomputed ``(k, dim)`` option vectors. Pass a
-                cache when the same options recur; required in interaction mode
-                unless the head is fingerprint.
-        """
-        if isinstance(state, str):
-            state = State.text(state)
-        s = self.state_vector(state).numpy()
-        opts = option_embeddings
-        if opts is None and self.head.mode == "interaction":
-            opts = self.option_vectors(question)
-        return self.head.predict(s, opts, qtype=question.qtype, labels=question.options)
-
-    def decide_batch(self, state: Union[State, Sequence[StateItem], str],
-                     questions: Sequence[Question],
-                     option_cache: Optional[dict] = None) -> List[Prediction]:
-        """Several questions over one encoded state (the Jev calling pattern)."""
-        s = self.state_vector(State.text(state) if isinstance(state, str) else state).numpy()
-        cache = option_cache if option_cache is not None else {}
-        preds = []
-        for q in questions:
-            key = (q.qtype, tuple(q.options))
-            if key not in cache and self.head.mode == "interaction":
-                cache[key] = self.option_vectors(q)
-            preds.append(self.head.predict(s, cache.get(key),
-                                         qtype=q.qtype, labels=q.options))
-        return preds
 
 
 class DecisionModel:
     """The decided pipeline: encoder → scorer → gate → cache (ADR-0008/0009/0013).
 
-    Unlike ``NanoCoreS1`` (the deprecated head path), this wires the measured
-    architecture: a frozen encoder produces the state, a scorer produces raw
-    scores, and the gate owns calibration, prediction sets, and the action.
+    Unlike ``legacy.NanoCoreS1`` (the deprecated head path), this wires the
+    measured architecture: a frozen encoder produces the state, a scorer
+    produces raw scores, and the gate owns calibration, prediction sets, and
+    the action.
 
     Args:
         encoder: ``encode_state(items) -> (n, dim)`` and
             ``encode_options(texts) -> (k, dim)`` — ``StateEncoder`` in
             production, any stub in tests.
         scorer: ``scores(state_vec, option_vecs) -> (k,)`` — ``CosineScorer``
-            or a fitted ``TaskHead`` (per the headroom gate, ADR-0011).
+            or a fitted ``TaskHead``/``OrdinalScorer`` (per the headroom gate,
+            ADR-0011).
         gate: ``ConformalGate`` or ``None`` (ungated — probs only).
         cache: ``DecisionCache`` or ``None``.
+        composer: ``EmbeddingComposer`` or ``None`` — ``None`` is masked
+            mean-pooling, the honest baseline the composer must beat.
         encoder_id: Model identity string folded into cache keys.
     """
 
@@ -181,15 +95,14 @@ class DecisionModel:
 
     def _state_vec(self, state) -> np.ndarray:
         items = self._items(state)
-        embs = self.encoder.encode_state(items)
-        e = to_numpy(embs)
+        e = to_numpy(self.encoder.encode_state(items))
         if self.composer is None:
             s = e.mean(axis=0)
         else:
-            t = torch.as_tensor(e, dtype=torch.float32).unsqueeze(0)
-            mid = torch.tensor([[MODALITY_IDS[modality_of(i)] for i in items]],
-                               dtype=torch.long, device=t.device)
-            s = to_numpy(self.composer(t, mid)[0])
+            from src.decision.composer import compose_items
+            import torch
+            s = to_numpy(compose_items(
+                items, torch.as_tensor(e, dtype=torch.float32), self.composer))
         return s / max(np.linalg.norm(s), 1e-12)
 
     def _composer_id(self) -> str:
@@ -286,16 +199,15 @@ class DecisionModel:
         not serialized — it is identified by ``model_name`` and constructed by
         the caller's backend (StateEncoder, LlamaCppEncoder, ...).
         """
-        import json
-        from pathlib import Path
         d = Path(dir)
         d.mkdir(parents=True, exist_ok=True)
         manifest = {"encoder_id": self.encoder_id, "scorer": None, "gate": None}
 
         if self.scorer is not None:
-            if hasattr(self.scorer, "save") and self.scorer.__class__.__name__ == "TaskHead":
+            if hasattr(self.scorer, "save"):
                 self.scorer.save(d / "scorer.pt")
-                manifest["scorer"] = {"class": "TaskHead", "path": "scorer.pt"}
+                manifest["scorer"] = {"class": self.scorer.__class__.__name__,
+                                      "path": "scorer.pt"}
             else:
                 manifest["scorer"] = {"class": self.scorer.__class__.__name__,
                                       "temperature": getattr(self.scorer, "temperature", 1.0)}
@@ -303,6 +215,7 @@ class DecisionModel:
             self.gate.save(d / "gate.json")
             manifest["gate"] = "gate.json"
         if self.composer is not None:
+            import torch
             torch.save({"config": vars(self.composer.config),
                         "state_dict": self.composer.state_dict()},
                        d / "composer.pt")
@@ -313,21 +226,29 @@ class DecisionModel:
     @classmethod
     def load(cls, dir, encoder=None, cache=None) -> "DecisionModel":
         """Rebuild a bundle. ``encoder`` is the caller's backend instance."""
-        import json
-        from pathlib import Path
         from src.decision.gate import ConformalGate
-        from src.decision.scoring import CosineScorer, TaskHead
+        from src.decision.scoring import CosineScorer, OrdinalScorer, TaskHead
 
         d = Path(dir)
         manifest = json.loads((d / "manifest.json").read_text())
         sc = manifest.get("scorer") or {}
-        if sc.get("class") == "TaskHead":
-            scorer = TaskHead.load(d / sc["path"])
-        else:
+        if sc.get("path"):
+            loaders = {"TaskHead": TaskHead.load, "OrdinalScorer": OrdinalScorer.load}
+            loader = loaders.get(sc.get("class"))
+            if loader is None:
+                raise ValueError(
+                    f"bundle carries scorer class {sc.get('class')!r} with a "
+                    f"persisted artifact, but no loader is registered for it")
+            scorer = loader(d / sc["path"])
+        elif sc.get("class") == "CosineScorer" or "temperature" in sc:
             scorer = CosineScorer(temperature=sc.get("temperature", 1.0))
+        else:
+            scorer = CosineScorer()
         gate = ConformalGate.load(d / manifest["gate"]) if manifest.get("gate") else None
         composer = None
         if manifest.get("composer"):
+            from src.decision.composer import ComposerConfig, EmbeddingComposer
+            import torch
             blob = torch.load(d / manifest["composer"], map_location="cpu",
                               weights_only=False)
             composer = EmbeddingComposer(ComposerConfig(**blob["config"]))

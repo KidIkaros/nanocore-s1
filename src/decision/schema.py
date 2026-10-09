@@ -125,7 +125,7 @@ class Prediction:
     def __repr__(self) -> str:
         return (
             f"Prediction(qtype={self.qtype!r}, choice={self.choice!r}, "
-            f"noul={self.noul!r}, score={self.noul if self.qtype == 'noul' else self.score!r}, "
+            f"noul={self.noul!r}, score={self.score!r}, "
             f"answer_confidence={self.answer_confidence:.4f}, "
             f"abstention={self.abstention!r})"
         )

@@ -132,7 +132,67 @@ def fit_temperature(scores: np.ndarray, true_idx: np.ndarray,
         ll = float(-np.log(np.clip(P[np.arange(len(P)), true_idx], 1e-9, 1)).mean())
         if ll < best_ll:
             best_ll, best_t = ll, float(t)
+    if best_t == ceiling:
+        # The floor is a deliberate degeneracy guard (see docstring), but a
+        # ceiling hit means log loss wanted more smoothing than the grid
+        # allows — a bound-limited fit is exactly how a scorer once looked
+        # catastrophically miscalibrated (3.800 vs 0.380; protocol.py).
+        import warnings
+        warnings.warn(f"fit_temperature bound-limited at the ceiling "
+                      f"(t={best_t}); widen `ceiling` before trusting the fit")
     return best_t
+
+
+def _fit_torch(X: np.ndarray, y: np.ndarray, *, build_net, target_fn, lossf,
+               epochs: int, lr: float, batch_size: int, seed: int,
+               val_fraction: float, patience: int, weight_decay: float,
+               verbose: bool = False):
+    """The one SGD loop every fitted scorer shares.
+
+    Standardized inputs come in already scaled; ``target_fn`` maps the carved
+    split's labels to loss targets (identity for CE, cumulative thresholds for
+    CORN); ``build_net`` constructs the module *after* ``torch.manual_seed`` so
+    weight init is seeded. Early stopping restores the best validation state.
+    Returns ``(net, record)``.
+    """
+    import torch
+
+    rng = np.random.default_rng(seed)
+    perm = rng.permutation(len(X))
+    n_val = max(1, int(len(X) * val_fraction))
+    vi, ti = perm[:n_val], perm[n_val:]
+    Xt = torch.as_tensor(X[ti]); Xv = torch.as_tensor(X[vi])
+    Yt = torch.as_tensor(target_fn(y[ti])); Yv = torch.as_tensor(target_fn(y[vi]))
+
+    torch.manual_seed(seed)
+    net = build_net()
+    opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=weight_decay)
+
+    best_val, best_state, bad = np.inf, None, 0
+    for epoch in range(epochs):
+        order = torch.as_tensor(rng.permutation(len(Xt)))
+        for start in range(0, len(Xt), batch_size):
+            idx = order[start:start + batch_size]
+            opt.zero_grad()
+            loss = lossf(net(Xt[idx]), Yt[idx])
+            loss.backward()
+            opt.step()
+        with torch.no_grad():
+            vl = float(lossf(net(Xv), Yv))
+        if verbose and (epoch + 1) % 10 == 0:
+            print(f"epoch {epoch + 1:4d}  val_loss {vl:.4f}")
+        if vl < best_val - 1e-5:
+            best_val, bad = vl, 0
+            best_state = {n: p.detach().clone() for n, p in net.state_dict().items()}
+        else:
+            bad += 1
+            if bad >= patience:
+                break
+    if best_state is not None:
+        net.load_state_dict(best_state)
+    net.eval()
+    return net, {"best_val_loss": best_val, "epochs_run": epoch + 1,
+                 "n_train": int(len(Xt))}
 
 
 class CosineScorer:
@@ -194,49 +254,21 @@ class OrdinalScorer:
             raise ValueError("ordinal scoring needs at least two levels")
         self.labels_ = list(labels) if labels is not None else [str(i) for i in range(k)]
 
-        rng = np.random.default_rng(seed)
         self._mu = X.mean(0, keepdims=True)
         self._sd = X.std(0, keepdims=True) + 1e-6
         X = (X - self._mu) / self._sd
-        perm = rng.permutation(len(X))
-        n_val = max(1, int(len(X) * val_fraction))
-        vi, ti = perm[:n_val], perm[n_val:]
-        Xt = torch.as_tensor(X[ti]); Xv = torch.as_tensor(X[vi])
-        # cumulative targets: (n, k-1) with b_j = 1{y > j}
+
         def cum_targets(yy):
             j = torch.arange(k - 1)
-            return (yy[:, None] > j[None, :]).float()
-        Yt = cum_targets(torch.as_tensor(y[ti])); Yv = cum_targets(torch.as_tensor(y[vi]))
+            return (torch.as_tensor(yy)[:, None] > j[None, :]).float()
 
-        torch.manual_seed(seed)
-        net = nn.Linear(X.shape[1], k - 1)
-        opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=1e-4)
-        lossf = nn.BCEWithLogitsLoss()
-
-        best_val, best_state, bad = np.inf, None, 0
-        for epoch in range(epochs):
-            order = torch.as_tensor(rng.permutation(len(Xt)))
-            for start in range(0, len(Xt), batch_size):
-                idx = order[start:start + batch_size]
-                opt.zero_grad()
-                loss = lossf(net(Xt[idx]), Yt[idx])
-                loss.backward()
-                opt.step()
-            with torch.no_grad():
-                vl = float(lossf(net(Xv), Yv))
-            if vl < best_val - 1e-5:
-                best_val, bad = vl, 0
-                best_state = {n: p.detach().clone() for n, p in net.state_dict().items()}
-            else:
-                bad += 1
-                if bad >= patience:
-                    break
-        if best_state is not None:
-            net.load_state_dict(best_state)
-        net.eval()
+        net, rec = _fit_torch(
+            X, y, build_net=lambda: nn.Linear(X.shape[1], k - 1),
+            target_fn=cum_targets, lossf=nn.BCEWithLogitsLoss(),
+            epochs=epochs, lr=lr, batch_size=batch_size, seed=seed,
+            val_fraction=val_fraction, patience=patience, weight_decay=1e-4)
         self._torch = net
-        return {"best_val_loss": best_val, "epochs_run": epoch + 1,
-                "n_train": int(len(Xt)), "n_levels": k}
+        return {**rec, "n_levels": k}
 
     def level_probs(self, X: np.ndarray) -> np.ndarray:
         """CORN reconstruction: cumulative sigmoids → per-level mass ``(n, k)``."""
@@ -336,50 +368,25 @@ class TaskHead:
         if len(self.labels_) != k:
             raise ValueError("labels must have one entry per class index")
 
-        rng = np.random.default_rng(seed)
         self._mu = X.mean(0, keepdims=True)
         self._sd = X.std(0, keepdims=True) + 1e-6
         X = (X - self._mu) / self._sd
-        perm = rng.permutation(len(X))
-        n_val = max(1, int(len(X) * val_fraction))
-        vi, ti = perm[:n_val], perm[n_val:]
-        Xt = torch.as_tensor(X[ti]); yt = torch.as_tensor(y[ti])
-        Xv = torch.as_tensor(X[vi]); yv = torch.as_tensor(y[vi])
 
-        torch.manual_seed(seed)
         if self.kind == "linear":
-            net = nn.Linear(X.shape[1], k)
+            def build_net():
+                return nn.Linear(X.shape[1], k)
         else:
-            net = nn.Sequential(nn.Linear(X.shape[1], self.hidden), nn.ReLU(),
-                                nn.Linear(self.hidden, k))
-        opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=l2)
-        lossf = nn.CrossEntropyLoss()
+            def build_net():
+                return nn.Sequential(nn.Linear(X.shape[1], self.hidden), nn.ReLU(),
+                                     nn.Linear(self.hidden, k))
 
-        best_val, best_state, bad = np.inf, None, 0
-        for epoch in range(epochs):
-            order = torch.as_tensor(rng.permutation(len(Xt)))
-            for start in range(0, len(Xt), batch_size):
-                idx = order[start:start + batch_size]
-                opt.zero_grad()
-                loss = lossf(net(Xt[idx]), yt[idx])
-                loss.backward()
-                opt.step()
-            with torch.no_grad():
-                vl = float(lossf(net(Xv), yv))
-            if verbose and (epoch + 1) % 10 == 0:
-                print(f"epoch {epoch + 1:4d}  val_loss {vl:.4f}")
-            if vl < best_val - 1e-5:
-                best_val, best_state, bad = vl, {n: p.detach().clone() for n, p in net.state_dict().items()}, 0
-            else:
-                bad += 1
-                if bad >= patience:
-                    break
-        if best_state is not None:
-            net.load_state_dict(best_state)
-        net.eval()
+        net, rec = _fit_torch(
+            X, y, build_net=build_net, target_fn=lambda a: a,
+            lossf=nn.CrossEntropyLoss(), epochs=epochs, lr=lr,
+            batch_size=batch_size, seed=seed, val_fraction=val_fraction,
+            patience=patience, weight_decay=l2, verbose=verbose)
         self._torch = net
-        return {"best_val_loss": best_val, "epochs_run": epoch + 1,
-                "n_train": int(len(Xt)), "n_classes": k}
+        return {**rec, "n_classes": k}
 
     # ── inference ────────────────────────────────────────────────────────
 

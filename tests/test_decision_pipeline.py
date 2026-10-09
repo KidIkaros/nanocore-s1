@@ -318,3 +318,23 @@ def test_ordinal_scorer_orders_and_sums():
     # log-prob scores are gate-compatible
     sc = s.scores(X[0])
     assert np.isfinite(sc).all() and len(sc) == k
+
+
+def test_ordinal_scorer_bundle_roundtrip(tmp_path):
+    """A fitted OrdinalScorer must reload as an OrdinalScorer — before the
+    dispatch fix, save() recorded the class name but dropped the weights, and
+    load() silently fell back to CosineScorer: a different model answering."""
+    rng = np.random.default_rng(3)
+    y = np.repeat(np.arange(3), 100)
+    X = rng.normal(0, 1, (300, 8)).astype(np.float32)
+    X[:, 0] += y                                     # learnable signal
+    s = OrdinalScorer()
+    s.fit(X, y, epochs=20, labels=["low", "mid", "high"])
+
+    m = DecisionModel(encoder=_StubEncoder(dim=8), scorer=s)
+    bundle = m.save(tmp_path / "b")
+    m2 = DecisionModel.load(bundle, encoder=_StubEncoder(dim=8))
+    assert isinstance(m2.scorer, OrdinalScorer)
+    x = rng.normal(0, 1, 8).astype(np.float32)
+    assert np.allclose(m2.scorer.level_probs(x[None])[0],
+                       s.level_probs(x[None])[0], atol=1e-6)

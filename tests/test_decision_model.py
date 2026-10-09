@@ -9,7 +9,7 @@ import torch
 
 from src.decision import metrics
 from src.decision.head import DecisionHead
-from src.decision.model import NanoCoreS1
+from src.decision.legacy import NanoCoreS1
 from src.decision.schema import DecisionExample, Question, State
 
 DIM = 32

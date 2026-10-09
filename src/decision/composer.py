@@ -37,6 +37,25 @@ MODALITY_IDS = {"text": 0, "code": 1, "image": 2, "video": 3, "audio": 4}
 N_MODALITIES = len(MODALITY_IDS)
 
 
+def compose_items(items, item_embs: "torch.Tensor",
+                  composer: Optional["EmbeddingComposer"] = None) -> "torch.Tensor":
+    """Item embeddings → one ``(dim,)`` state vector — the single composition path.
+
+    ``None`` composer is masked mean-pooling, the baseline every composer must
+    beat. This is the *only* implementation of that choice: the shipped
+    ``DecisionModel`` and the legacy ``NanoCoreS1`` both call here, so the two
+    paths cannot drift into different composition semantics (the failure mode
+    the E6 twin-vs-shipped gap demonstrated).
+    """
+    if composer is None:
+        return item_embs.float().mean(dim=0)
+    from src.decision.items import modality_of
+    modality_ids = torch.tensor(
+        [MODALITY_IDS[modality_of(i)] for i in items],
+        dtype=torch.long, device=item_embs.device)
+    return composer(item_embs.float().unsqueeze(0), modality_ids.unsqueeze(0))[0]
+
+
 def rms_norm(x: torch.Tensor) -> torch.Tensor:
     """Parameter-free RMSNorm (per nanochat)."""
     return F.rms_norm(x, (x.size(-1),))

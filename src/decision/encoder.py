@@ -31,6 +31,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+# Re-exported: the torch-free home is items.py (DecisionModel must not need torch).
+from src.decision.items import MEDIA_KEYS, modality_of, to_numpy
+
 #: Task instruction prefixes EmbeddingGemma 2 was trained with. Text only.
 TASK_PROMPTS = {
     "search_query": "SearchQuery",
@@ -49,8 +52,7 @@ VALID_DIMS = (128, 256, 512, 768)
 #: Supported modality names (encoder configs that can be loaded).
 VALID_MODALITIES = ("text", "vision", "audio")
 
-#: Media dict keys recognised as non-text items.
-MEDIA_KEYS = ("image", "audio", "video")
+#: Media dict keys recognised as non-text items (defined in items.py).
 
 EmbeddingInput = Union[str, dict, Sequence[Union[str, dict]]]
 
@@ -206,24 +208,4 @@ class StateEncoder:
         return self.model.similarity(a, b)
 
 
-def modality_of(item) -> str:
-    """The modality tag for one state item — used for composer type embeddings."""
-    if isinstance(item, str):
-        return "text"
-    if isinstance(item, dict):
-        for key in MEDIA_KEYS:
-            if key in item:
-                return "audio" if key == "audio" else ("video" if key == "video" else "image")
-        return "text"
-    raise TypeError(f"state items must be str or dict, got {type(item)}")
 
-
-def to_numpy(t) -> np.ndarray:
-    """GPU/bf16-safe conversion: `.numpy()` rejects bfloat16.
-
-    Accepts a plain array as well as a tensor. This idiom was spelled out inline
-    in eight places across four modules, each needing both cases (the stub
-    backend returns numpy), so the shared helper handles both rather than each
-    caller guarding for itself.
-    """
-    return t.detach().float().cpu().numpy() if hasattr(t, "detach") else np.asarray(t)
