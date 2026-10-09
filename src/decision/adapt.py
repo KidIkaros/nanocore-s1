@@ -26,6 +26,7 @@ from typing import Dict, Optional, Sequence
 import numpy as np
 
 from src.decision.scoring import CosineScorer, TaskHead, softmax_rows, aps_members
+from src.decision.encoder import to_numpy
 from src.decision.gate import ConformalGate
 from src.decision.model import DecisionModel
 from src.decision.slow import SlowStateConfig, observe_row
@@ -147,12 +148,10 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
     fi, ci, ti = split_indices(len(texts), cfg.fit_frac, cfg.cal_frac,
                                cfg.seed, y=y_idx, time_ordered=cfg.time_ordered)
 
-    X = encoder.encode(list(texts), **embed_kwargs)
-    X = X.detach().float().cpu().numpy() if hasattr(X, "detach") else np.asarray(X)
+    X = to_numpy(encoder.encode(list(texts), **embed_kwargs))
 
     # ── headroom check: what does zero-shot cosine already resolve? (ADR-0011)
-    LV = encoder.encode_options(classes)
-    LV = LV.detach().float().cpu().numpy() if hasattr(LV, "detach") else np.asarray(LV)
+    LV = to_numpy(encoder.encode_options(classes))
     cos = CosineScorer()
     zs_pred = (X[ti] @ LV.T).argmax(axis=1)
     headroom = {"zeroshot_test_acc": float((zs_pred == y_idx[ti]).mean())}
@@ -172,8 +171,7 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
     # ── optional in-schema threshold (needs real OOS examples)
     tau_in = None
     if oos_texts:
-        Xo = encoder.encode(list(oos_texts), **embed_kwargs)
-        Xo = Xo.detach().float().cpu().numpy() if hasattr(Xo, "detach") else np.asarray(Xo)
+        Xo = to_numpy(encoder.encode(list(oos_texts), **embed_kwargs))
         tau_in = gate.fit_in_schema(head.logits(X[ci]), head.logits(Xo))
 
     # ── optional slow state, calibrated on the same split the gate saw

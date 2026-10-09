@@ -33,6 +33,8 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
+
 DEFAULT_MODEL = "models/embeddinggemma-300M-Q8_0.gguf"
 
 
@@ -48,32 +50,55 @@ def _backend_args() -> argparse.ArgumentParser:
     p.add_argument("--model", default=DEFAULT_MODEL,
                    help="GGUF path for --backend llamacpp")
     p.add_argument("--max-tokens", type=int, default=512)
+    p.add_argument("--ignore-memory", action="store_true",
+                   help="load weights even if free RAM looks insufficient")
     return p
 
 
-def _encoder(args):
-    """The encoder ``args`` asked for — no weights loaded for ``--backend stub``."""
-    if args.backend == "st":
-        from src.decision.encoder import StateEncoder
-        return StateEncoder(modalities=("text",), device=args.device or None)
-    if args.backend == "stub":
+def _encoder(backend: str, model: str = DEFAULT_MODEL, device=None,
+             max_tokens: int = 512, ignore_memory: bool = False):
+    """Build the encoder asked for. No weights load for ``stub``, so no gate.
+
+    The memory gate runs *before* anything is loaded, which is the only time it
+    can help: by the time the loader has started, the RAM is already committed.
+    """
+    if backend == "stub":
         from src.decision.backends import StubEncoder
         return StubEncoder()                        # dry-runs/tests, no weights
+
+    from src.decision.guard import ENCODER_GB, check_memory, model_gb
+    if backend == "st":
+        need = ENCODER_GB["text"]
+    else:
+        if not Path(model).exists():
+            sys.exit(f"model file not found: {model}\n"
+                     f"download it with:\n"
+                     f"  python -c \"from huggingface_hub import hf_hub_download as d;"
+                     f"print(d('ggml-org/embeddinggemma-300m-GGUF',"
+                     f"'embeddinggemma-300M-Q8_0.gguf',local_dir='models'))\"")
+        need = model_gb(model)
+
+    check = check_memory(need)
+    if not check.ok:
+        if not ignore_memory:
+            sys.exit(f"refusing to load weights: {check.reason}")
+        print(f"WARNING: --ignore-memory set; {check.reason}", file=sys.stderr)
+    elif check.available_gb is None:
+        print(f"note: {check.reason}", file=sys.stderr)
+
+    if backend == "st":
+        from src.decision.encoder import StateEncoder
+        return StateEncoder(modalities=("text",), device=device or None)
     from src.decision.backends import LlamaCppEncoder
-    if not Path(args.model).exists():
-        sys.exit(f"model file not found: {args.model}\n"
-                 f"download it with:\n"
-                 f"  python -c \"from huggingface_hub import hf_hub_download as d;"
-                 f"print(d('ggml-org/embeddinggemma-300m-GGUF','embeddinggemma-300M-Q8_0.gguf',"
-                 f"local_dir='models'))\"")
-    return LlamaCppEncoder(args.model, max_tokens=args.max_tokens)
+    return LlamaCppEncoder(model, max_tokens=max_tokens)
 
 
 def _build(args):
     from src.decision.cache import DecisionCache
     from src.decision.model import DecisionModel
 
-    encoder = _encoder(args)
+    encoder = _encoder(args.backend, args.model, args.device, args.max_tokens,
+                       args.ignore_memory)
     cache = None if args.no_cache else DecisionCache(args.cache)
     if args.bundle:
         return DecisionModel.load(args.bundle, encoder=encoder, cache=cache)
@@ -137,6 +162,70 @@ def cmd_serve(args):
         httpd.shutdown()
 
 
+def cmd_parity(args):
+    """Compare the reference backend against the target one on the same inputs.
+
+    Phase 8's acceptance run: does the on-device path (a GGUF) agree with the
+    PyTorch reference closely enough to swap them? Both encoders are fed the
+    *same* texts and the *same* bundle, so any difference is the backend's.
+    """
+    import time as _time
+
+    from src.decision.model import DecisionModel
+    from src.decision.parity import (ParityTolerance, cosine_agreement,
+                                     decision_agreement, latency_summary,
+                                     parity_report)
+    from src.decision.schema import Question
+
+    from src.decision.encoder import to_numpy
+
+    texts = _texts(args)
+    question = Question(qtype="choice",
+                        options=[o.strip() for o in args.options.split(",") if o.strip()])
+    tol = ParityTolerance(min_cosine=args.min_cosine,
+                          min_action_agreement=args.min_action_agreement)
+
+    encoders, preds, latencies = {}, {}, {}
+    for role, backend in (("reference", args.reference), ("target", args.backend)):
+        enc = _encoder(backend, args.model, args.device, args.max_tokens,
+                       args.ignore_memory)
+        encoders[role] = enc
+        model = (DecisionModel.load(args.bundle, encoder=enc) if args.bundle
+                 else DecisionModel(encoder=enc))
+        out, times = [], []
+        for text in texts:
+            t0 = _time.perf_counter()
+            out.append(model.decide(text, question))
+            times.append((_time.perf_counter() - t0) * 1000)
+        preds[role], latencies[role] = out, times
+        print(f"{role:9} {backend:9} {len(texts)} decisions, "
+              f"p50 {np.percentile(times, 50):.1f} ms")
+
+    A = to_numpy(encoders["reference"].encode(texts, prompt_name="Classification",
+                                              batch_size=args.batch))
+    B = to_numpy(encoders["target"].encode(texts, prompt_name="Classification",
+                                           batch_size=args.batch))
+    rep = parity_report(cosine_agreement(A, B),
+                        decision_agreement(preds["reference"], preds["target"]),
+                        latency_summary(latencies["reference"]),
+                        latency_summary(latencies["target"]), tol)
+
+    if args.json:
+        print(json.dumps(rep, indent=2))
+        return
+    c, d = rep["cosine"], rep["decisions"]
+    print(f"cosine    mean {c['mean']:.4f}  min {c['min']:.4f}  p05 {c['p05']:.4f}  "
+          f"(tolerance {tol.min_cosine})  -> {'OK' if rep['cosine_ok'] else 'FAIL'}")
+    print(f"decisions action agreement {d['action_agreement']:.3f}  "
+          f"set Jaccard {d['mean_set_jaccard']:.3f} "
+          f"(tolerance {tol.min_action_agreement})  "
+          f"-> {'OK' if rep['actions_ok'] else 'FAIL'}")
+    print(f"latency   reference p50 {rep['latency']['reference']['p50']:.1f} ms | "
+          f"target p50 {rep['latency']['target']['p50']:.1f} ms | "
+          f"ratio x{rep['latency'].get('p50_ratio', float('nan')):.2f}")
+    print(f"parity    {'OK' if rep['parity_ok'] else 'FAIL'}")
+
+
 def _print_adapt_report(rep: dict, bundle_dir) -> None:
     """What a user needs to judge the bundle they just made.
 
@@ -170,7 +259,9 @@ def cmd_adapt(args):
                       min_cal=args.min_cal, seed=args.seed, policy=args.policy,
                       glial=args.glial,
                       head_kwargs=({"epochs": args.epochs} if args.epochs else {}))
-    result = adapt(texts, labels, _encoder(args), cfg=cfg, out_dir=args.out)
+    encoder = _encoder(args.backend, args.model, args.device, args.max_tokens,
+                       args.ignore_memory)
+    result = adapt(texts, labels, encoder, cfg=cfg, out_dir=args.out)
 
     # No ``default=`` here: ``adapt`` already writes this exact report with a
     # bare ``json.dumps``, so anything unserialisable should raise rather than be
@@ -216,6 +307,22 @@ def main(argv=None):
     d.add_argument("--no-cache", action="store_true")
     d.add_argument("--json", action="store_true")
     d.set_defaults(func=cmd_decide)
+
+    p = sub.add_parser("parity", parents=[backend],
+                       help="compare two backends on the same inputs (Phase 8)")
+    p.add_argument("text", nargs="?", default="-", help="input text (ignored with --inputs)")
+    p.add_argument("--inputs", help="file with one input text per line")
+    p.add_argument("--options", required=True, help="comma-separated option labels")
+    p.add_argument("--bundle", help="the bundle both backends decide through")
+    p.add_argument("--reference", default="st", choices=["st", "stub"],
+                   help="the backend to compare against. NOTE: the default 'st' "
+                        "loads PyTorch weights too — use 'stub' to exercise the "
+                        "wiring without loading anything")
+    p.add_argument("--min-cosine", type=float, default=0.99)
+    p.add_argument("--min-action-agreement", type=float, default=0.95)
+    p.add_argument("--batch", type=int, default=16)
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_parity)
 
     s = sub.add_parser("serve", parents=[backend],
                        help="serve decisions over HTTP")

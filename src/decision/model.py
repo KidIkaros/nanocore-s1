@@ -17,7 +17,7 @@ import torch
 import torch.nn.functional as F
 
 from src.decision.composer import EmbeddingComposer, MODALITY_IDS
-from src.decision.encoder import modality_of
+from src.decision.encoder import modality_of, to_numpy
 from src.decision.head import DecisionHead
 from src.decision.schema import Prediction, Question, State, StateItem
 from src.decision.scoring import softmax_rows
@@ -75,7 +75,7 @@ class NanoCoreS1:
     def option_vectors(self, question: Question) -> np.ndarray:
         """Option label texts → ``(k, dim)`` numpy matrix (cached by caller ideally)."""
         vecs = self.encoder.encode_options(list(question.options))
-        return vecs.detach().float().cpu().numpy()
+        return to_numpy(vecs)
 
     # ── the typed interface ──────────────────────────────────────────────
 
@@ -146,7 +146,7 @@ class DecisionModel:
     def _state_vec(self, state) -> np.ndarray:
         items = state.items if isinstance(state, State) else [state]
         embs = self.encoder.encode_state(list(items))
-        e = embs.detach().float().cpu().numpy() if hasattr(embs, "detach") else np.asarray(embs)
+        e = to_numpy(embs)
         s = e.mean(axis=0)
         return s / max(np.linalg.norm(s), 1e-12)
 
@@ -154,8 +154,7 @@ class DecisionModel:
         key = tuple(question.options)
         if key not in self._option_cache:
             v = self.encoder.encode_options(list(question.options))
-            self._option_cache[key] = (v.detach().float().cpu().numpy()
-                                       if hasattr(v, "detach") else np.asarray(v))
+            self._option_cache[key] = to_numpy(v)
         return self._option_cache[key]
 
     def _align_scores(self, scores: np.ndarray, options) -> np.ndarray:

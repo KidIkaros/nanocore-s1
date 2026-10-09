@@ -218,6 +218,12 @@ def modality_of(item) -> str:
     raise TypeError(f"state items must be str or dict, got {type(item)}")
 
 
-def to_numpy(t: torch.Tensor) -> np.ndarray:
-    """GPU/bf16-safe conversion: `.numpy()` rejects bfloat16."""
-    return t.detach().float().cpu().numpy()
+def to_numpy(t) -> np.ndarray:
+    """GPU/bf16-safe conversion: `.numpy()` rejects bfloat16.
+
+    Accepts a plain array as well as a tensor. This idiom was spelled out inline
+    in eight places across four modules, each needing both cases (the stub
+    backend returns numpy), so the shared helper handles both rather than each
+    caller guarding for itself.
+    """
+    return t.detach().float().cpu().numpy() if hasattr(t, "detach") else np.asarray(t)
