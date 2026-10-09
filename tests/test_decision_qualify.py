@@ -192,6 +192,24 @@ def test_the_glial_arm_must_not_be_less_safe_under_shift():
     assert "E6" in evaluate(ev)["must_pass_failed"]
 
 
+def test_e6_reads_the_shipped_path_before_the_twin():
+    """The shipped object is `DecisionModel.decide` with an attached gate slow
+    state; `run_stream` is its experiment twin. When both legs ran, the shipped
+    evidence decides — a pass on the twin cannot rescue a shipped-path fail."""
+    ev = _good()
+    ev["cross_task"] = {"status": "ran", "arms": {
+        "glial": {"phase2": {"wrong_answer_rate": 0.0}},
+        "static": {"phase2": {"wrong_answer_rate": 0.3}}}}
+    ev["slow_shipped"] = {"status": "ran", "arms": {
+        "glial": {"phase2": {"wrong_answer_rate": 0.5}},   # shipped path unsafe
+        "static": {"phase2": {"wrong_answer_rate": 0.3}}}}
+    assert "E6" in evaluate(ev)["must_pass_failed"]
+
+    ev["slow_shipped"]["arms"]["glial"]["phase2"]["wrong_answer_rate"] = 0.2
+    rows = {r["id"]: r for r in evaluate(ev)["criteria"]}
+    assert rows["E6"]["status"] == "pass"
+
+
 def test_the_qtype_criteria_cover_the_whole_typed_contract():
     """The contract declares choice/score/noul — score and noul must have real
     evidence, and a schema-bound bundle must refuse a noul question loudly."""

@@ -207,12 +207,16 @@ def _out_of_schema_refused(evidence: Dict) -> Optional[bool]:
 
 def _glial_not_less_safe(evidence: Dict) -> Optional[bool]:
     """The slow-state arm must not make phase-2 less safe than the frozen
-    incumbent — the property the component exists for. `None` when the
-    cross-task leg did not run; a stricter "strictly safer" signal stays in
-    the verdict's `cross_task_glial_safer` boolean."""
-    g = _v(evidence, "cross_task", "arms", "glial", "phase2", "wrong_answer_rate")
-    s = _v(evidence, "cross_task", "arms", "static", "phase2", "wrong_answer_rate")
-    return None if g is None or s is None else g <= s
+    incumbent — the property the component exists for. Prefers the
+    ``slow_shipped`` leg (the shipped ``DecisionModel.decide`` path with an
+    attached gate slow-state); falls back to the ``cross_task`` policy twin
+    when only the twin ran. ``None`` when neither produced evidence."""
+    for leg in ("slow_shipped", "cross_task"):
+        g = _v(evidence, leg, "arms", "glial", "phase2", "wrong_answer_rate")
+        s = _v(evidence, leg, "arms", "static", "phase2", "wrong_answer_rate")
+        if g is not None and s is not None:
+            return g <= s
+    return None
 
 
 def _slice_coverage_holds(tol: float = 0.15):

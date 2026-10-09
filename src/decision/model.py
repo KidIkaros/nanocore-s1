@@ -11,6 +11,7 @@ Kaggle-class hardware (see docs/DECISION-MODEL.md, compute boundary).
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
@@ -18,7 +19,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from src.decision.composer import EmbeddingComposer, MODALITY_IDS
+from src.decision.composer import ComposerConfig, EmbeddingComposer, MODALITY_IDS
 from src.decision.encoder import modality_of, to_numpy
 
 
@@ -159,21 +160,46 @@ class DecisionModel:
     """
 
     def __init__(self, encoder=None, scorer=None, gate=None, cache=None,
-                 encoder_id: str = ""):
+                 encoder_id: str = "", composer=None):
         from src.decision.scoring import CosineScorer
         self.encoder = encoder
         self.scorer = scorer or CosineScorer()
         self.gate = gate
         self.cache = cache
+        self.composer = composer
         self.encoder_id = encoder_id or getattr(encoder, "model_name", "stub")
         self._option_cache: dict = {}
 
+    def _items(self, state) -> List:
+        """State → flat item list. Bare str/dict is one item; a list or State is
+        its items. Anything else is a caller error, not a silently-empty state."""
+        if isinstance(state, State):
+            return list(state.items)
+        if isinstance(state, (str, dict)):
+            return [state]
+        return list(state)
+
     def _state_vec(self, state) -> np.ndarray:
-        items = state.items if isinstance(state, State) else [state]
-        embs = self.encoder.encode_state(list(items))
+        items = self._items(state)
+        embs = self.encoder.encode_state(items)
         e = to_numpy(embs)
-        s = e.mean(axis=0)
+        if self.composer is None:
+            s = e.mean(axis=0)
+        else:
+            t = torch.as_tensor(e, dtype=torch.float32).unsqueeze(0)
+            mid = torch.tensor([[MODALITY_IDS[modality_of(i)] for i in items]],
+                               dtype=torch.long, device=t.device)
+            s = to_numpy(self.composer(t, mid)[0])
         return s / max(np.linalg.norm(s), 1e-12)
+
+    def _composer_id(self) -> str:
+        """Fingerprint of the composer — the cache key must know which state
+        function produced the decision, or a composed and a pooled result for
+        the same state would collide."""
+        if self.composer is None:
+            return "meanpool"
+        blob = json.dumps(vars(self.composer.config), sort_keys=True).encode()
+        return "composer:" + hashlib.sha256(blob).hexdigest()[:12]
 
     def _options(self, question: Question) -> np.ndarray:
         key = tuple(question.options)
@@ -210,7 +236,8 @@ class DecisionModel:
 
         key = decision_key(state, question, self.encoder_id,
                            {"policy": policy or getattr(self.gate, "policy", None),
-                            "alpha": getattr(self.gate, "alpha", None)})
+                            "alpha": getattr(self.gate, "alpha", None),
+                            "composer": self._composer_id()})
         if self.cache is not None:
             hit = self.cache.get(key)
             if hit is not None:
@@ -275,6 +302,11 @@ class DecisionModel:
         if self.gate is not None:
             self.gate.save(d / "gate.json")
             manifest["gate"] = "gate.json"
+        if self.composer is not None:
+            torch.save({"config": vars(self.composer.config),
+                        "state_dict": self.composer.state_dict()},
+                       d / "composer.pt")
+            manifest["composer"] = "composer.pt"
         (d / "manifest.json").write_text(json.dumps(manifest, indent=1))
         return d
 
@@ -294,5 +326,11 @@ class DecisionModel:
         else:
             scorer = CosineScorer(temperature=sc.get("temperature", 1.0))
         gate = ConformalGate.load(d / manifest["gate"]) if manifest.get("gate") else None
+        composer = None
+        if manifest.get("composer"):
+            blob = torch.load(d / manifest["composer"], map_location="cpu",
+                              weights_only=False)
+            composer = EmbeddingComposer(ComposerConfig(**blob["config"]))
+            composer.load_state_dict(blob["state_dict"])
         return cls(encoder=encoder, scorer=scorer, gate=gate, cache=cache,
-                   encoder_id=manifest.get("encoder_id", ""))
+                   encoder_id=manifest.get("encoder_id", ""), composer=composer)

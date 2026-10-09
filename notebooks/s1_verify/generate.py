@@ -1158,6 +1158,71 @@ except Exception as e:
 write_status("cross-task")
 '''),
 
+    md('''## 5k. Slow state through the shipped path — evidence on the real object
+
+§5j measures the mechanism through ``policy.py``'s ``run_stream`` twin — score
+matrices replayed against the policy arms. This leg measures the object that
+actually ships: ``DecisionModel.decide()`` with ``ConformalGate`` carrying an
+attached ``SlowState``. Same shift (CLINC → Banking77), smaller n — the question
+is not "does the mechanism work" but "does the shipped gate move its own
+thresholds the way the twin did".
+'''),
+    code('''
+RESULTS["slow_shipped"] = {"status": "skipped"}
+try:
+    import datasets as _ds
+    from src.decision.gate import ConformalGate
+    from src.decision.slow import SlowStateConfig, observe_row
+
+    N_SHIP = 200
+    texts_in = [X_te[i] for i in np.where(te_in)[0][:N_SHIP]]
+    golds_in = [INTENT_TEXTS[c] for c in yt_c[te_in][:N_SHIP]]
+    bank_ship = _ds.load_dataset("mteb/banking77")["test"]["text"][:N_SHIP]
+
+    def _shipped_arm(attach_slow: bool):
+        """A fresh bundle-loaded gate per arm — state must not leak between
+        arms, and loading is the shipped reconstruction path anyway."""
+        g = ConformalGate.load(bundle / "gate.json")
+        if attach_slow:
+            ref = LH_val[val_in]  # calibration rows are the healthy reference
+            slow = g.attach_slow_state(SlowStateConfig(
+                reference_max_score=float(ref.max(axis=1).mean())))
+            g.calibrate_slow([observe_row(r, g.t_prob, g.qhat)[0] for r in ref])
+        m = DecisionModel(encoder=encoder, scorer=head, gate=g, cache=None)
+        q = Question(qtype="choice", options=INTENT_TEXTS)
+        out = {"phase1": {"n": 0, "answered": 0, "correct": 0, "unsafe": 0},
+               "phase2": {"n": 0, "answered": 0, "correct": 0, "unsafe": 0}}
+        for phase, texts, golds in (("phase1", texts_in, golds_in),
+                                    ("phase2", bank_ship, [None] * N_SHIP)):
+            for t, gold in zip(texts, golds):
+                p = m.decide(t, q)
+                d = out[phase]
+                d["n"] += 1
+                if p.action == "answer":
+                    d["answered"] += 1
+                    top = max(p.probabilities, key=p.probabilities.get)
+                    if gold is not None and top == gold:
+                        d["correct"] += 1
+                    else:
+                        d["unsafe"] += 1
+        for d in out.values():
+            d["wrong_answer_rate"] = d["unsafe"] / d["n"]
+            d["escalation_rate"] = 1 - d["answered"] / d["n"]
+            d["accuracy"] = d["correct"] / d["n"]
+        return out
+
+    RESULTS["slow_shipped"] = {"status": "ran", "n_per_phase": N_SHIP,
+                               "arms": {"static": _shipped_arm(False),
+                                        "glial": _shipped_arm(True)}}
+    for arm, r in RESULTS["slow_shipped"]["arms"].items():
+        print(f"{arm:10} phase2 unsafe {r['phase2']['wrong_answer_rate']:.3f} "
+              f"phase1 acc {r['phase1']['accuracy']:.3f}")
+except Exception as e:
+    RESULTS["slow_shipped"] = {"status": "failed", "error": repr(e)[:300]}
+    print("slow_shipped leg failed:", repr(e)[:200])
+write_status("slow_shipped")
+'''),
+
     md('''## 6. Live `decide()` — the typed interface on real input
 
 Full stack: encoder → scorer → gate → Prediction{probabilities, prediction_set,

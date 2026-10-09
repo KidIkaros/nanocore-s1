@@ -250,6 +250,55 @@ def test_model_bundle_round_trip(tmp_path):
     assert p1.probabilities == pytest.approx(p2.probabilities)
 
 
+def test_list_state_reaches_encoder_as_items():
+    """A list state is its items — before the _items() fix, a list was wrapped
+    as ``[state]`` so encode_state saw one list-item and pooled exactly one
+    embedding: the second state item (e.g. a noul proposition) silently never
+    reached the encoder."""
+    enc = _StubEncoder(dim=8)
+    m = DecisionModel(encoder=enc, gate=None, cache=None)
+    seen = []
+    enc.encode_state = lambda items: (seen.append(list(items)),
+                                      __import__("torch").ones(len(items), 8))[1]
+    m.decide(["utterance", "the proposition"], Question(qtype="choice", options=["x", "y"]))
+    assert seen[0] == ["utterance", "the proposition"]
+
+
+def test_composer_slot_changes_state_and_bundle_roundtrips(tmp_path):
+    """The composer is a real slot on the shipped path: it must alter the state
+    vector, fold into the cache key, and survive save→load."""
+    import torch
+    from src.decision.composer import ComposerConfig, EmbeddingComposer
+
+    enc = _StubEncoder(dim=8)
+    q = Question(qtype="choice", options=["x", "y"])
+    pooled = DecisionModel(encoder=enc, gate=None, cache=None)
+    composed = DecisionModel(encoder=enc, gate=None, cache=None,
+                             composer=EmbeddingComposer(
+                                 ComposerConfig(n_layer=1, n_head=2, n_embd=8,
+                                                embd_dim=8)))
+    assert pooled._composer_id() == "meanpool"
+    assert composed._composer_id().startswith("composer:")
+
+    # identity-ish init means the *direction* can stay similar but the vector
+    # must not be bit-identical to a plain mean (modality embed + rms_norm)
+    items = ["a", "b", "c"]
+    s_pool = pooled._state_vec(items)
+    s_comp = composed._state_vec(items)
+    assert s_pool.shape == s_comp.shape == (8,)
+    assert not np.allclose(s_pool, s_comp)
+
+    bundle = composed.save(tmp_path / "b")
+    reloaded = DecisionModel.load(bundle, encoder=enc)
+    p1, p2 = (m.decide(items, q) for m in (composed, reloaded))
+    assert p1.probabilities == p2.probabilities
+
+    # cache keys must separate pooled vs composed decisions on the same state
+    k_pool = decision_key(items, q, "stub", {"composer": "meanpool"})
+    k_comp = decision_key(items, q, "stub", {"composer": composed._composer_id()})
+    assert k_pool != k_comp
+
+
 def test_ordinal_scorer_orders_and_sums():
     rng = np.random.default_rng(5)
     n, d, k = 600, 8, 5
