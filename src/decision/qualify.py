@@ -204,39 +204,37 @@ def _slice_coverage_holds(tol: float = 0.15):
     return check
 
 
-def _deferral_well_aimed(e: Dict) -> Optional[bool]:
-    """The deferred set must be harder than the asserted set on both legs —
-    otherwise the gate is escalating items it would have answered correctly."""
-    legs = _v(e, "readiness", default=None)
-    if not legs:
-        return None
-    seen = False
-    for leg in ("cosine_leg", "taskhead_leg"):
-        wa = _v(legs, leg, "deferral", "well_aimed")
-        if wa is None:
-            continue
-        seen = True
-        if not wa:
-            return False
-    return True if seen else None
+def _legs_satisfy(*path, bad):
+    """Every readiness leg that produced the value must satisfy ``not bad``.
+
+    ``None`` when no leg produced it — deferred, not passed.
+    """
+    def check(e: Dict) -> Optional[bool]:
+        legs = _v(e, "readiness", default=None)
+        if not legs:
+            return None
+        seen = False
+        for leg in ("cosine_leg", "taskhead_leg"):
+            val = _v(legs, leg, *path)
+            if val is None:
+                continue
+            seen = True
+            if bad(val):
+                return False
+        return True if seen else None
+    return check
 
 
-def _no_pathological_rejection(e: Dict) -> Optional[bool]:
-    """No single intent is catastrophically over-rejected. A signal, not a
-    blocker (REPORT): a genuinely harder intent legitimately defers more, so the
-    distribution is surfaced for review rather than gated."""
-    legs = _v(e, "readiness", default=None)
-    if not legs:
-        return None
-    seen = False
-    for leg in ("cosine_leg", "taskhead_leg"):
-        conc = _v(legs, leg, "rejection_by_intent", "concentrated")
-        if conc is None:
-            continue
-        seen = True
-        if conc:
-            return False
-    return True if seen else None
+# The deferred set must be harder than the asserted set on both legs — otherwise
+# the gate is escalating items it would have answered correctly.
+_deferral_well_aimed = _legs_satisfy("deferral", "well_aimed",
+                                     bad=lambda v: not v)
+
+# No single intent is catastrophically over-rejected. A signal, not a blocker
+# (REPORT): a genuinely harder intent legitimately defers more, so the
+# distribution is surfaced for review rather than gated.
+_no_pathological_rejection = _legs_satisfy("rejection_by_intent", "concentrated",
+                                           bad=bool)
 
 
 def _memorization_probes_pass(e: Dict) -> Optional[bool]:

@@ -272,7 +272,8 @@ gate_h.calibrate(LH_val[A_idx][val_in[A_idx]], to_cols(y_val)[A_idx][val_in[A_id
 gate_h.fit_in_schema(LH_val[A_idx][val_in[A_idx]], LH_val[A_idx][~val_in[A_idx]])
 print("head calibration:", json.dumps(gate_h.calibration, indent=1)[:600])
 
-v_head, rec_head = policy_eval(head.logits(S_te), gate_h, yt_c, te_in)
+LH_TE = head.logits(S_te)
+v_head, rec_head = policy_eval(LH_TE, gate_h, yt_c, te_in)
 print("head leg:", json.dumps({k: round(v, 3) if isinstance(v, float) else v
                                for k, v in v_head.items()}))
 RESULTS["taskhead_leg"] = v_head
@@ -283,7 +284,7 @@ RESULTS["head_in_scope_acc"] = head_acc
 # the raw-id → column mapping by hand, which is how a false 53% accuracy was
 # read before the mapping was found. Two extra arrays make that avoidable.
 np.savez_compressed(WORK / "head_scores.npz",
-                    scores_val=LH_val, scores_test=head.logits(S_te),
+                    scores_val=LH_val, scores_test=LH_TE,
                     y_val=y_val, y_test=y_te)
 print("head scores saved for offline re-evaluation")
 write_status("policy-eval")
@@ -334,7 +335,7 @@ RESULTS["readiness"] = {
 # cached head scores: permute the columns, the chosen *label* must not move.
 _rng = np.random.default_rng(0)
 _perm = _rng.permutation(len(INTENT_TEXTS))
-SH = head.logits(S_te)[te_in]
+SH = LH_TE[te_in]
 _cons = float((_perm[SH[:, _perm].argmax(1)] == SH.argmax(1)).mean())
 # Withheld state — uninformative text must not be confidently answered.
 _fillers = ["", "the", "...", "aaaaaaaa", "lorem ipsum dolor sit amet"]
