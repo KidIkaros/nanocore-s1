@@ -52,8 +52,6 @@ VALID_DIMS = (128, 256, 512, 768)
 #: Supported modality names (encoder configs that can be loaded).
 VALID_MODALITIES = ("text", "vision", "audio")
 
-#: Media dict keys recognised as non-text items (defined in items.py).
-
 EmbeddingInput = Union[str, dict, Sequence[Union[str, dict]]]
 
 

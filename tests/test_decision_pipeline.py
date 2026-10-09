@@ -338,3 +338,33 @@ def test_ordinal_scorer_bundle_roundtrip(tmp_path):
     x = rng.normal(0, 1, 8).astype(np.float32)
     assert np.allclose(m2.scorer.level_probs(x[None])[0],
                        s.level_probs(x[None])[0], atol=1e-6)
+
+
+def test_unknown_scorer_without_artifact_fails_closed(tmp_path):
+    """A manifest naming a scorer class with no persisted artifact must raise —
+    the silent-downgrade class of bug, one branch over from the OrdinalScorer
+    case."""
+    import json
+    m = DecisionModel(encoder=_StubEncoder(dim=8), scorer=CosineScorer())
+    bundle = m.save(tmp_path / "b")
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    manifest["scorer"] = {"class": "SomeFutureScorer"}
+    (bundle / "manifest.json").write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="SomeFutureScorer"):
+        DecisionModel.load(bundle, encoder=_StubEncoder(dim=8))
+
+
+def test_composer_weights_fold_into_the_cache_identity(tmp_path):
+    """Two composers sharing config but not weights must not share cached
+    decisions — config alone does not describe the state function."""
+    import torch
+    from src.decision.composer import ComposerConfig, EmbeddingComposer
+
+    cfg = ComposerConfig(n_layer=1, n_head=2, n_embd=8, embd_dim=8)
+    a = DecisionModel(encoder=_StubEncoder(dim=8), composer=EmbeddingComposer(cfg))
+    torch.manual_seed(7)
+    b_composer = EmbeddingComposer(cfg)
+    with torch.no_grad():                    # perturb one weight
+        b_composer.blocks[0].attn.qkv.weight.add_(0.1)
+    b = DecisionModel(encoder=_StubEncoder(dim=8), composer=b_composer)
+    assert a._composer_id() != b._composer_id()

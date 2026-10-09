@@ -31,8 +31,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.decision.items import modality_of
 
-#: Modality tags produced by ``encoder.modality_of``; index = type-embedding row.
+
+#: Modality tags produced by ``items.modality_of``; index = type-embedding row.
 MODALITY_IDS = {"text": 0, "code": 1, "image": 2, "video": 3, "audio": 4}
 N_MODALITIES = len(MODALITY_IDS)
 
@@ -49,7 +51,6 @@ def compose_items(items, item_embs: "torch.Tensor",
     """
     if composer is None:
         return item_embs.float().mean(dim=0)
-    from src.decision.items import modality_of
     modality_ids = torch.tensor(
         [MODALITY_IDS[modality_of(i)] for i in items],
         dtype=torch.long, device=item_embs.device)

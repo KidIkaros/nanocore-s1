@@ -111,8 +111,15 @@ class DecisionModel:
         the same state would collide."""
         if self.composer is None:
             return "meanpool"
-        blob = json.dumps(vars(self.composer.config), sort_keys=True).encode()
-        return "composer:" + hashlib.sha256(blob).hexdigest()[:12]
+        cached = getattr(self, "_composer_key", None)
+        if cached is None:
+            h = hashlib.sha256(
+                json.dumps(vars(self.composer.config), sort_keys=True).encode())
+            for _, p in sorted(self.composer.state_dict().items()):
+                h.update(p.detach().cpu().numpy().tobytes())
+            cached = "composer:" + h.hexdigest()[:12]
+            self._composer_key = cached
+        return cached
 
     def _options(self, question: Question) -> np.ndarray:
         key = tuple(question.options)
@@ -240,10 +247,13 @@ class DecisionModel:
                     f"bundle carries scorer class {sc.get('class')!r} with a "
                     f"persisted artifact, but no loader is registered for it")
             scorer = loader(d / sc["path"])
-        elif sc.get("class") == "CosineScorer" or "temperature" in sc:
+        elif sc.get("class") in (None, "CosineScorer") or "temperature" in sc:
             scorer = CosineScorer(temperature=sc.get("temperature", 1.0))
         else:
-            scorer = CosineScorer()
+            raise ValueError(
+                f"bundle declares scorer class {sc.get('class')!r} with no "
+                f"persisted artifact — loading a CosineScorer instead would "
+                f"silently change the model")
         gate = ConformalGate.load(d / manifest["gate"]) if manifest.get("gate") else None
         composer = None
         if manifest.get("composer"):

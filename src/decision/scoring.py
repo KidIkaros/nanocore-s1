@@ -155,6 +155,8 @@ def _fit_torch(X: np.ndarray, y: np.ndarray, *, build_net, target_fn, lossf,
     weight init is seeded. Early stopping restores the best validation state.
     Returns ``(net, record)``.
     """
+    if epochs < 1:
+        raise ValueError("epochs must be at least 1")
     import torch
 
     rng = np.random.default_rng(seed)
