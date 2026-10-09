@@ -564,14 +564,64 @@ this cell is load → encode → call → record. Per-dataset failures are recor
 and skipped rather than aborting the leg.
 '''),
     code('''
+import datasets as _ds
+from src.decision.adapt import split_indices
+from src.decision.datasets import (class_quota, label_field, label_space,
+                                   texts_of)
+from src.decision.evaluate import dataset_suite
+
+CAP_TR, CAP_TE = 2000, 1000
+
+
+def _unit(a):
+    """Row-wise L2 normalize, guarding the zero vector."""
+    return a / np.clip(np.linalg.norm(a, axis=1, keepdims=True), 1e-12, None)
+
+
+def run_dataset_cfg(cfg, cap_tr=CAP_TR, cap_te=CAP_TE):
+    """Load one benchmark config, encode it, return (summary, arrays).
+
+    Shared by the breadth leg and the multilingual leg: one pipeline, two config
+    lists. It lives in its own cell, outside either leg's ``try``, so a failure
+    in one leg cannot leave the other calling an undefined helper.
+
+    The arrays come back so a cross-lingual arm can reuse an English head against
+    another language's test split without re-encoding; callers that only want the
+    numbers ignore them.
+    """
+    d = _ds.load_dataset(cfg["hf"], cfg.get("config"))
+    tr, te = d["train"], d[cfg.get("test_split", "test")]
+    lf = label_field(tr.features, cfg.get("label", "label"))
+    space = label_space(tr, lf, cfg.get("names"), cfg.get("names_field"))
+    names = list(space.names)
+    tr_s = tr.select(class_quota(tr, lf, cap_tr))
+    te_s = te.select(class_quota(te, lf, cap_te))
+    Xtr_all = texts_of(tr_s, cfg.get("text", "text"), cfg.get("pair"))
+    ytr_all = space.ids(tr_s, lf)
+    Xte = texts_of(te_s, cfg.get("text", "text"), cfg.get("pair"))
+    yte = space.ids(te_s, lf)
+    fi, ci, _ = split_indices(len(Xtr_all), 0.6, 0.3, 0, y=ytr_all)
+    absent = sorted(set(range(len(names))) - set(ytr_all[fi].tolist()))
+    if absent:
+        raise ValueError(f"fit split is missing {len(absent)} classes: {absent[:6]}")
+    kw = {"prompt_name": "Classification", "batch_size": 64}
+    E_fit = to_numpy(encoder.encode([Xtr_all[i] for i in fi], **kw))
+    E_cal = to_numpy(encoder.encode([Xtr_all[i] for i in ci], **kw))
+    E_te = to_numpy(encoder.encode(Xte, **kw))
+    LVb = _unit(to_numpy(encoder.encode(space.prompt_names(),
+                                        prompt_name="Document", batch_size=32)))
+    r = dataset_suite(E_fit, ytr_all[fi], E_cal, ytr_all[ci],
+                      E_te, yte, [Xtr_all[i] for i in fi], Xte,
+                      LVb, len(names))
+    summary = {"status": "ran", "n_classes": len(names), "n_test": len(Xte), **r}
+    arrays = {"E_fit": E_fit, "y_fit": ytr_all[fi], "E_te": E_te, "y_te": yte,
+              "names": names}
+    return summary, arrays
+'''),
+
+    code('''
 RESULTS["breadth"] = {"status": "skipped", "datasets": {}}
 try:
-    import datasets as _ds
-    from src.decision.adapt import split_indices
-    from src.decision.datasets import (class_quota, label_field, label_space,
-                                       texts_of)
-    from src.decision.evaluate import dataset_suite
-
     # Parquet-only ids, verified loadable locally: Kaggle's older datasets
     # tolerates script-based datasets (PolyAI/banking77, CogComp/trec) while a
     # current one refuses them, so a script id makes local and Kaggle runs
@@ -592,44 +642,15 @@ try:
         {"name": "massive_intent_en", "hf": "mteb/amazon_massive_intent",
          "config": "en", "names_field": "label_text"},
     ]
-    CAP_TR, CAP_TE = 2000, 1000
-
     ran = 0
     for cfg in BREADTH:
         name = cfg["name"]
         try:
-            d = _ds.load_dataset(cfg["hf"], cfg.get("config"))
-            tr = d["train"]
-            te = d[cfg.get("test_split", "test")]
-            lf = label_field(tr.features, cfg.get("label", "label"))
-            space = label_space(tr, lf, cfg.get("names"), cfg.get("names_field"))
-            names = list(space.names)
-            tr_s = tr.select(class_quota(tr, lf, CAP_TR))
-            te_s = te.select(class_quota(te, lf, CAP_TE))
-            Xtr_all = texts_of(tr_s, cfg.get("text", "text"), cfg.get("pair"))
-            ytr_all = space.ids(tr_s, lf)
-            Xte = texts_of(te_s, cfg.get("text", "text"), cfg.get("pair"))
-            yte = space.ids(te_s, lf)
-            fi, ci, _ = split_indices(len(Xtr_all), 0.6, 0.3, 0, y=ytr_all)
-            absent = sorted(set(range(len(names))) - set(ytr_all[fi].tolist()))
-            if absent:
-                raise ValueError(f"fit split is missing {len(absent)} classes: {absent[:6]}")
-            kw = {"prompt_name": "Classification", "batch_size": 64}
-            E_fit = to_numpy(encoder.encode([Xtr_all[i] for i in fi], **kw))
-            E_cal = to_numpy(encoder.encode([Xtr_all[i] for i in ci], **kw))
-            E_te = to_numpy(encoder.encode(Xte, **kw))
-            LVb = to_numpy(encoder.encode(space.prompt_names(),
-                                          prompt_name="Document", batch_size=32))
-            LVb = LVb / np.linalg.norm(LVb, axis=1, keepdims=True)
-            r = dataset_suite(E_fit, ytr_all[fi], E_cal, ytr_all[ci],
-                              E_te, yte, [Xtr_all[i] for i in fi], Xte,
-                              LVb, len(names))
-            RESULTS["breadth"]["datasets"][name] = {
-                "status": "ran", "n_classes": len(names),
-                "n_test": len(Xte), **r}
+            r, _ = run_dataset_cfg(cfg)
+            RESULTS["breadth"]["datasets"][name] = r
             ran += 1
             b = r["blocks"]
-            print(f"{name:16} k={len(names):3} "
+            print(f"{name:16} k={r['n_classes']:3} "
                   f"head={b['taskhead']['acc']['point']:.3f} "
                   f"cos={b['cosine']['acc']['point']:.3f} "
                   f"tfidf={b['tfidf_lr']['acc']['point']:.3f}")
@@ -643,6 +664,211 @@ except Exception as e:
     RESULTS["breadth"] = {"status": "failed", "error": repr(e)[:300]}
     print("breadth leg failed:", repr(e)[:200])
 write_status("breadth")
+'''),
+
+    md('''## 5i. Multilingual slice — the language gradient
+
+`massive_intent_en` is the **English** config of a 52-language parallel corpus, so
+it added breadth and zero multilingual evidence. Same 60 intents, same loader, same
+head and gate — only the language changes.
+
+Two questions, one pass: does the pipeline hold **in-language**, and does an
+**English-trained head transfer**? The second needs the label spaces aligned by
+name, not by index, or column `i` would mean different intents in different
+languages and the transfer number would be noise.
+'''),
+    code('''
+try:
+    from src.decision.scoring import TaskHead
+
+    LANGS = ["de", "es", "fr", "ru", "zh-CN", "ja"]
+    MTR, MTE = 1000, 500
+    RESULTS["multilingual"] = {"status": "skipped", "languages": {}}
+
+    def mass_cfg(lang):
+        return {"name": f"massive_{lang}", "hf": "mteb/amazon_massive_intent",
+                "config": lang, "names_field": "label_text"}
+
+    r_en, arr_en = run_dataset_cfg(mass_cfg("en"), cap_tr=MTR, cap_te=MTE)
+    canon = list(arr_en["names"])
+    pos = {n: i for i, n in enumerate(canon)}
+    en_head = TaskHead(kind="linear")
+    en_head.fit(arr_en["E_fit"], arr_en["y_fit"], labels=canon, seed=0)
+    RESULTS["multilingual"]["languages"]["en"] = {
+        "status": "ran", "n_classes": r_en["n_classes"],
+        "in_language_head_acc": r_en["blocks"]["taskhead"]["acc"],
+        "in_language_cosine_acc": r_en["blocks"]["cosine"]["acc"],
+        "cross_lingual_en_head_acc": r_en["blocks"]["taskhead"]["acc"]["point"]}
+    print(f"{'en':6} in-language {r_en['blocks']['taskhead']['acc']['point']:.3f} "
+          f"| cosine {r_en['blocks']['cosine']['acc']['point']:.3f}")
+
+    for lang in LANGS:
+        try:
+            r, arr = run_dataset_cfg(mass_cfg(lang), cap_tr=MTR, cap_te=MTE)
+            missing = [n for n in arr["names"] if n not in pos]
+            if missing:
+                raise ValueError(f"{len(missing)} labels absent from the English "
+                                 f"taxonomy: {missing[:4]}")
+            y_al = np.array([pos[n] for n in (arr["names"][j] for j in arr["y_te"])])
+            xl = float((en_head.logits(arr["E_te"]).argmax(1) == y_al).mean())
+            RESULTS["multilingual"]["languages"][lang] = {
+                "status": "ran", "n_classes": r["n_classes"],
+                "in_language_head_acc": r["blocks"]["taskhead"]["acc"],
+                "in_language_cosine_acc": r["blocks"]["cosine"]["acc"],
+                "cross_lingual_en_head_acc": xl}
+            print(f"{lang:6} in-language {r['blocks']['taskhead']['acc']['point']:.3f} "
+                  f"| en-head transfer {xl:.3f} | cosine "
+                  f"{r['blocks']['cosine']['acc']['point']:.3f}")
+        except Exception as e:
+            RESULTS["multilingual"]["languages"][lang] = {
+                "status": "failed", "error": repr(e)[:200]}
+            print(f"{lang:6} failed: {repr(e)[:140]}")
+    n_lang = sum(1 for v in RESULTS["multilingual"]["languages"].values()
+                 if v["status"] == "ran")
+    RESULTS["multilingual"]["status"] = "ran" if n_lang >= 4 else "partial"
+    RESULTS["multilingual"]["n_ran"] = n_lang
+except Exception as e:
+    RESULTS["multilingual"] = {"status": "failed", "error": repr(e)[:300]}
+    print("multilingual leg failed:", repr(e)[:200])
+write_status("multilingual")
+'''),
+
+    md('''## 5k. Multimodal decision — the unproven thesis
+
+Every number in this kernel is text. The encoder is multimodal by design (text
+270M / +vision 170M / +audio 300M), and vision has exactly one artifact behind it:
+a 100-image CIFAR smoke test measuring *embedding* quality (0.91 zero-shot cosine).
+**No typed decision has ever been made from a non-text state.**
+
+ScienceQA supplies a real multimodal Choice with per-question options — and it has
+*per-question* option sets, so this uses the cosine scorer rather than a
+schema-bound head. Three arms at equal treatment:
+
+| arm | state | reads |
+|---|---|---|
+| `full` | `[{"image": img}, question]` | image + text |
+| `text_only` | `[question]` | text |
+| `image_only` | `[{"image": img}]` | image |
+
+If the image carries decision information, `full` beats `text_only`. If it does
+not, the multimodal claim is unproven **on this task** — which is the honest
+outcome and the reason to run it.
+'''),
+    code('''
+try:
+    from datasets import load_dataset as _load_ds
+    from src.decision.causal import paired_readout
+    from src.decision.encoder import StateEncoder
+    from src.decision.evaluate import rigor_block
+    from src.decision.scoring import aps_members, softmax_rows as _sm
+    from src.decision.gate import ConformalGate
+
+    SQ_TR, SQ_TE, N_OPT, CHUNK = 1500, 600, 4, 64
+    sq = _load_ds("derek-thomas/ScienceQA")
+
+    def sq_index(split, cap):
+        """Indices of usable rows, scanned WITHOUT materialising the split.
+
+        The `image` field decodes on access, so the obvious list comprehension
+        holds every image in RAM — ~12,700 rows at roughly 750 KB each. Scan by
+        index, keep only the ones that qualify, and stop once there are enough.
+        """
+        keep = []
+        for i in range(len(sq[split])):
+            e = sq[split][i]
+            if (e["image"] is not None and len(e["choices"]) == N_OPT
+                    and 0 <= int(e["answer"]) < N_OPT):
+                keep.append(i)
+                if len(keep) >= cap:
+                    break
+        return keep
+
+    tr_idx, te_idx = sq_index("train", SQ_TR), sq_index("validation", SQ_TE)
+    n_tr = len(tr_idx)
+    all_idx = [("train", i) for i in tr_idx] + [("validation", i) for i in te_idx]
+    print(f"ScienceQA: {n_tr} fit / {len(te_idx)} test rows "
+          f"({N_OPT}-choice, with image)")
+    if n_tr < 200 or len(te_idx) < 100:
+        raise ValueError(f"too few usable rows: {n_tr}/{len(te_idx)}")
+
+    # A vision encoder is a second load; the text-only one stays resident.
+    enc_v = StateEncoder(modalities=("text", "vision"), device="cuda")
+
+    def _img_chunk(imgs):
+        """Descending batch size: 32 OOM'd on CIFAR and these images are larger."""
+        for bs in (4, 2, 1):
+            try:
+                torch.cuda.empty_cache()
+                return to_numpy(enc_v.encode([{"image": im} for im in imgs],
+                                             batch_size=bs))
+            except torch.cuda.OutOfMemoryError:
+                print(f"  vision OOM at batch {bs}, retrying smaller")
+        raise RuntimeError("vision encode OOM at every batch size")
+
+    # Chunked so only one chunk's decoded images are resident at a time.
+    E_img = np.concatenate([
+        _img_chunk([sq[s][i]["image"] for s, i in all_idx[c:c + CHUNK]])
+        for c in range(0, len(all_idx), CHUNK)])
+    E_q = to_numpy(enc_v.encode([sq[s][i]["question"] for s, i in all_idx],
+                                prompt_name="Classification", batch_size=64))
+    print("vision peak allocated GiB:",
+          round(torch.cuda.max_memory_allocated() / 2**30, 2))
+
+    arms = {
+        "full": _unit((E_img + E_q) / 2.0),
+        "text_only": _unit(E_q),
+        "image_only": _unit(E_img),
+    }
+
+    flat_opts = [c for s, i in all_idx for c in sq[s][i]["choices"]]
+    O = _unit(to_numpy(enc_v.encode(flat_opts, prompt_name="Document",
+                                    batch_size=64))).reshape(len(all_idx), N_OPT, -1)
+    y_all = np.array([int(sq[s][i]["answer"]) for s, i in all_idx], dtype=int)
+
+    def arm_eval(vecs):
+        """(n, N_OPT) cosine scores → (calibrated gate block + set stats, errors)."""
+        S = np.einsum("nd,nkd->nk", vecs, O)
+        S_tr, S_te = S[:n_tr], S[n_tr:]
+        y_tr, y_te = y_all[:n_tr], y_all[n_tr:]
+        ci, cj, _ = split_indices(n_tr, 0.6, 0.3, 0, y=y_tr)
+        g = ConformalGate(alpha=0.10, min_n=100)
+        g.calibrate(S_tr[ci], y_tr[ci], S_tr[cj], y_tr[cj])
+        P = _sm(S_te, g.t_prob)
+        members = aps_members(_sm(S_te, g.t_set), g.qhat)
+        sizes = np.array([len(m) for m in members])
+        cov = float(np.mean([y_te[i] in members[i] for i in range(len(members))]))
+        summary = {"block": rigor_block(P, y_te, resamples=200),
+                   "coverage": cov, "mean_set_size": float(sizes.mean()),
+                   "t_set": g.t_set, "qhat": g.qhat}
+        return summary, (P.argmax(1) != y_te).astype(float)
+
+    RESULTS["multimodal"] = {"status": "ran", "n_fit": n_tr, "n_test": len(te_idx),
+                             "n_options": N_OPT, "arms": {}}
+    errors = {}
+    for name, vecs in arms.items():
+        r, err = arm_eval(vecs)
+        RESULTS["multimodal"]["arms"][name] = r
+        errors[name] = err
+        b = r["block"]
+        print(f"{name:11} acc={b['acc']['point']:.3f} "
+              f"[{b['acc']['lo']:.3f},{b['acc']['hi']:.3f}] "
+              f"log={b['log']['point']:.3f} cov={r['coverage']:.3f} "
+              f"set={r['mean_set_size']:.2f}")
+
+    # A PAIRED readout, not a difference of two marginal CIs: every arm scores the
+    # identical items, so the resample index is shared and the interval is on the
+    # difference. Errors (not accuracy) because the readout assumes lower-is-better.
+    delta = paired_readout("error_rate", errors["text_only"], errors["full"])
+    RESULTS["multimodal"]["image_delta"] = delta
+    d = delta["delta"]
+    print(f"image contribution: {d['point']:+.4f} "
+          f"[{d['lo']:+.4f}, {d['hi']:+.4f}] -> {delta['verdict']}")
+    del enc_v
+    torch.cuda.empty_cache()
+except Exception as e:
+    RESULTS["multimodal"] = {"status": "failed", "error": repr(e)[:300]}
+    print("multimodal leg failed:", repr(e)[:200])
+write_status("multimodal")
 '''),
 
     md('''## 5j. Cross-task shift — a genuinely different domain
@@ -1002,6 +1228,26 @@ verdict = {
         .get("phase2", {}).get("wrong_answer_rate", 1.0)
         < RESULTS["cross_task"].get("arms", {}).get("static", {})
         .get("phase2", {}).get("wrong_answer_rate", 0.0)),
+    # Multilingual: the pipeline must hold off-English, and the English head must
+    # transfer above chance. Both are reported, neither is assumed.
+    "multilingual_ran": RESULTS.get("multilingual", {}).get("n_ran", 0) >= 4,
+    "multilingual_in_language_holds": all(
+        v.get("in_language_head_acc", {}).get("point", 0) > 0.5
+        for v in RESULTS.get("multilingual", {}).get("languages", {}).values()
+        if v.get("status") == "ran"),
+    "multilingual_en_head_transfers": all(
+        v.get("cross_lingual_en_head_acc", 0) > 0.5
+        for v in RESULTS.get("multilingual", {}).get("languages", {}).values()
+        if v.get("status") == "ran"),
+    # Multimodal: the thesis test. `full` beating `text_only` is the claim; the
+    # CIs are reported so a marginal delta cannot be read as a win.
+    "multimodal_ran": RESULTS.get("multimodal", {}).get("status") == "ran",
+    "multimodal_image_helps": (
+        RESULTS.get("multimodal", {}).get("image_delta", {}).get("verdict")
+        == "improved"),
+    "multimodal_sets_small": all(
+        v.get("mean_set_size", 1e9) < 10
+        for v in RESULTS.get("multimodal", {}).get("arms", {}).values()),
     "breadth_head_ge_tfidf": all(
         r["blocks"]["taskhead"]["acc"]["point"]
         >= r["blocks"]["tfidf_lr"]["acc"]["point"]
