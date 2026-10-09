@@ -175,3 +175,46 @@ def test_gaps_list_only_non_covered_items():
 def test_render_is_readable():
     out = rubric.render()
     assert "ML Test Score coverage" in out and "gaps:" in out
+
+
+# ── the package's front door ─────────────────────────────────────────────────
+
+
+def test_the_package_exports_the_shipped_model():
+    """The front door must describe the model we ship.
+
+    It previously exported only ``NanoCoreS1`` — the abandoned decoder-era path —
+    and omitted ``DecisionModel``, the gate, the scorers and ``adapt``. Nothing in
+    the repo then said what the model *was*, which is how the CLI ended up
+    functioning as the de facto interface.
+    """
+    import src.decision as d
+
+    for name in ("DecisionModel", "Prediction", "Question", "State", "adapt",
+                 "AdaptConfig", "bundle_digest", "ConformalGate", "TaskHead",
+                 "CosineScorer", "StateEncoder"):
+        assert name in d.__all__, f"{name} missing from the public API"
+        assert hasattr(d, name), f"{name} declared but not importable"
+
+
+def test_the_deprecated_path_is_not_the_front_door():
+    """Still importable from its own module for the record it holds; not offered
+    as the model."""
+    import src.decision as d
+    from src.decision.model import NanoCoreS1       # module import still works
+
+    assert NanoCoreS1 is not None
+    assert "NanoCoreS1" not in d.__all__
+    assert not hasattr(d, "NanoCoreS1")
+
+
+def test_the_contract_is_one_call():
+    """``decide(state, question) -> Prediction`` is the whole interface; if that
+    signature moves, every downstream consumer moves with it."""
+    import inspect
+
+    from src.decision import DecisionModel, Prediction
+    sig = inspect.signature(DecisionModel.decide)
+    assert list(sig.parameters)[:2] == ["self", "state"]
+    assert "question" in sig.parameters
+    assert sig.return_annotation in ("Prediction", Prediction)
