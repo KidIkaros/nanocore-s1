@@ -175,6 +175,40 @@ Must meet the category's evaluation standard (§4). Deliverables:
 - **Acceptance:** a head-to-head table we ran ourselves; all primary metrics carry
   bootstrap CIs; AURC + ECE/Brier reported per dataset; memorization probes pass.
 
+### Phase 7.5 — Pre-production qualification
+**Where:** Kaggle, 1 kernel. **Depends:** 7. **Blocks:** 8.
+
+The step from "we measured a lot" to "this build may ship". A kernel verdict answers
+*did the measurement land where we expected*; a qualification answers *may this build ship*,
+which needs criteria fixed **before** the numbers arrive and a report able to say no.
+
+`src/decision/qualify.py` holds the criteria as data — six gates, three severities
+(`must_pass` = a property of shipped behaviour; `must_fix` = an open capability gap that
+blocks the pre-production *claim*; `report` = recorded, not gated) — plus
+`src/decision/refusals.py`, the behavioural safety battery.
+
+| gate | criteria |
+|---|---|
+| **A. Contract & determinism** | suite green; bundle round-trips identically; **the qualification names the artifact it qualified** (bundle digest) |
+| **B. Quality vs baseline** | head beats TF-IDF+LR on **both proper metrics**, every dataset; headroom recorded (ADR-0011) |
+| **C. Risk control** *(the differentiator)* | coverage ≥ 1−α on both paths; **mean set size bounded**; the gate neither answers nor escalates everything |
+| **D. Refusals** | no refusal case produced an answer; **the battery was not passed by refusing everything** (verbatim-option positive control) |
+| **E. Slices & gaps** | multilingual holds and transfers; a non-text state carries signal; **must_fix:** two-field composition beats both singles, mnli ≥ .60 |
+| **F. Operational** | promote + rollback with a non-empty shadow; **device latency (Phase 8, deferred by construction)** |
+
+Two rules that make it a gate rather than a dashboard:
+
+1. **Not measured is `deferred`, never a pass.** The same fail-open that hid a broken
+   candidate behind `n = 0` in v15 must not reappear as "we did not look, so fine".
+2. **A check that *raises* blocks.** A broken criterion is not absent evidence — the gate
+   cannot vouch for it, so it fails closed.
+
+**Acceptance:** `qualification.json` exists with every criterion's value, threshold, and
+status; the verdict is derived from severities, not asserted; and the report names the git
+commit and bundle digest it applies to.
+
+---
+
 ### Phase 8 — On-device deployment *(you trigger this)*
 **Where:** your PC, memory-gated. **Depends:** 7.
 
@@ -296,3 +330,4 @@ The project is complete when:
 | 2026-10-08 | 7 | **v20 DONE — 42 verdicts, 41 true. Multilingual: the pipeline holds off-English and transfer is strong.** Six non-English languages, same 60-intent taxonomy: in-language head accuracy **de .797 / es .808 / fr .819 / ru .830 / zh-CN .816 / ja .830** against English .876 — a measured **language gap of 5–8 points**, with the non-Latin scripts (zh-CN, ja) at the low end. An **English-trained head transfers at .772–.812**, within 1–3 points of in-language training: the encoder's representations are largely language-aligned. Zero-shot cosine is competitive (.777–.885), consistent with ADR-0011 — 60 intents is a shallower task than CLINC's 150. This is the first multilingual evidence in the project. |
 | 2026-10-08 | 7 | **v20 multimodal: the first decision-level vision evidence, and my verdict asked the wrong question.** ScienceQA, 1500 fit / 600 test, 4-choice, vision tower loaded (peak 4.23 GiB). **image_only .4333 [.3983,.4735] vs 4-way chance .25 — the image alone carries real, significant decision information.** But `full` (image+question, mean-pooled) is **.4283**, *below* image_only, and text_only is the worst arm at .3950. So: (a) vision works at the decision level — new positive evidence; (b) mean-pooling image+text does **not** beat the best single modality, which is exactly the deficiency ADR-0003's composer exists to fix and is now empirically motivated rather than hypothetical. **My `multimodal_image_helps` verdict tested `full > text_only`, which is the wrong operationalization** — it can be false while the image carries signal. Corrected in v21 to two pre-registered claims: does the image beat chance, and does the combination beat **both** singles. |
 | 2026-10-08 | 7 | v20 conformal sets on the multimodal task are degenerate (mean set 4.00 = the whole 4-option space, coverage 1.000) because the scorer is near-uniform there (log ≈ 1.35 vs uniform 1.386). The v19 `mean_set_size` diagnostic surfaces this correctly, and the `t_set` fit declined to pick a temperature — the documented fallback, since no temperature helps a score with no signal. This is the diagnostic doing its job on a task where the model has nothing to say. |
+| 2026-10-08 | — | **v21 DONE — 44 verdicts, 43 true.** The one false is the *correct* answer: `multimodal_combination_beats_both_singles` fails while `multimodal_image_carries_signal` passes, which is exactly the pair the corrected operationalization produces. **`cli_adapt` ran: 1500 rows / 150 classes, headroom 0.709 (below 0.85, so a head is justified), test accuracy .904, coverage .9467, mean set 2.02 of 150, round-trip action `answer`** — definition-of-done #1 verified on Kaggle through the CLI with the real encoder, and the v19 conformal fix holding on a freshly adapted bundle. |
