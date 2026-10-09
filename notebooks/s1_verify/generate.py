@@ -865,7 +865,13 @@ try:
     for tname in MTEB_TASKS:
         try:
             tasks = mteb.get_tasks(tasks=[tname], languages=["eng"])
-            res = mteb.evaluate(encoder.model, tasks)
+            # IMDb's long reviews OOM'd a T4 at the default encode batch in v24;
+            # prefer a small batch, degrade to the API default if unsupported.
+            try:
+                res = mteb.evaluate(encoder.model, tasks,
+                                    encode_kwargs={"batch_size": 8})
+            except TypeError:
+                res = mteb.evaluate(encoder.model, tasks)
             # v1 returns BenchmarkResults (with .task_results); older returns a list
             tr = getattr(res, "task_results", res)[0]
             task_rows[tname] = {
@@ -1197,9 +1203,12 @@ proposition has to live in the state, and the options stay literally yes/no.
 
 Two arms, both honest:
 
-1. **the fitted bundle must refuse it loudly** — "yes"/"no" is outside a
-   schema-bound TaskHead's label space, and `_align_scores` must raise rather
-   than score an out-of-schema question against noise (fail-closed contract);
+1. **the fitted bundle must refuse genuinely out-of-schema options loudly** —
+   `_align_scores` must raise rather than score an out-of-schema question
+   against noise (fail-closed contract). Caveat found in v24: CLINC150's intent
+   space contains literal ``yes`` and ``no`` labels, so the default noul
+   options are *in-schema* on this corpus — the probe uses options asserted
+   absent from the fitted label space;
 2. **the cosine path measures whether the judgment carries signal** — AUROC of
    P(yes) against real intent membership, in two representations:
    proposition-in-state (the shipped contract) vs proposition-in-options (the
@@ -1218,9 +1227,13 @@ try:
     from src.decision.schema import Question
 
     # Arm 1 — a schema-bound bundle must fail loudly on out-of-space options.
+    # CLINC150's intent list contains literal "yes"/"no" labels, so the default
+    # noul options are in-schema here; probe with options asserted absent.
+    _oos = [o for o in ("oui", "non") if o not in INTENT_TEXTS]
+    assert len(_oos) == 2, "probe options must be outside the fitted label space"
     _bundled = DecisionModel(encoder=encoder, scorer=head, gate=gate_h)
     try:
-        _bundled.decide(X_te[0], Question(qtype="noul"))
+        _bundled.decide(X_te[0], Question(qtype="noul", options=_oos))
         _refused = False
     except ValueError as e:
         _refused = "label space" in str(e)
