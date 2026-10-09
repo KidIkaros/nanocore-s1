@@ -128,6 +128,17 @@ def test_the_independence_gap_is_stated_in_the_card():
     assert "SR 11-7" in caveats["independence"]
 
 
+def test_the_card_reads_headroom_from_both_real_shapes():
+    """The v23 failure: `adapt()` writes `{"zeroshot_test_acc": x}` while a summary
+    carries the value directly, and reading only the first crashed the generator —
+    leaving a run that looked complete with no delivery artifact at all."""
+    report_shape = build_card(_qualification(), {"headroom": {"zeroshot_test_acc": 0.709}})
+    summary_shape = build_card(_qualification(), {"headroom": 0.709})
+    assert report_shape["card"]["training_data"]["headroom"] == 0.709
+    assert summary_shape["card"]["training_data"]["headroom"] == 0.709
+    assert build_card(_qualification(), {})["card"]["training_data"]["headroom"] is None
+
+
 def test_model_index_is_hub_shaped():
     built = build_card(_qualification(), {"test": {"accuracy": 0.9, "brier": 0.1}},
                        dataset="clinc150")

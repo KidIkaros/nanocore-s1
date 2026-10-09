@@ -1,0 +1,306 @@
+{
+  "verdict": "qualified",
+  "must_pass_failed": [],
+  "must_fix_open": [
+    "E4",
+    "E5"
+  ],
+  "check_errors": [],
+  "deferred": [
+    "F2"
+  ],
+  "passed": [
+    "A1",
+    "A2",
+    "A3",
+    "B1",
+    "B2",
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "D1",
+    "D2",
+    "D3",
+    "E1",
+    "E2",
+    "E3",
+    "F1"
+  ],
+  "criteria": [
+    {
+      "id": "A1",
+      "gate": "A",
+      "statement": "the contract suite is green where it runs",
+      "severity": "must_pass",
+      "threshold": "suite_green_on_kaggle is true",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "A2",
+      "gate": "A",
+      "statement": "a saved bundle decides identically after reload",
+      "severity": "must_pass",
+      "threshold": "bundle_roundtrip_identical is true",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "A3",
+      "gate": "A",
+      "statement": "the qualification names the exact artifact it qualified",
+      "severity": "must_pass",
+      "threshold": "provenance carries a bundle digest",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "B1",
+      "gate": "B",
+      "statement": "the head beats TF-IDF+LR on both proper metrics, every dataset",
+      "severity": "must_pass",
+      "threshold": "log and Brier strictly lower on all datasets that ran",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "B2",
+      "gate": "B",
+      "statement": "headroom is recorded, so a saturated task cannot be read as a win",
+      "severity": "report",
+      "threshold": "ADR-0011 headroom present for the primary dataset",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "C1",
+      "gate": "C",
+      "statement": "cosine-path conformal coverage meets its target",
+      "severity": "must_pass",
+      "threshold": "coverage >= 1 - alpha",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "C2",
+      "gate": "C",
+      "statement": "head-path conformal coverage meets its target",
+      "severity": "must_pass",
+      "threshold": "coverage >= 1 - alpha",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "C3",
+      "gate": "C",
+      "statement": "prediction sets stay actionable on the cosine path",
+      "severity": "must_pass",
+      "threshold": "mean set size < 8",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "C4",
+      "gate": "C",
+      "statement": "prediction sets stay actionable on the head path",
+      "severity": "must_pass",
+      "threshold": "mean set size < 10",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "C5",
+      "gate": "C",
+      "statement": "the gate neither answers nor escalates everything",
+      "severity": "must_pass",
+      "threshold": "escalate_rate < 1.0 and something was answered",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "D1",
+      "gate": "D",
+      "statement": "no refusal case produced an answer",
+      "severity": "must_pass",
+      "threshold": "unsafe_answers == 0",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "D2",
+      "gate": "D",
+      "statement": "the refusal battery was not passed by refusing everything",
+      "severity": "must_pass",
+      "threshold": "the verbatim-option positive control answered",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "D3",
+      "gate": "D",
+      "statement": "answerable inputs are not declined (over-refusal)",
+      "severity": "must_pass",
+      "threshold": "no positive control was over-refused",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "E1",
+      "gate": "E",
+      "statement": "the pipeline holds off-English",
+      "severity": "must_pass",
+      "threshold": "in-language accuracy > 0.5 for every language that ran",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "E2",
+      "gate": "E",
+      "statement": "an English-trained head transfers",
+      "severity": "must_pass",
+      "threshold": "cross-lingual accuracy > 0.5 for every language that ran",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "E3",
+      "gate": "E",
+      "statement": "a non-text state carries decision information",
+      "severity": "must_pass",
+      "threshold": "image-arm CI lower bound above chance",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "E4",
+      "gate": "E",
+      "statement": "two-field composition beats a single field",
+      "severity": "must_fix",
+      "threshold": "full beats BOTH singles on a paired CI",
+      "pass": false,
+      "status": "fail",
+      "note": ""
+    },
+    {
+      "id": "E5",
+      "gate": "E",
+      "statement": "the two-field path supports entailment",
+      "severity": "must_fix",
+      "threshold": "mnli accuracy >= 0.60",
+      "pass": false,
+      "status": "fail",
+      "note": ""
+    },
+    {
+      "id": "F1",
+      "gate": "F",
+      "statement": "a retrain can be promoted and rolled back",
+      "severity": "must_pass",
+      "threshold": "registry round trip with a non-empty shadow comparison",
+      "pass": true,
+      "status": "pass",
+      "note": ""
+    },
+    {
+      "id": "F2",
+      "gate": "F",
+      "statement": "latency is measured on the target device",
+      "severity": "must_pass",
+      "threshold": "Phase 8 parity run",
+      "pass": null,
+      "status": "deferred",
+      "note": "evidence absent \u2014 deferred"
+    }
+  ],
+  "provenance": {
+    "git_commit": "56fcd30",
+    "kernel": "s1_verify",
+    "bundle_sha256": "207cef05b2f0a339e4a9543bbf3e3fd8c4ac9e40ec1badd603da967d05e7e92e",
+    "dataset": "CLINC150 (150 intents)"
+  },
+  "rubric": {
+    "overall": {
+      "covered": 14,
+      "partial": 5,
+      "missing": 1,
+      "n": 20,
+      "fraction_covered": 0.825
+    },
+    "by_category": {
+      "data": {
+        "covered": 3,
+        "partial": 1,
+        "missing": 0,
+        "n": 4
+      },
+      "infrastructure": {
+        "covered": 3,
+        "partial": 1,
+        "missing": 0,
+        "n": 4
+      },
+      "model": {
+        "covered": 6,
+        "partial": 2,
+        "missing": 1,
+        "n": 9
+      },
+      "monitoring": {
+        "covered": 2,
+        "partial": 1,
+        "missing": 0,
+        "n": 3
+      }
+    },
+    "gaps": [
+      {
+        "category": "data",
+        "practice": "the relationship between each feature and the target is understood",
+        "status": "partial"
+      },
+      {
+        "category": "model",
+        "practice": "offline proxy metrics correlate with online impact",
+        "status": "missing"
+      },
+      {
+        "category": "model",
+        "practice": "hyperparameters are tuned",
+        "status": "partial"
+      },
+      {
+        "category": "model",
+        "practice": "quality on important slices is tested",
+        "status": "partial"
+      },
+      {
+        "category": "infrastructure",
+        "practice": "training is reproducible",
+        "status": "partial"
+      },
+      {
+        "category": "monitoring",
+        "practice": "training/serving skew is detected",
+        "status": "partial"
+      }
+    ]
+  }
+}

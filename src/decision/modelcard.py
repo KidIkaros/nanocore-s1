@@ -50,6 +50,21 @@ def model_index(name: str, metrics: List[Dict]) -> Dict:
                         for r in metrics]}
 
 
+def _headroom_value(adapt_report: Optional[Dict]) -> Optional[float]:
+    """Headroom as a number, from either shape it legitimately arrives in.
+
+    ``adapt()`` writes a report where ``headroom`` is ``{"zeroshot_test_acc": x}``,
+    while a summary (the kernel's CLI leg) carries the value directly. Reading only
+    the first shape crashed the card generator on a real run — and the failure mode
+    is bad in a specific way: the qualification still succeeded and wrote its verdict,
+    so the run looked complete while the *delivery artifact* was silently absent.
+    """
+    headroom = (adapt_report or {}).get("headroom")
+    if isinstance(headroom, dict):
+        return headroom.get("zeroshot_test_acc")
+    return headroom
+
+
 def _metrics_from_adapt(adapt_report: Optional[Dict], dataset: str) -> List[Dict]:
     """Hub-shaped eval rows from an adapt report's held-out block."""
     test = (adapt_report or {}).get("test", {})
@@ -141,7 +156,7 @@ def build_card(qualification: Dict, adapt_report: Optional[Dict] = None,
             "note": "only the head and the gate are fitted; the encoder is frozen",
             "source": (adapt_report or {}).get("n_total", "user-supplied labeled data"),
             "classes": (adapt_report or {}).get("n_classes", "recorded in the report"),
-            "headroom": (adapt_report or {}).get("headroom", {}).get("zeroshot_test_acc"),
+            "headroom": _headroom_value(adapt_report),
         },
         "quantitative_analyses": _analyses_from_qualification(qualification),
         "ethical_considerations": {
