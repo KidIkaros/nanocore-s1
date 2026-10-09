@@ -207,6 +207,10 @@ yv_c, yt_c = to_cols(y_val), to_cols(y_te)
 def policy_eval(scores_test, g, y_col, in_mask):
     out = {"actions": {}, "resolved": 0.0, "encodes": 0, "cov_hits": 0, "n_in": 0,
            "set_sizes_in_scope": []}
+    # Per-example in-scope records for the readiness checks — the per-slice and
+    # deferral numbers a marginal figure can hide (research:
+    # benchmarks-and-evaluation-readiness).
+    rec = {"action": [], "top1": [], "covered": [], "top_prob": [], "intent": []}
     argmax = scores_test.argmax(1)
     for i in range(len(y_col)):
         r = g.decide(scores_test[i], LABELS)
@@ -221,8 +225,14 @@ def policy_eval(scores_test, g, y_col, in_mask):
         out["resolved"] += float(bool(ok)); out["encodes"] += cost
         if in_mask[i]:
             out["n_in"] += 1
-            out["cov_hits"] += int(LABELS[y_col[i]] in r.prediction_set)
+            covered = LABELS[y_col[i]] in r.prediction_set
+            out["cov_hits"] += int(covered)
             out["set_sizes_in_scope"].append(len(r.prediction_set))
+            rec["action"].append(r.action)
+            rec["top1"].append(bool(correct))
+            rec["covered"].append(bool(covered))
+            rec["top_prob"].append(float(r.top_prob))
+            rec["intent"].append(int(y_col[i]))
     out["resolved"] /= len(y_col)
     out["encodes_per_item"] = out["encodes"] / len(y_col)
     out["set_coverage_in_scope"] = out["cov_hits"] / max(out["n_in"], 1)
@@ -232,9 +242,9 @@ def policy_eval(scores_test, g, y_col, in_mask):
     sizes = np.asarray(out.pop("set_sizes_in_scope"), dtype=float)
     out["mean_set_size"] = float(sizes.mean()) if sizes.size else 0.0
     out["singleton_rate"] = float((sizes == 1).mean()) if sizes.size else 0.0
-    return out
+    return out, rec
 
-v_cos = policy_eval(SC_te, gate, yt_c, te_in)
+v_cos, rec_cos = policy_eval(SC_te, gate, yt_c, te_in)
 print("cosine leg:", json.dumps({k: round(v, 3) if isinstance(v, float) else v
                                  for k, v in v_cos.items()}))
 RESULTS = {"cosine_leg": v_cos}
@@ -262,7 +272,7 @@ gate_h.calibrate(LH_val[A_idx][val_in[A_idx]], to_cols(y_val)[A_idx][val_in[A_id
 gate_h.fit_in_schema(LH_val[A_idx][val_in[A_idx]], LH_val[A_idx][~val_in[A_idx]])
 print("head calibration:", json.dumps(gate_h.calibration, indent=1)[:600])
 
-v_head = policy_eval(head.logits(S_te), gate_h, yt_c, te_in)
+v_head, rec_head = policy_eval(head.logits(S_te), gate_h, yt_c, te_in)
 print("head leg:", json.dumps({k: round(v, 3) if isinstance(v, float) else v
                                for k, v in v_head.items()}))
 RESULTS["taskhead_leg"] = v_head
@@ -277,6 +287,79 @@ np.savez_compressed(WORK / "head_scores.npz",
                     y_val=y_val, y_test=y_te)
 print("head scores saved for offline re-evaluation")
 write_status("policy-eval")
+'''),
+
+    md('''## 5a. Human-interaction readiness — what the marginals can hide
+
+Four checks from `docs/research/benchmarks-and-evaluation-readiness.md`, each
+aimed at a failure mode an aggregate reports as fine:
+
+- **conditional coverage** — does the conformal target hold inside the hard
+  (low-confidence) slice, and per intent, or does the marginal hide it?
+  (MAPIE conditional-CP / Mondrian)
+- **deferral quality** — does the gate escalate the items it would get wrong?
+  (learning-to-defer; Mozannar et al. 2023)
+- **over-rejection** — does abstention concentrate on one slice?
+  (Pugnana & Ruggieri minority over-rejection)
+- **memorization** — candidate-order invariance + withheld-state collapse
+  (arXiv:2609.37647)
+
+All of it computes on the per-example records `policy_eval` already collected —
+no re-encoding except the five withheld-state probes.
+'''),
+    code('''
+from src.decision import readiness
+
+def _slice_block(rec, alpha):
+    band = readiness.confidence_bands(rec["top_prob"])
+    return {
+        "coverage_by_band": readiness.group_coverage(rec["covered"], band, alpha),
+        "coverage_by_intent": readiness.group_coverage(
+            rec["covered"], rec["intent"], alpha, min_group_n=30),
+        "deferral": readiness.deferral_quality(rec["action"], rec["top1"]),
+        "rejection_by_band": readiness.rejection_by_group(rec["action"], band),
+        # Per-intent is the slice where concentrated rejection could mean a
+        # broken intent — by-band concentration is expected (the hard band
+        # defers more), by-intent is not.
+        "rejection_by_intent": readiness.rejection_by_group(
+            rec["action"], rec["intent"], min_group_n=30, concentration=5.0),
+    }
+
+RESULTS["readiness"] = {
+    "cosine_leg": _slice_block(rec_cos, gate.alpha),
+    "taskhead_leg": _slice_block(rec_head, gate_h.alpha),
+}
+
+# Memorization probes (arXiv:2609.37647). Candidate-order invariance on the
+# cached head scores: permute the columns, the chosen *label* must not move.
+_rng = np.random.default_rng(0)
+_perm = _rng.permutation(len(INTENT_TEXTS))
+SH = head.logits(S_te)[te_in]
+_cons = float((_perm[SH[:, _perm].argmax(1)] == SH.argmax(1)).mean())
+# Withheld state — uninformative text must not be confidently answered.
+_fillers = ["", "the", "...", "aaaaaaaa", "lorem ipsum dolor sit amet"]
+E_w = to_numpy(encoder.encode(_fillers, prompt_name="SearchQuery"))
+_w_acts, _w_top = [], []
+for _i in range(len(_fillers)):
+    _rw = gate_h.decide(head.scores(E_w[_i]), INTENT_TEXTS)
+    _w_acts.append(_rw.action); _w_top.append(_rw.top_prob)
+_w = {"top_prob": float(np.mean(_w_top)),
+      "answered": int(sum(a == "answer" for a in _w_acts)),
+      "actions": _w_acts}
+RESULTS["readiness"]["memorization"] = readiness.memorization_verdict(
+    _cons, _w, len(INTENT_TEXTS))
+
+for _leg in ("cosine_leg", "taskhead_leg"):
+    _b = RESULTS["readiness"][_leg]
+    _cb, _dq = _b["coverage_by_band"], _b["deferral"]
+    print(f"{_leg:12} cov " + " ".join(
+        f"{g}={v['coverage']:.3f}(n{v['n']})" for g, v in _cb["groups"].items())
+        + f" | undercovered {_cb['undercovered'] or 'none'}")
+    print(f"{'':12} assert={_dq.get('acc_asserted')} "
+          f"deferred={_dq.get('acc_deferred')} "
+          f"enrichment={_dq.get('error_enrichment')}")
+print("memorization:", json.dumps(RESULTS["readiness"]["memorization"]))
+write_status("readiness")
 '''),
 
     md('''## 5b. Deployable bundle — save → load → identical decisions

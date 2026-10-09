@@ -178,6 +178,72 @@ def _operational_ready(evidence: Dict) -> Optional[bool]:
                 and reg.get("shadow", {}).get("n", 0) > 0)
 
 
+def _slice_coverage_holds(tol: float = 0.15):
+    """No populated confidence band is catastrophically undercovered.
+
+    Split conformal guarantees *marginal* coverage; the low-confidence band
+    legitimately sits a little under target. A defect would be coverage
+    collapsing on a slice — so this gates a tolerance band, not exact
+    conditional coverage (which split conformal does not promise).
+    """
+    def check(e: Dict) -> Optional[bool]:
+        legs = _v(e, "readiness", default=None)
+        if not legs:
+            return None
+        seen = False
+        for leg in ("cosine_leg", "taskhead_leg"):
+            gc = _v(legs, leg, "coverage_by_band")
+            if not gc:
+                continue
+            for v in gc["groups"].values():
+                if v["n"] >= gc["min_group_n"]:
+                    seen = True
+                    if v["coverage"] < gc["target"] - tol:
+                        return False
+        return True if seen else None
+    return check
+
+
+def _deferral_well_aimed(e: Dict) -> Optional[bool]:
+    """The deferred set must be harder than the asserted set on both legs —
+    otherwise the gate is escalating items it would have answered correctly."""
+    legs = _v(e, "readiness", default=None)
+    if not legs:
+        return None
+    seen = False
+    for leg in ("cosine_leg", "taskhead_leg"):
+        wa = _v(legs, leg, "deferral", "well_aimed")
+        if wa is None:
+            continue
+        seen = True
+        if not wa:
+            return False
+    return True if seen else None
+
+
+def _no_pathological_rejection(e: Dict) -> Optional[bool]:
+    """No single intent is catastrophically over-rejected. A signal, not a
+    blocker (REPORT): a genuinely harder intent legitimately defers more, so the
+    distribution is surfaced for review rather than gated."""
+    legs = _v(e, "readiness", default=None)
+    if not legs:
+        return None
+    seen = False
+    for leg in ("cosine_leg", "taskhead_leg"):
+        conc = _v(legs, leg, "rejection_by_intent", "concentrated")
+        if conc is None:
+            continue
+        seen = True
+        if conc:
+            return False
+    return True if seen else None
+
+
+def _memorization_probes_pass(e: Dict) -> Optional[bool]:
+    m = _v(e, "readiness", "memorization")
+    return None if not m else m.get("passed")
+
+
 CRITERIA: tuple = (
     # ── A. contract and determinism ──────────────────────────────────────────
     Criterion("A1", "A", "the contract suite is green where it runs",
@@ -238,6 +304,19 @@ CRITERIA: tuple = (
     Criterion("F2", "F", "latency is measured on the target device",
               MUST_PASS, "Phase 8 parity run",
               lambda e: None),
+    # ── G. human-interaction readiness — what a marginal number can hide ─────
+    Criterion("G1", "G", "conformal coverage is not hiding a hard slice",
+              MUST_PASS, "no populated confidence band < target - 0.15, both legs",
+              _slice_coverage_holds()),
+    Criterion("G2", "G", "deferral targets the items the model would get wrong",
+              MUST_PASS, "acc on deferred <= acc on asserted, both legs",
+              _deferral_well_aimed),
+    Criterion("G3", "G", "abstention does not concentrate on a single intent",
+              REPORT, "no intent rejects at >5x the overall rate",
+              _no_pathological_rejection),
+    Criterion("G4", "G", "the head is not answering from surface cues",
+              MUST_PASS, "candidate-order invariant; withheld state never answered",
+              _memorization_probes_pass),
 )
 
 

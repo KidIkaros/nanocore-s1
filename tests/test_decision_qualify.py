@@ -49,6 +49,27 @@ def _good() -> dict:
         "multimodal": {"n_options": 4, "arms": {"image_only": {"block": {"acc": {"lo": 0.398}}}},
                        "vs_text_only": {"verdict": "improved"},
                        "vs_image_only": {"verdict": "improved"}},
+        "readiness": {
+            "cosine_leg": {
+                "coverage_by_band": {"target": 0.90, "min_group_n": 200,
+                                     "groups": {"low": {"n": 300, "coverage": 0.88},
+                                                "mid": {"n": 300, "coverage": 0.95},
+                                                "high": {"n": 300, "coverage": 0.97}},
+                                     "undercovered": [], "small": []},
+                "deferral": {"well_aimed": True},
+                "rejection_by_intent": {"concentrated": []},
+            },
+            "taskhead_leg": {
+                "coverage_by_band": {"target": 0.90, "min_group_n": 200,
+                                     "groups": {"low": {"n": 300, "coverage": 0.91},
+                                                "mid": {"n": 300, "coverage": 0.97},
+                                                "high": {"n": 300, "coverage": 0.99}},
+                                     "undercovered": [], "small": []},
+                "deferral": {"well_aimed": True},
+                "rejection_by_intent": {"concentrated": []},
+            },
+            "memorization": {"passed": True},
+        },
     }
 
 
@@ -142,6 +163,56 @@ def test_every_criterion_states_its_claim_and_threshold():
     from src.decision.qualify import CRITERIA
     assert all(c.statement and c.threshold and c.id for c in CRITERIA)
     assert {c.severity for c in CRITERIA} <= {MUST_PASS, MUST_FIX, "report"}
+
+
+def test_readiness_criteria_defer_when_the_leg_did_not_run():
+    """A build whose kernel skipped the readiness cell must not pass G by
+    omission — the checks defer, and deferred is listed, never a pass."""
+    ev = _good()
+    del ev["readiness"]
+    rep = evaluate(ev)
+    assert {"G1", "G2", "G4"} <= set(rep["deferred"])
+    assert not ({"G1", "G2", "G4"} & set(rep["passed"]))
+
+
+def test_an_undercovered_slice_fails_g1_even_with_a_good_marginal():
+    """The whole point of G1: the marginal can be over target while a populated
+    slice is catastrophically under-covered."""
+    ev = _good()
+    ev["readiness"]["taskhead_leg"]["coverage_by_band"]["groups"]["low"] = {
+        "n": 400, "coverage": 0.60}  # 0.90 target - 0.15 tol = 0.75 floor
+    rep = evaluate(ev)
+    assert rep["verdict"] == "not_qualified"
+    assert "G1" in rep["must_pass_failed"]
+
+
+def test_misaimed_deferral_fails_g2():
+    """Escalating items the model would have answered right is a misroute."""
+    ev = _good()
+    ev["readiness"]["cosine_leg"]["deferral"]["well_aimed"] = False
+    rep = evaluate(ev)
+    assert rep["verdict"] == "not_qualified"
+    assert "G2" in rep["must_pass_failed"]
+
+
+def test_a_failed_memorization_probe_fails_g4():
+    ev = _good()
+    ev["readiness"]["memorization"] = {"passed": False}
+    rep = evaluate(ev)
+    assert rep["verdict"] == "not_qualified"
+    assert "G4" in rep["must_pass_failed"]
+
+
+def test_over_rejection_is_reported_not_blocking():
+    """Concentrated rejection surfaces as a REPORT row — it cannot change the
+    verdict, but it must not silently pass."""
+    ev = _good()
+    ev["readiness"]["taskhead_leg"]["rejection_by_intent"] = {
+        "concentrated": ["intent_x"]}
+    rep = evaluate(ev)
+    assert rep["verdict"] == "qualified"
+    row = next(r for r in rep["criteria"] if r["id"] == "G3")
+    assert row["status"] == "fail" and row["severity"] == "report"
 
 
 @pytest.mark.skipif(not V20.exists(), reason="v20 artifacts not pulled")
