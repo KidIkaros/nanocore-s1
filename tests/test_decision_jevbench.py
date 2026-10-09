@@ -14,8 +14,9 @@ from src.decision.jevbench import (NOUL_NEGATIVE, confidence,
 class _StubModel:
     """decide() over a fixed uniform-plus-bump distribution, no encoder."""
     class _P:
-        def __init__(self, probs):
+        def __init__(self, probs, action="answer"):
             self.probabilities = probs
+            self.action = action
 
     def decide(self, state, question):
         k = len(question.options)
@@ -23,6 +24,15 @@ class _StubModel:
         p[0] += 0.2
         p /= p.sum()
         return self._P({o: float(x) for o, x in zip(question.options, p)})
+
+
+class _AbstainingModel(_StubModel):
+    """Every head abstains — the gated arm's extreme case."""
+
+    def decide(self, state, question):
+        p = super().decide(state, question)
+        p.action = "escalate"
+        return p
 
 
 # ── option rendering mirrors the harness's prompts.render ────────────────────
@@ -108,6 +118,45 @@ def test_noul_proposition_stays_out_of_the_state():
     q = {"judge": {"type": "noul", "instructions": "Is `text` spam?"}}
     nanocore_answers(Spy(), "buy now", q)
     assert "spam" not in seen["state"]
+
+
+def test_abstention_withholds_the_whole_example():
+    """A single non-answer head withholds the request — the harness scores
+    complete answers only, and n_answered/n_examples is where coverage shows."""
+    q = {"judge": {"type": "noul", "instructions": "spam?"}}
+    assert nanocore_answers(_AbstainingModel(), "buy now", q) is None
+
+
+def test_unevaluated_action_still_answers():
+    """No gate attached (action='unevaluated') is answered, not abstained —
+    abstention is a gate decision; a gate that isn't there cannot make one."""
+    class Ungated(_StubModel):
+        def decide(self, state, question):
+            p = super().decide(state, question)
+            p.action = "unevaluated"
+            return p
+
+    q = {"judge": {"type": "noul", "instructions": "spam?"}}
+    assert nanocore_answers(Ungated(), "buy now", q) is not None
+
+
+def test_run_task_reports_coverage():
+    """The gated arm's signal: n_answered < n_examples, metrics on the
+    answered subset only."""
+    from src.decision.jevbench import run_task
+
+    ex = type("E", (), {"state": "s", "gold": {"j": True},
+                        "questions": {"j": {"type": "noul",
+                                            "instructions": "spam?"}}})()
+
+    class FakeTask:
+        name = "fake"
+        def examples(self, split, limit=None):
+            return [ex, ex, ex]
+
+    r = run_task(_AbstainingModel(), FakeTask())
+    assert r["n_examples"] == 3 and r["n_answered"] == 0
+    assert r["coverage"] == 0.0
 
 
 def test_unknown_question_type_raises():

@@ -1,0 +1,1 @@
+{"qtype": "choice", "labels": ["cancel", "book"], "probabilities": {"cancel": 0.9881842700988156, "book": 0.011815729901184346}, "answer_confidence": 0.9881842700988156, "entropy_confidence": 0.09260324816965411, "abstention": "unevaluated", "abstention_threshold": null, "max_score": 0.9659661054611206, "prediction_set": ["cancel", "book"], "action": "answer", "alpha": 0.1}

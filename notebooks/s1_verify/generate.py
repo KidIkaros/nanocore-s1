@@ -1383,12 +1383,22 @@ frozen templates. Running NanoCore through the *same* `Task.examples` /
 `evaluate.compute` path is the strongest anchor available: identical requests,
 identical scoring, only the probabilities differ.
 
-This is a **zero-shot arm**: ungated cosine scorer, because Jev's answer
-format carries no abstention — comparing our gate to a model that cannot
-abstain would compare the wrong things. (The fitted head stays schema-bound;
-it answers only its own label space.) Subset of tasks, bounded `limit` —
-this is an anchor, not the full 346k; the published per-task numbers are
-read alongside for a same-protocol table.
+Two arms, because the comparison has two honest questions:
+
+- **Zero-shot arm** — ungated cosine scorer, matching how Jev, Qwen and
+  Gemma run the harness. Same requests, same scoring, only probabilities
+  differ. This is the like-for-like capability anchor.
+- **Gated arm** — same scorer, plus the conformal gate *as calibrated on
+  CLINC150 in §3* — deliberately not re-calibrated per task. On
+  distribution-shifted tasks the gate is expected to withhold more; that
+  is its function. An abstained head withholds the example: the harness's
+  own accounting then reports it via coverage (`n_answered`/`n_examples`)
+  and selective-accuracy metrics — the differentiator measured on their
+  terms, not hidden from the comparison.
+
+(The fitted head stays schema-bound; it answers only its own label space.)
+Subset of tasks, bounded `limit` — this is an anchor, not the full 346k;
+the published per-task numbers are read alongside for a same-protocol table.
 '''),
     code('''
 RESULTS["jev_anchor"] = {"status": "skipped"}
@@ -1405,6 +1415,7 @@ try:
     from src.decision.jevbench import run_task as _jev_run
 
     _zm = DecisionModel(encoder=encoder, scorer=None, gate=None, cache=None)
+    _gm = DecisionModel(encoder=encoder, scorer=None, gate=gate, cache=None)
     _ANCHOR = ["banking77", "clinc150", "ag_news", "sst2", "imdb",
                "boolq", "paws", "sst5", "stsb"]
     _LIMIT = 300
@@ -1428,28 +1439,43 @@ try:
     _tasks, _comparison = {}, {}
     for _name in _ANCHOR:
         try:
-            _r = _jev_run(_zm, _JEV_TASKS[_name], split="eval", limit=_LIMIT)
-            _primary = _JEV_TASKS[_name].primary
-            _src = (_r["aggregate"] if _primary.head == "*"
-                    else _r["heads"].get(_primary.head, {}))
-            _ours = _src.get(_primary.metric)
-            _tasks[_name] = {"n": _r["n_examples"], "primary": {
-                "head": _primary.head, "metric": _primary.metric,
-                "value": _ours}, "heads": _r["heads"],
-                "aggregate": _r["aggregate"]}
-            _comparison[_name] = {"metric": _primary.metric, "nanocore": _ours,
-                                  **_published(_name)}
-            print(f"{_name}: {_primary.metric} ours={_ours} "
-                  f"published={_comparison[_name]}")
+            _task = _JEV_TASKS[_name]
+            _primary = _task.primary
+            _arms = {}
+            for _arm, _m in (("zeroshot", _zm), ("gated", _gm)):
+                _r = _jev_run(_m, _task, split="eval", limit=_LIMIT)
+                _src = (_r["aggregate"] if _primary.head == "*"
+                        else _r["heads"].get(_primary.head, {}))
+                _arms[_arm] = {
+                    "n": _r["n_examples"], "n_answered": _r["n_answered"],
+                    "coverage": _r["coverage"],
+                    "primary": {"head": _primary.head,
+                                "metric": _primary.metric,
+                                "value": _src.get(_primary.metric)},
+                    "heads": _r["heads"], "aggregate": _r["aggregate"]}
+            _tasks[_name] = _arms
+            _comparison[_name] = {
+                "metric": _primary.metric,
+                "nanocore_zeroshot": _arms["zeroshot"]["primary"]["value"],
+                "nanocore_gated": _arms["gated"]["primary"]["value"],
+                "gated_coverage": _arms["gated"]["coverage"],
+                **_published(_name)}
+            print(f"{_name}: {_primary.metric} "
+                  f"zs={_comparison[_name]['nanocore_zeroshot']} "
+                  f"gated={_comparison[_name]['nanocore_gated']} "
+                  f"cov={_arms['gated']['coverage']:.2f} "
+                  f"published={_published(_name)}")
         except Exception as _te:
             _tasks[_name] = {"status": "failed", "error": repr(_te)[:200]}
             print(f"{_name}: failed {repr(_te)[:150]}")
     _ran = {k: v for k, v in _comparison.items()
-            if v.get("nanocore") is not None}
-    RESULTS["jev_anchor"] = {"status": "ran", "tasks": _tasks,
-                             "comparison": _comparison,
-                             "n_tasks_ran": len(_ran), "limit": _LIMIT,
-                             "arm": "zero-shot cosine, ungated"}
+            if v.get("nanocore_zeroshot") is not None}
+    RESULTS["jev_anchor"] = {
+        "status": "ran", "tasks": _tasks, "comparison": _comparison,
+        "n_tasks_ran": len(_ran), "limit": _LIMIT,
+        "arms": {"zeroshot": "cosine, ungated",
+                 "gated": "cosine + ConformalGate calibrated on CLINC150 "
+                          "(deliberately not re-calibrated per task)"}}
 except Exception as e:
     RESULTS["jev_anchor"] = {"status": "failed", "error": repr(e)[:300]}
     print("jev_anchor leg failed:", repr(e)[:200])
