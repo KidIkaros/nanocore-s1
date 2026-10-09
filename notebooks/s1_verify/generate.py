@@ -324,7 +324,8 @@ def _slice_block(rec, alpha):
         "rejection_by_band": readiness.rejection_by_group(rec["action"], band),
         # Per-intent is the slice where concentrated rejection could mean a
         # broken intent — by-band concentration is expected (the hard band
-        # defers more), by-intent is not.
+        # defers more), by-intent is not. concentration=5.0 is a prior: v24
+        # yields the first real distribution to calibrate it against.
         "rejection_by_intent": readiness.rejection_by_group(
             rec["action"], rec["intent"], min_group_n=30, concentration=5.0),
     }
@@ -1595,10 +1596,12 @@ and "the thing we ship" are provably the same object.
 '''),
     code('''
 RESULTS["qualification"] = {"status": "skipped"}
+RESULTS["delivery"] = {"status": "skipped"}
 try:
     from src.decision import rubric
+    from src.decision.evaluate import metric_point
     from src.decision.model import bundle_digest
-    from src.decision.modelcard import build_card, render_markdown
+    from src.decision.modelcard import build_card, eval_row, render_markdown
     from src.decision.qualify import evaluate
     from src.decision.refusals import (BatterySpec, LossMatrix,
                                        battery_is_meaningful, battery_report)
@@ -1648,75 +1651,79 @@ try:
     print(f"  must_fix open    : {qual['must_fix_open']}")
     print(f"  deferred         : {qual['deferred']}")
     print(rubric.render(qual["rubric"]))
-
-    # 3. the delivery artifact — eval rows carry full Hub provenance (dataset
-    #    id + revision + split + who computed it), because a bare scalar is not
-    #    an interpretable claim. Breadth rows are self-reported on our splits;
-    #    MTEB rows are the shared-harness anchor and are labelled as such.
-    from src.decision.modelcard import eval_row
-
-    def _pt(v):
-        """Point value: rigor blocks mix CI dicts (acc/log) and scalars (brier)."""
-        return v["point"] if isinstance(v, dict) else v
-
-    eval_rows = []
-    for _name, _ds in RESULTS["breadth"].get("datasets", {}).items():
-        if _ds.get("status") != "ran":
-            continue
-        for _arm, _block in _ds["blocks"].items():
-            for _key, _m in (("acc", "accuracy"), ("log", "log_score"),
-                             ("brier", "brier"), ("ece15", "ece15"),
-                             ("aurc", "aurc"), ("acc_at_80", "acc_at_80")):
-                eval_rows.append(eval_row(
-                    _name, _m, _pt(_block[_key]),
-                    dataset_type=_ds.get("hf_id"), config=_ds.get("config"),
-                    split=_ds.get("split"), revision=_ds.get("revision"),
-                    metric_name=f"{_m} [{_arm}]",
-                    source={"name": "s1_verify kernel (self-reported)"}))
-    _noul = RESULTS.get("noul", {})
-    for _arm, _rows in _noul.get("arms", {}).items():
-        _aurocs = [v["auroc"] for v in _rows.values() if v.get("auroc") is not None]
-        if _aurocs:
-            eval_rows.append(eval_row(
-                "clinc150-noul", "auroc", sum(_aurocs) / len(_aurocs),
-                dataset_type="clinc150", split="test",
-                metric_name=f"mean AUROC [noul, {_arm}]",
-                source={"name": "s1_verify kernel (self-reported)"}))
-    _anchor = RESULTS.get("mteb_anchor", {})
-    _src = {"name": f"MTEB harness v{_anchor.get('mteb_version', '?')}",
-            "url": "https://github.com/embeddings-benchmark/mteb"}
-    for _tname, _row in _anchor.get("tasks", {}).items():
-        if "main_score" in _row:
-            eval_rows.append(eval_row(
-                _tname, "accuracy", _row["main_score"],
-                dataset_type=_row.get("hf_id"), split="test",
-                revision=_row.get("dataset_revision"),
-                metric_name="main_score [encoder, MTEB harness]",
-                source=_src))
-    built = build_card(qual, RESULTS.get("cli_adapt", {}),
-                       dataset="CLINC150 (150 intents)", encoder_id=encoder.model_name,
-                       eval_rows=eval_rows,
-                       eval_provenance={
-                           "source": {"name": "s1_verify kernel (self-reported)"}})
-    (WORK / "MODEL_CARD.md").write_text(render_markdown(built))
-    print(f"model card written: {len(built['card'])} sections, "
-          f"{len(built['metrics'])} eval metrics in model-index")
-
-    RESULTS["verdict"].update({
-        "qualification_named_artifact": bool(digest),
-        "mteb_anchor_ran": RESULTS.get("mteb_anchor", {}).get("status") == "ran",
-        "refusals_ran": True,
-        "refusals_no_unsafe_answers": refusals["unsafe_answers"] == 0,
-        "refusals_battery_meaningful": bool(battery_is_meaningful(refusals)),
-        "model_card_written": (WORK / "MODEL_CARD.md").exists(),
-    })
 except Exception as e:
-    # Do not clobber a qualification that was already computed and written —
-    # a late failure (card render, verdict bookkeeping) must not erase it.
-    if "verdict" not in RESULTS.get("qualification", {}):
-        RESULTS["qualification"] = {"status": "failed", "error": repr(e)[:300]}
+    RESULTS["qualification"] = {"status": "failed", "error": repr(e)[:300]}
     RESULTS["verdict"].setdefault("qualification_ran", False)
     print("qualification leg failed:", repr(e)[:200])
+
+# ── delivery is a separate concern ──────────────────────────────────────────
+# Packaging a computed verdict (eval rows, model card, bookkeeping) is not the
+# measurement. A failure here lands in RESULTS["delivery"], never in the
+# qualification bucket — the same separation that keeps the v23 card-bug class
+# from masquerading as a gate failure. Runs only when a verdict exists to ship.
+if "verdict" in RESULTS.get("qualification", {}):
+    try:
+        # eval rows carry full Hub provenance (dataset id + revision + split +
+        # who computed it), because a bare scalar is not an interpretable
+        # claim. Breadth rows are self-reported on our splits; MTEB rows are
+        # the shared-harness anchor and are labelled as such.
+        eval_rows = []
+        for _name, _ds in RESULTS["breadth"].get("datasets", {}).items():
+            if _ds.get("status") != "ran":
+                continue
+            for _arm, _block in _ds["blocks"].items():
+                for _key, _m in (("acc", "accuracy"), ("log", "log_score"),
+                                 ("brier", "brier"), ("ece15", "ece15"),
+                                 ("aurc", "aurc"), ("acc_at_80", "acc_at_80")):
+                    eval_rows.append(eval_row(
+                        _name, _m, metric_point(_block[_key]),
+                        dataset_type=_ds.get("hf_id"), config=_ds.get("config"),
+                        split=_ds.get("split"), revision=_ds.get("revision"),
+                        metric_name=f"{_m} [{_arm}]",
+                        source={"name": "s1_verify kernel (self-reported)"}))
+        _noul = RESULTS.get("noul", {})
+        for _arm, _rows in _noul.get("arms", {}).items():
+            _aurocs = [v["auroc"] for v in _rows.values()
+                       if v.get("auroc") is not None]
+            if _aurocs:
+                eval_rows.append(eval_row(
+                    "clinc150-noul", "auroc", sum(_aurocs) / len(_aurocs),
+                    dataset_type="clinc150", split="test",
+                    metric_name=f"mean AUROC [noul, {_arm}]",
+                    source={"name": "s1_verify kernel (self-reported)"}))
+        _anchor = RESULTS.get("mteb_anchor", {})
+        _src = {"name": f"MTEB harness v{_anchor.get('mteb_version', '?')}",
+                "url": "https://github.com/embeddings-benchmark/mteb"}
+        for _tname, _row in _anchor.get("tasks", {}).items():
+            if "main_score" in _row:
+                eval_rows.append(eval_row(
+                    _tname, "accuracy", _row["main_score"],
+                    dataset_type=_row.get("hf_id"), split="test",
+                    revision=_row.get("dataset_revision"),
+                    metric_name="main_score [encoder, MTEB harness]",
+                    source=_src))
+        built = build_card(qual, RESULTS.get("cli_adapt", {}),
+                           dataset="CLINC150 (150 intents)",
+                           encoder_id=encoder.model_name, eval_rows=eval_rows,
+                           eval_provenance={"source": {
+                               "name": "s1_verify kernel (self-reported)"}})
+        (WORK / "MODEL_CARD.md").write_text(render_markdown(built))
+        print(f"model card written: {len(built['card'])} sections, "
+              f"{len(built['metrics'])} eval metrics in model-index")
+
+        RESULTS["verdict"].update({
+            "qualification_named_artifact": bool(digest),
+            "mteb_anchor_ran": RESULTS.get("mteb_anchor", {}).get("status") == "ran",
+            "refusals_ran": True,
+            "refusals_no_unsafe_answers": refusals["unsafe_answers"] == 0,
+            "refusals_battery_meaningful": bool(battery_is_meaningful(refusals)),
+            "model_card_written": (WORK / "MODEL_CARD.md").exists(),
+        })
+        RESULTS["delivery"] = {"status": "ran", "eval_rows": len(eval_rows)}
+    except Exception as e:
+        RESULTS["delivery"] = {"status": "failed", "error": repr(e)[:300]}
+        RESULTS["verdict"]["model_card_written"] = False
+        print("delivery failed:", repr(e)[:200])
 
 (WORK / "results.json").write_text(json.dumps(RESULTS, indent=2))
 write_status(done=True)

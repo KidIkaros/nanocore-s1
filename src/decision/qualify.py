@@ -22,6 +22,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
+from src.decision.evaluate import metric_point
+
 MUST_PASS = "must_pass"
 MUST_FIX = "must_fix"
 REPORT = "report"
@@ -68,7 +70,7 @@ def _breadth_beats_baseline(evidence: Dict) -> Optional[bool]:
         if not head or not base:
             return None
         if not (head["log"]["point"] < base["log"]["point"]
-                and head["brier"] < base["brier"]):
+                and metric_point(head["brier"]) < metric_point(base["brier"])):
             return False
     return True
 
@@ -220,6 +222,9 @@ def _slice_coverage_holds(tol: float = 0.15):
     legitimately sits a little under target. A defect would be coverage
     collapsing on a slice — so this gates a tolerance band, not exact
     conditional coverage (which split conformal does not promise).
+
+    ``tol`` is a prior, not a calibrated constant: v24 is the first run that
+    produces real per-band distributions to set it from.
     """
     def check(e: Dict) -> Optional[bool]:
         legs = _v(e, "readiness", default=None)

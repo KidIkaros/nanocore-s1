@@ -2,8 +2,9 @@
 import numpy as np
 import pytest
 
-from src.decision.evaluate import (dataset_suite, rigor_block, seed_aggregate,
-                                   similarity_bands, tfidf_baseline)
+from src.decision.evaluate import (dataset_suite, metric_point, rigor_block,
+                                   seed_aggregate, similarity_bands,
+                                   tfidf_baseline)
 
 
 def test_tfidf_baseline_column_alignment():
@@ -38,8 +39,17 @@ def test_rigor_block_keys_and_sanity():
     for key in ("acc", "log", "aurc", "acc_at_50", "acc_at_80", "ece15", "brier"):
         assert key in r
     assert r["acc"]["lo"] <= r["acc"]["point"] <= r["acc"]["hi"]
+    # every primary metric carries a bootstrap CI — one shape, no exceptions
+    for key in ("acc", "log", "brier"):
+        assert r[key]["lo"] <= r[key]["point"] <= r[key]["hi"]
     assert r["aurc"] < 0.1          # strong model → small area under risk curve
     assert 0 <= r["ece15"] <= 1
+
+
+def test_metric_point_reads_both_shapes():
+    """CI dicts carry point; stored scalars and protocol blocks are bare."""
+    assert metric_point({"point": 0.3, "lo": 0.2, "hi": 0.4}) == 0.3
+    assert metric_point(0.05) == 0.05
 
 
 def test_similarity_bands():

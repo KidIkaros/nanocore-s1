@@ -44,15 +44,26 @@ def tfidf_baseline(train_texts: Sequence[str], train_cols: np.ndarray,
     return P / P.sum(axis=1, keepdims=True)
 
 
+def metric_point(value) -> float:
+    """Point estimate of a rigor metric.
+
+    ``rigor_block`` metrics carry bootstrap CIs (``{"point", "lo", "hi"}``);
+    older stored artifacts and ``protocol.metric_block`` carry bare scalars.
+    This is the one place that shape knowledge lives — readers must not
+    re-derive it.
+    """
+    return float(value["point"]) if isinstance(value, dict) else float(value)
+
+
 def rigor_block(P: np.ndarray, y_idx: np.ndarray,
                 resamples: int = 500, seed: int = 0) -> Dict:
     """The reference-eval metric block with uncertainty on it.
 
-    Bootstrap CIs on accuracy and log score, AURC, selective accuracy at
-    50%/80% coverage, ECE over 15 bins, Brier. Binary tasks additionally
-    report AUROC and AUPRC (threshold-free, per the eval standard). Every
-    number the comparison tables print comes from here so columns stay
-    comparable across scorers.
+    Bootstrap CIs on accuracy, log score, and Brier; AURC; selective accuracy
+    at 50%/80% coverage; ECE over 15 bins. Binary tasks additionally report
+    AUROC and AUPRC (threshold-free, per the eval standard). Every number the
+    comparison tables print comes from here so columns stay comparable across
+    scorers. Read values with ``metric_point``.
     """
     P = np.asarray(P, dtype=np.float64)
     y_idx = np.asarray(y_idx, dtype=int)
@@ -64,11 +75,13 @@ def rigor_block(P: np.ndarray, y_idx: np.ndarray,
                               resamples=resamples, seed=seed),
         "log": M.bootstrap_ci(lambda p, y: M.log_score(p, np.eye(p.shape[1])[y]),
                               P, y_idx, resamples=resamples, seed=seed),
+        "brier": M.bootstrap_ci(
+            lambda p, y: M.brier_score(p, np.eye(p.shape[1])[y]),
+            P, y_idx, resamples=resamples, seed=seed),
         "aurc": M.aurc(conf, correct),
         "acc_at_50": M.selective_at_coverage(conf, correct, 0.5),
         "acc_at_80": M.selective_at_coverage(conf, correct, 0.8),
         "ece15": M.expected_calibration_error(P, onehot, n_bins=15),
-        "brier": M.brier_score(P, onehot),
     }
     if P.shape[1] == 2:
         from sklearn.metrics import roc_auc_score, average_precision_score
