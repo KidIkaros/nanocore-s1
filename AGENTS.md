@@ -73,6 +73,11 @@ Rules:
 
 ## Experiment conventions
 
+- **Push only on the owner's word.** A kernel run costs ~45 min of quota; pushing
+  and then immediately finding more fixes wastes the run. Before any push the
+  working tree must be clean of known fixes: run the clean-code and
+  clean-architecture review pass *after every fix*, not after the push. When
+  the owner says push, the code that goes up is the code that was reviewed.
 - **One notebook per experiment family, iterating versions** — do not create a new
   notebook directory for each iteration. Kaggle versions natively; git history keeps
   the old generator. Per-run *evidence* still goes to `reports/runs/<run>/` so every
