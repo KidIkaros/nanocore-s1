@@ -15,6 +15,10 @@ Three commands, in the order a user meets them:
     # 3. the same thing over HTTP
     python -m src.decision.cli serve --bundle models/tickets/bundle
 
+    # and, on the target device: does the GGUF agree with the PyTorch reference?
+    python -m src.decision.cli parity --inputs demos.txt --options "..." \
+        --bundle models/tickets/bundle --backend llamacpp --model models/x.gguf
+
 Batch decide: one input per line, single encoder load —
 ``decide - --options "..." --inputs demos.txt --json``.
 
@@ -55,42 +59,51 @@ def _backend_args() -> argparse.ArgumentParser:
     return p
 
 
+def _require_memory(backend: str, model: str, ignore: bool) -> None:
+    """Refuse to load weights without RAM to spare. Exits; returns no verdict.
+
+    Called from ``_encoder`` rather than by each command so a new command cannot
+    forget it — a guard that has to be remembered is not a guard. It must also
+    run *before* the loader starts, which is the only moment it can help: once
+    the weights are being read, the RAM is already committed.
+    """
+    from src.decision.guard import ENCODER_GB, check_memory, model_gb
+    need = ENCODER_GB["text"] if backend == "st" else model_gb(model)
+    check = check_memory(need)
+    if check.ok:
+        if check.available_gb is None:
+            print(f"note: {check.reason}", file=sys.stderr)
+    elif not ignore:
+        sys.exit(f"refusing to load weights: {check.reason}")
+    else:
+        print(f"WARNING: --ignore-memory set; {check.reason}", file=sys.stderr)
+
+
 def _encoder(backend: str, model: str = DEFAULT_MODEL, device=None,
              max_tokens: int = 512, ignore_memory: bool = False):
-    """Build the encoder asked for. No weights load for ``stub``, so no gate.
-
-    The memory gate runs *before* anything is loaded, which is the only time it
-    can help: by the time the loader has started, the RAM is already committed.
-    """
+    """Build the encoder asked for. ``stub`` loads no weights, so it has no gate."""
     if backend == "stub":
         from src.decision.backends import StubEncoder
         return StubEncoder()                        # dry-runs/tests, no weights
 
-    from src.decision.guard import ENCODER_GB, check_memory, model_gb
-    if backend == "st":
-        need = ENCODER_GB["text"]
-    else:
-        if not Path(model).exists():
-            sys.exit(f"model file not found: {model}\n"
-                     f"download it with:\n"
-                     f"  python -c \"from huggingface_hub import hf_hub_download as d;"
-                     f"print(d('ggml-org/embeddinggemma-300m-GGUF',"
-                     f"'embeddinggemma-300M-Q8_0.gguf',local_dir='models'))\"")
-        need = model_gb(model)
-
-    check = check_memory(need)
-    if not check.ok:
-        if not ignore_memory:
-            sys.exit(f"refusing to load weights: {check.reason}")
-        print(f"WARNING: --ignore-memory set; {check.reason}", file=sys.stderr)
-    elif check.available_gb is None:
-        print(f"note: {check.reason}", file=sys.stderr)
+    if backend != "st" and not Path(model).exists():
+        sys.exit(f"model file not found: {model}\n"
+                 f"download it with:\n"
+                 f"  python -c \"from huggingface_hub import hf_hub_download as d;"
+                 f"print(d('ggml-org/embeddinggemma-300m-GGUF',"
+                 f"'embeddinggemma-300M-Q8_0.gguf',local_dir='models'))\"")
+    _require_memory(backend, model, ignore_memory)
 
     if backend == "st":
         from src.decision.encoder import StateEncoder
         return StateEncoder(modalities=("text",), device=device or None)
     from src.decision.backends import LlamaCppEncoder
-    return LlamaCppEncoder(model, max_tokens=max_tokens)
+    try:
+        return LlamaCppEncoder(model, max_tokens=max_tokens)
+    except ImportError as e:
+        # The CLI is the boundary a user meets: a missing optional dependency is
+        # an instruction ("pip install ..."), not a traceback.
+        sys.exit(str(e))
 
 
 def _build(args):
@@ -111,11 +124,16 @@ def _texts(args):
     return [args.text]
 
 
+def _split_options(spec: str) -> list:
+    """``"a, b ,c"`` → ``["a", "b", "c"]``. One parser for every command."""
+    return [o.strip() for o in spec.split(",") if o.strip()]
+
+
 def cmd_decide(args):
     from src.decision.schema import Question
 
     model = _build(args)
-    options = [o.strip() for o in args.options.split(",") if o.strip()]
+    options = _split_options(args.options)
     if not options:
         sys.exit("--options must list at least one option")
     q = Question(qtype=args.qtype, options=options,
@@ -171,17 +189,15 @@ def cmd_parity(args):
     """
     import time as _time
 
+    from src.decision.encoder import to_numpy
     from src.decision.model import DecisionModel
     from src.decision.parity import (ParityTolerance, cosine_agreement,
                                      decision_agreement, latency_summary,
                                      parity_report)
     from src.decision.schema import Question
 
-    from src.decision.encoder import to_numpy
-
     texts = _texts(args)
-    question = Question(qtype="choice",
-                        options=[o.strip() for o in args.options.split(",") if o.strip()])
+    question = Question(qtype="choice", options=_split_options(args.options))
     tol = ParityTolerance(min_cosine=args.min_cosine,
                           min_action_agreement=args.min_action_agreement)
 
@@ -212,7 +228,12 @@ def cmd_parity(args):
 
     if args.json:
         print(json.dumps(rep, indent=2))
-        return
+    else:
+        _print_parity_report(rep, tol)
+
+
+def _print_parity_report(rep: dict, tol) -> None:
+    """Cosine first: it is the metric that catches a shift argmax would hide."""
     c, d = rep["cosine"], rep["decisions"]
     print(f"cosine    mean {c['mean']:.4f}  min {c['min']:.4f}  p05 {c['p05']:.4f}  "
           f"(tolerance {tol.min_cosine})  -> {'OK' if rep['cosine_ok'] else 'FAIL'}")
@@ -220,9 +241,11 @@ def cmd_parity(args):
           f"set Jaccard {d['mean_set_jaccard']:.3f} "
           f"(tolerance {tol.min_action_agreement})  "
           f"-> {'OK' if rep['actions_ok'] else 'FAIL'}")
-    print(f"latency   reference p50 {rep['latency']['reference']['p50']:.1f} ms | "
-          f"target p50 {rep['latency']['target']['p50']:.1f} ms | "
-          f"ratio x{rep['latency'].get('p50_ratio', float('nan')):.2f}")
+    lat = rep.get("latency") or {}
+    ref, tgt = lat.get("reference") or {}, lat.get("target") or {}
+    print(f"latency   reference p50 {ref.get('p50', float('nan')):.1f} ms | "
+          f"target p50 {tgt.get('p50', float('nan')):.1f} ms | "
+          f"ratio x{lat.get('p50_ratio', float('nan')):.2f}")
     print(f"parity    {'OK' if rep['parity_ok'] else 'FAIL'}")
 
 

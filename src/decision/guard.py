@@ -88,4 +88,8 @@ def check_memory(required_gb: float, headroom: float = DEFAULT_HEADROOM) -> Memo
 #: Resident estimates for the encoder configurations we load. Text-only is the
 #: 270M default; vision/audio add their towers (EG2: 130M backbone + 140M
 #: embedder + 170M vision + 300M audio).
+#:
+#: These live here rather than in ``encoder`` on purpose: importing that module
+#: pulls in torch, and the whole point of the gate is to run *before* a
+#: heavyweight import. A guard that needs the thing it is guarding is useless.
 ENCODER_GB = {"text": 1.1, "text+vision": 1.8, "text+vision+audio": 2.6}
