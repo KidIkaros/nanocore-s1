@@ -859,13 +859,14 @@ try:
     task_rows = {}
     for tname in MTEB_TASKS:
         try:
-            task = mteb.get_task(tname, languages=["eng"])
-            res = mteb.evaluate(encoder.model, tasks=[task])
-            tr = res.task_results[0]
+            tasks = mteb.get_tasks(tasks=[tname], languages=["eng"])
+            res = mteb.evaluate(encoder.model, tasks)
+            # v1 returns BenchmarkResults (with .task_results); older returns a list
+            tr = getattr(res, "task_results", res)[0]
             task_rows[tname] = {
                 "main_score": float(tr.get_score()),
                 "dataset_revision": getattr(tr, "dataset_revision", None),
-                "hf_id": task.metadata.dataset.get("path"),
+                "hf_id": tasks[0].metadata.dataset.get("path"),
             }
             print(f"{tname:30} main_score={task_rows[tname]['main_score']:.4f} "
                   f"rev={str(task_rows[tname]['dataset_revision'])[:8]}")
@@ -1509,7 +1510,8 @@ try:
     from src.decision.model import bundle_digest
     from src.decision.modelcard import build_card, render_markdown
     from src.decision.qualify import evaluate
-    from src.decision.refusals import BatterySpec, LossMatrix, battery_report
+    from src.decision.refusals import (BatterySpec, LossMatrix,
+                                       battery_is_meaningful, battery_report)
 
     GIT_COMMIT = "unknown"
     # The deployment's risk posture. The refusal boundary is derived from these
@@ -1546,6 +1548,9 @@ try:
     qual = evaluate(RESULTS, provenance=prov)
     qual["rubric"] = rubric.coverage()
     RESULTS["qualification"] = qual
+    # Mark the leg as having run *here*, so a later crash in card/verdict code
+    # cannot report "qualification_ran: false" about a verdict on disk.
+    RESULTS["verdict"]["qualification_ran"] = True
     (WORK / "qualification.json").write_text(json.dumps(qual, indent=2))
 
     print(f"\\nqualification: {qual['verdict']}  (bundle {digest[:16]}...)")
@@ -1560,15 +1565,20 @@ try:
     #    MTEB rows are the shared-harness anchor and are labelled as such.
     from src.decision.modelcard import eval_row
 
+    def _pt(v):
+        """Point value: rigor blocks mix CI dicts (acc/log) and scalars (brier)."""
+        return v["point"] if isinstance(v, dict) else v
+
     eval_rows = []
     for _name, _ds in RESULTS["breadth"].get("datasets", {}).items():
         if _ds.get("status") != "ran":
             continue
         for _arm, _block in _ds["blocks"].items():
             for _key, _m in (("acc", "accuracy"), ("log", "log_score"),
-                             ("brier", "brier")):
+                             ("brier", "brier"), ("ece15", "ece15"),
+                             ("aurc", "aurc"), ("acc_at_80", "acc_at_80")):
                 eval_rows.append(eval_row(
-                    _name, _m, _block[_key]["point"],
+                    _name, _m, _pt(_block[_key]),
                     dataset_type=_ds.get("hf_id"), config=_ds.get("config"),
                     split=_ds.get("split"), revision=_ds.get("revision"),
                     metric_name=f"{_m} [{_arm}]",
@@ -1586,22 +1596,27 @@ try:
                 source=_src))
     built = build_card(qual, RESULTS.get("cli_adapt", {}),
                        dataset="CLINC150 (150 intents)", encoder_id=encoder.model_name,
-                       eval_rows=eval_rows)
+                       eval_rows=eval_rows,
+                       eval_provenance={
+                           "source": {"name": "s1_verify kernel (self-reported)"}})
     (WORK / "MODEL_CARD.md").write_text(render_markdown(built))
     print(f"model card written: {len(built['card'])} sections, "
           f"{len(built['metrics'])} eval metrics in model-index")
 
     RESULTS["verdict"].update({
-        "qualification_ran": True,
         "qualification_named_artifact": bool(digest),
+        "mteb_anchor_ran": RESULTS.get("mteb_anchor", {}).get("status") == "ran",
         "refusals_ran": True,
         "refusals_no_unsafe_answers": refusals["unsafe_answers"] == 0,
         "refusals_battery_meaningful": bool(battery_is_meaningful(refusals)),
         "model_card_written": (WORK / "MODEL_CARD.md").exists(),
     })
 except Exception as e:
-    RESULTS["qualification"] = {"status": "failed", "error": repr(e)[:300]}
-    RESULTS["verdict"].update({"qualification_ran": False})
+    # Do not clobber a qualification that was already computed and written —
+    # a late failure (card render, verdict bookkeeping) must not erase it.
+    if "verdict" not in RESULTS.get("qualification", {}):
+        RESULTS["qualification"] = {"status": "failed", "error": repr(e)[:300]}
+    RESULTS["verdict"].setdefault("qualification_ran", False)
     print("qualification leg failed:", repr(e)[:200])
 
 (WORK / "results.json").write_text(json.dumps(RESULTS, indent=2))

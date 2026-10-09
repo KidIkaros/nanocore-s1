@@ -138,7 +138,8 @@ def build_card(qualification: Dict, adapt_report: Optional[Dict] = None,
                *, model_name: str = "nanocore-s1", dataset: str = "",
                license: str = "apache-2.0",
                encoder_id: str = "google/embeddinggemma-2",
-               eval_rows: Optional[List[Dict]] = None) -> Dict:
+               eval_rows: Optional[List[Dict]] = None,
+               eval_provenance: Optional[Dict] = None) -> Dict:
     """Assemble the card's content as data, before any rendering.
 
     Returning a dict keeps the sections testable — a rendered string can only be
@@ -147,9 +148,12 @@ def build_card(qualification: Dict, adapt_report: Optional[Dict] = None,
     ``eval_rows`` are caller-assembled ``eval_row`` dicts — the breadth legs and
     the MTEB anchor — each carrying its own dataset revision/split/source so the
     card's numbers are pinned to the exact data they ran on.
+    ``eval_provenance`` forwards shared pins (e.g. a run ``source``) to the
+    adapt-report rows.
     """
     prov = qualification.get("provenance", {}) or {}
-    metrics = _metrics_from_adapt(adapt_report, dataset) + list(eval_rows or [])
+    metrics = (_metrics_from_adapt(adapt_report, dataset, **(eval_provenance or {}))
+               + list(eval_rows or []))
 
     card = {
         "model_details": {
@@ -234,6 +238,11 @@ def render_markdown(built: Dict) -> str:
     card, metrics = built["card"], built["metrics"]
     mi = built.get("model_index")
     front = ["---", f"license: {card['model_details']['license']}"]
+    dataset_ids = sorted({str(m.get("dataset_type")) for m in metrics
+                          if "/" in str(m.get("dataset_type") or "")})
+    if dataset_ids:
+        front.append("datasets:")
+        front += [f"- {d}" for d in dataset_ids]
     if mi:
         front.append("model-index:")
         front.append(json.dumps([mi], indent=2).replace("\n", "\n  ").lstrip())
@@ -254,6 +263,7 @@ def render_markdown(built: Dict) -> str:
             lines.append("")
     if metrics:
         lines += ["## Evaluation results", "",
-                  _table([[m["dataset"], m["metric"], m["value"]] for m in metrics],
+                  _table([[m["dataset"], m.get("metric_name") or m["metric"],
+                            m["value"]] for m in metrics],
                          ["dataset", "metric", "value"]), ""]
     return "\n".join(lines)
