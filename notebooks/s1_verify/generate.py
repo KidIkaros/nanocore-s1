@@ -410,6 +410,77 @@ except Exception as e:
 write_status("cli")
 '''),
 
+    md('''## 5d-bis. CLI adapt leg — labeled data → bundle → decision, all through the CLI
+
+Definition-of-done #1: *"a person can install it, point it at their labeled
+data, and get a calibrated bundle."* Until `adapt` existed as a command, that
+was reachable only from Python — a user could consume a bundle but not make one.
+
+This runs the whole user-facing path in real subprocesses with the real encoder:
+write a CSV, `adapt` it, then `decide` against the bundle it produced. The
+contract is the round trip, not the accuracy — a bundle the next command cannot
+read is not a bundle.
+'''),
+    code('''
+RESULTS["cli_adapt"] = {"status": "skipped"}
+try:
+    import csv as _csv
+
+    # Class-balanced rows: CLINC's train is class-ordered, so a head-of-file
+    # slice would give ~6 classes and `adapt` would refuse the split outright.
+    text_by_id = {int(i): t for i, t in zip(INTENT_IDS, INTENT_TEXTS)}
+    PER_CLASS = 10
+    rows = []
+    for c in np.unique(y_tr_i):
+        for i in np.flatnonzero(np.asarray(y_tr_i) == c)[:PER_CLASS]:
+            rows.append((X_tr_i[i], text_by_id[int(c)]))
+    data_csv = WORK / "cli_adapt.csv"
+    with data_csv.open("w", newline="") as fh:
+        w = _csv.writer(fh)
+        w.writerow(["text", "label"])
+        w.writerows(rows)
+    print(f"wrote {len(rows)} labeled rows over {len(np.unique(y_tr_i))} classes")
+
+    ad = subprocess.run(
+        [sys.executable, "-m", "src.decision.cli", "adapt",
+         "--data", str(data_csv), "--text-col", "text", "--label-col", "label",
+         "--out", str(WORK / "cli-adapt"), "--backend", "st",
+         "--min-cal", "200", "--epochs", "12", "--json"],
+        cwd=REPO, capture_output=True, text=True, timeout=3600)
+    assert ad.returncode == 0, f"adapt exit {ad.returncode}: {ad.stderr[-2000:]}"
+    rep = json.loads(ad.stdout)
+    print(f"adapt: {rep['n_total']} examples, {rep['n_classes']} classes | "
+          f"headroom {rep['headroom']['zeroshot_test_acc']:.3f} | "
+          f"test acc {rep['test']['accuracy']:.3f} "
+          f"cov {rep['test']['conformal_coverage']:.3f} "
+          f"set {rep['test']['mean_set_size']:.2f}")
+
+    # the round trip: the bundle `adapt` wrote must be decidable by `decide`
+    dc = subprocess.run(
+        [sys.executable, "-m", "src.decision.cli", "decide",
+         "i need to cancel my flight tomorrow",
+         "--options", ",".join(INTENT_TEXTS),
+         "--bundle", str(WORK / "cli-adapt" / "bundle"),
+         "--cache", str(WORK / "cli-adapt-cache"), "--json"],
+        cwd=REPO, capture_output=True, text=True, timeout=1800)
+    assert dc.returncode == 0, f"decide exit {dc.returncode}: {dc.stderr[-2000:]}"
+    out = json.loads(dc.stdout)
+    assert out["action"] in ("answer", "clarify", "escalate", "abstain"), out
+    print(f"round trip: action={out['action']} top={out['top_prob']:.3f} "
+          f"set={out['prediction_set'][:4]}")
+
+    RESULTS["cli_adapt"] = {
+        "status": "ran", "n_rows": len(rows), "n_classes": rep["n_classes"],
+        "headroom": rep["headroom"]["zeroshot_test_acc"],
+        "test": rep["test"],
+        "roundtrip_action": out["action"],
+        "roundtrip_top_prob": round(out["top_prob"], 4)}
+except Exception as e:
+    RESULTS["cli_adapt"] = {"status": "failed", "error": repr(e)[:300]}
+    print("cli adapt leg failed:", repr(e)[:200])
+write_status("cli-adapt")
+'''),
+
     md('''## 5e. Serve leg — the HTTP surface on a real subprocess
 
 Phase 4 acceptance in-kernel: `nanocore serve` starts the model server with
@@ -1189,6 +1260,10 @@ verdict = {
                              > RESULTS["ordinal"].get("zeroshot_acc", 1)),
     "cli_ran": RESULTS["cli"]["status"] == "ran",
     "cli_inputs": RESULTS["cli"].get("n"),
+    # Definition-of-done #1 through the shipped CLI, with the real encoder.
+    "cli_adapt_ran": RESULTS.get("cli_adapt", {}).get("status") == "ran",
+    "cli_adapt_roundtrip": (RESULTS.get("cli_adapt", {}).get("roundtrip_action")
+                            in ("answer", "clarify", "escalate", "abstain")),
     "serve_ran": RESULTS["serve"]["status"] == "ran",
     "baselines_ran": RESULTS["baselines"]["status"] == "ran",
     "head_beats_tfidf_acc": (RESULTS["baselines"].get("blocks", {})

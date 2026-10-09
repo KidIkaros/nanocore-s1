@@ -28,10 +28,51 @@ is testable without Hugging Face or a download.
 """
 from __future__ import annotations
 
+import csv
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+
+
+def read_labeled_file(path, text_col: str = "text", label_col: str = "label"
+                      ) -> Tuple[List[str], List]:
+    """Read a labeled file into ``(texts, labels)`` — CSV, TSV or JSONL.
+
+    The user-facing entry to adaptation: whatever they have, so long as it has a
+    text column and a label column. A *named* column is required rather than
+    guessed at, because guessing is how a label column silently becomes a
+    feature and the resulting bundle is nonsense that still trains.
+
+    Labels come back exactly as the file holds them — strings from a CSV, and
+    whatever JSONL holds — since ``adapt`` treats their sorted unique set as the
+    option labels. Nothing is coerced, so a numeric-looking label column stays
+    the user's own class names rather than being reinterpreted as ids.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"no such data file: {path}")
+
+    if path.suffix.lower() in (".jsonl", ".ndjson"):
+        rows = [json.loads(line) for line in path.read_text().splitlines()
+                if line.strip()]
+    else:
+        sep = "\t" if path.suffix.lower() in (".tsv", ".tab") else ","
+        with path.open(newline="") as fh:
+            rows = list(csv.DictReader(fh, delimiter=sep))
+
+    if not rows:
+        raise ValueError(f"no rows in {path}")
+    missing = [c for c in (text_col, label_col) if c not in rows[0]]
+    if missing:
+        raise ValueError(
+            f"column(s) {missing} not in {path} — it has {sorted(rows[0])[:8]}")
+
+    texts = [str(r[text_col]) for r in rows]
+    labels = [r[label_col] for r in rows]
+    return texts, labels
 
 
 def label_field(features: Dict, wanted: str = "label") -> str:
