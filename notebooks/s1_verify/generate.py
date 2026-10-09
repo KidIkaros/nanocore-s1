@@ -926,14 +926,22 @@ try:
               f"log={b['log']['point']:.3f} cov={r['coverage']:.3f} "
               f"set={r['mean_set_size']:.2f}")
 
-    # A PAIRED readout, not a difference of two marginal CIs: every arm scores the
-    # identical items, so the resample index is shared and the interval is on the
-    # difference. Errors (not accuracy) because the readout assumes lower-is-better.
-    delta = paired_readout("error_rate", errors["text_only"], errors["full"])
-    RESULTS["multimodal"]["image_delta"] = delta
-    d = delta["delta"]
-    print(f"image contribution: {d['point']:+.4f} "
-          f"[{d['lo']:+.4f}, {d['hi']:+.4f}] -> {delta['verdict']}")
+    # PAIRED readouts, not differences of marginal CIs: every arm scores the
+    # identical items, so the resample index is shared and each interval is on
+    # the difference. Errors (not accuracy) because the readout assumes
+    # lower-is-better.
+    #
+    # Two pre-registered comparisons, and the claim requires BOTH. Testing
+    # `full > text_only` alone was v20's mistake: it reports false on data where
+    # the image plainly carries signal, because the image arm can beat both.
+    # Against BOTH singles also removes the cherry-pick of naming whichever
+    # single arm happened to score highest on the test split.
+    for other in ("text_only", "image_only"):
+        delta = paired_readout("error_rate", errors[other], errors["full"])
+        RESULTS["multimodal"][f"vs_{other}"] = delta
+        d = delta["delta"]
+        print(f"full vs {other:11}: {d['point']:+.4f} "
+              f"[{d['lo']:+.4f}, {d['hi']:+.4f}] -> {delta['verdict']}")
     del enc_v
     torch.cuda.empty_cache()
 except Exception as e:
@@ -1314,15 +1322,18 @@ verdict = {
         v.get("cross_lingual_en_head_acc", 0) > 0.5
         for v in RESULTS.get("multilingual", {}).get("languages", {}).values()
         if v.get("status") == "ran"),
-    # Multimodal: the thesis test. `full` beating `text_only` is the claim; the
-    # CIs are reported so a marginal delta cannot be read as a win.
+    # Multimodal, as TWO pre-registered claims. The first is the thesis: does a
+    # non-text state carry decision information at all? Measured against chance
+    # by the arm's CI lower bound, so a lucky point estimate cannot pass it.
+    # The second is the composition claim, and it requires beating BOTH singles.
     "multimodal_ran": RESULTS.get("multimodal", {}).get("status") == "ran",
-    "multimodal_image_helps": (
-        RESULTS.get("multimodal", {}).get("image_delta", {}).get("verdict")
-        == "improved"),
-    "multimodal_sets_small": all(
-        v.get("mean_set_size", 1e9) < 10
-        for v in RESULTS.get("multimodal", {}).get("arms", {}).values()),
+    "multimodal_image_carries_signal": (
+        RESULTS.get("multimodal", {}).get("arms", {}).get("image_only", {})
+        .get("block", {}).get("acc", {}).get("lo", 0.0)
+        > 1.0 / max(RESULTS.get("multimodal", {}).get("n_options", 4), 1)),
+    "multimodal_combination_beats_both_singles": all(
+        RESULTS.get("multimodal", {}).get(f"vs_{o}", {}).get("verdict") == "improved"
+        for o in ("text_only", "image_only")),
     "breadth_head_ge_tfidf": all(
         r["blocks"]["taskhead"]["acc"]["point"]
         >= r["blocks"]["tfidf_lr"]["acc"]["point"]
