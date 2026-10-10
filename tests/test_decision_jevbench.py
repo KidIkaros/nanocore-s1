@@ -88,9 +88,11 @@ def test_score_answer_reports_expected_index_and_legend():
     assert a["probabilities"].keys() == {"0", "1", "2"}
 
 
-def test_state_dict_is_json_rendered_and_instructions_fold_in():
-    """Same-protocol honesty: instructions reach the model via the state text
-    (Question has no instructions field — component 34)."""
+def test_state_dict_is_split_and_instructions_fold_in():
+    """Same-protocol honesty: instructions reach the model via the state
+    (Question has no instructions field — component 34). The state dict is
+    split into per-field items (the v27 pair fix), and the instruction folds
+    in as its own item."""
     seen = {}
 
     class Spy(_StubModel):
@@ -101,7 +103,12 @@ def test_state_dict_is_json_rendered_and_instructions_fold_in():
     q = {"answer": {"type": "choice", "instructions": "topic?",
                     "criteria": {"A": "x", "B": "y"}}}
     nanocore_answers(Spy(), {"query": "hello"}, q)
-    assert "topic?" in seen["state"] and '"query"' in seen["state"]
+    # Single-field state: the instruction folds into the state string — the
+    # measured prompt-ablation shape, preserved so the single-field path
+    # the anchor runs through is byte-identical to what was measured.
+    items = list(seen["state"].items)
+    assert len(items) == 1
+    assert "topic?" in items[0] and "hello" in items[0]
 
 
 def test_noul_proposition_stays_out_of_the_state():
@@ -117,7 +124,7 @@ def test_noul_proposition_stays_out_of_the_state():
 
     q = {"judge": {"type": "noul", "instructions": "Is `text` spam?"}}
     nanocore_answers(Spy(), "buy now", q)
-    assert "spam" not in seen["state"]
+    assert "spam" not in " ".join(seen["state"].items)
 
 
 def test_abstention_withholds_the_whole_example():

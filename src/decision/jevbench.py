@@ -59,6 +59,27 @@ def _fmt(value: Any) -> str:
         value, ensure_ascii=False, indent=1)
 
 
+#: Terse rubric levels ("Very negative.") are near-identical in embedding
+#: space, so cosine cannot rank them — v27's sst5 anchor came in at .177,
+#: indistinguishable from 5-way chance. Rich levels (stsb's full sentences)
+#: pass through unchanged; expansion is idempotent by word count.
+_TERSE_LEVEL_WORDS = 4
+
+
+def _level_text(level: Any) -> str:
+    """The text a scorer sees for one rubric level.
+
+    A terse level is expanded into a full sentence so the encoder can rank
+    it; an already-rich level is returned untouched. The harness scores
+    against the ORIGINAL level indices — this only changes what the scorer
+    reads, never the answer shape.
+    """
+    text = _fmt(level)
+    if len(text.split()) > _TERSE_LEVEL_WORDS:
+        return text
+    return f"The text expresses this sentiment: {text.rstrip('.')}."
+
+
 def option_label(key: Any, desc: Any) -> str:
     """The option text a scorer should see — mirrors the harness's render."""
     if _ANONYMOUS_KEY.match(str(key)):
@@ -72,10 +93,10 @@ def confidence(probs: List[float]) -> float:
     return max(0.0, min(1.0, (k * max(probs) - 1) / (k - 1))) if k > 1 else 1.0
 
 
-def _choice_answer(model, state_text: str, q: dict) -> Optional[dict]:
+def _choice_answer(model, state, q: dict) -> Optional[dict]:
     keys = list(q["criteria"])
     labels = [option_label(k, q["criteria"][k]) for k in keys]
-    pred = model.decide(state_text, Question(qtype="choice", options=labels))
+    pred = model.decide(state, Question(qtype="choice", options=labels))
     if pred.action not in _ANSWERED:
         return None
     probs = {k: pred.probabilities.get(l, 0.0) for k, l in zip(keys, labels)}
@@ -86,19 +107,19 @@ def _choice_answer(model, state_text: str, q: dict) -> Optional[dict]:
             "probabilities": probs, "confidence": confidence(list(probs.values()))}
 
 
-def _noul_answer(model, state_text: str, q: dict) -> Optional[dict]:
+def _noul_answer(model, state, q: dict) -> Optional[dict]:
     prop = _fmt(q["instructions"])
-    pred = model.decide(state_text, Question(
+    pred = model.decide(state, Question(
         qtype="noul", options=[prop, NOUL_NEGATIVE]))
     if pred.action not in _ANSWERED:
         return None
     return {"type": "noul", "noul": float(pred.probabilities.get(prop, 0.0))}
 
 
-def _score_answer(model, state_text: str, q: dict) -> Optional[dict]:
+def _score_answer(model, state, q: dict) -> Optional[dict]:
     levels = list(q["criteria"])
-    labels = [_fmt(l) for l in levels]
-    pred = model.decide(state_text, Question(qtype="score", options=labels))
+    labels = [_level_text(l) for l in levels]
+    pred = model.decide(state, Question(qtype="score", options=labels))
     if pred.action not in _ANSWERED:
         return None
     probs = [pred.probabilities.get(l, 0.0) for l in labels]
@@ -106,9 +127,30 @@ def _score_answer(model, state_text: str, q: dict) -> Optional[dict]:
     probs = [p / z for p in probs] if z > 0 else [1.0 / len(levels)] * len(levels)
     return {"type": "score",
             "score": sum(i * p for i, p in enumerate(probs)),
-            "legend": {str(i): l for i, l in enumerate(levels)},
+            "legend": {str(i): _fmt(l) for i, l in enumerate(levels)},
             "probabilities": {str(i): p for i, p in enumerate(probs)},
             "confidence": confidence(probs)}
+
+
+def _state_items(state: Any) -> list:
+    """State → item list for ``decide``.
+
+    **The v27 pair fix.** A state dict used to be JSON-rendered into ONE
+    string, so a two-sentence pair was encoded as a single item: the
+    composer saw T=1, mean-pooling averaged the sentences together, and
+    cosine(option, pooled_pair) could not express "are these two similar?"
+    — paws .440, stsb .215 and boolq .583 are all pair tasks, and the pair
+    signal was destroyed before the scorer ever ran.
+
+    Splitting the dict into one item per field gives the composer (or the
+    pooler) per-sentence vectors — the substrate a pair-aware scorer reads.
+    A single-field state stays one item; a bare string stays one item.
+    """
+    if isinstance(state, str):
+        return [state]
+    if isinstance(state, dict):
+        return [str(v) for v in state.values()]
+    return [str(s) for s in state]
 
 
 def nanocore_answers(model, state: Any, questions: Dict[str, dict]
@@ -124,18 +166,33 @@ def nanocore_answers(model, state: Any, questions: Dict[str, dict]
     head withholds the request. Finer-grained per-head abstention would need
     the harness to score partial answers, which its ``compute`` does not do.
     """
+    from src.decision.schema import State
+
     out = {}
     for qid, q in questions.items():
         kind = q["type"]
         instr = (_fmt(q["instructions"])
                  if kind != "noul" and q.get("instructions") is not None else "")
-        state_text = f"{instr}\n\n{_fmt(state)}" if instr else _fmt(state)
+        items = _state_items(state)
+        if len(items) > 1:
+            # The pair case: the instruction is part of the comparison
+            # prompt and gets its own item, alongside the split fields —
+            # per-item vectors are the whole point of the v27 fix.
+            state_obj = State(items=([instr] + items if instr else items))
+        elif instr:
+            # Single-field: preserve the measured shape exactly — the
+            # prompt-ablation numbers came from the instruction prepended
+            # to the state text as ONE item. Splitting here would change
+            # the pooler's input for every single-field anchor task.
+            state_obj = State(items=[f"{instr}\n\n{items[0]}"])
+        else:
+            state_obj = State(items=items)
         if kind == "choice":
-            a = _choice_answer(model, state_text, q)
+            a = _choice_answer(model, state_obj, q)
         elif kind == "noul":
-            a = _noul_answer(model, state_text, q)
+            a = _noul_answer(model, state_obj, q)
         elif kind == "score":
-            a = _score_answer(model, state_text, q)
+            a = _score_answer(model, state_obj, q)
         else:
             raise ValueError(f"unknown question type {kind!r}")
         if a is None:

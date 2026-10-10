@@ -178,12 +178,15 @@ class StateEncoder:
         return embeddings[0] if single else embeddings
 
     def encode_state(self, items: Sequence[Union[str, dict]],
-                     prompt_name: str | None = "Classification") -> torch.Tensor:
+                     prompt_name: str | None = "SearchQuery") -> torch.Tensor:
         """Encode a state's item list → ``(n_items, dim)``.
 
-        Text items get the symmetric ``Classification`` prefix (the right
-        family for decision states). Batches that mix text and media are
-        encoded per-item, since media take no prefix.
+        Text items get the ``SearchQuery`` prefix — the resolved pairing from
+        the s1_prompt_ablation run (Banking77: SearchQuery/Document 93.38%
+        vs Classification/Document 92.89%, +0.5pt zero-shot; see
+        ARCHITECTURE-DECISION-MODEL.md §4). The query/document split is what
+        matters, not symmetry — symmetric was measured worst. Batches that
+        mix text and media are encoded per-item, since media take no prefix.
         """
         if all(isinstance(i, str) for i in items):
             return self.encode(list(items), prompt_name=prompt_name)

@@ -70,7 +70,7 @@ class LlamaCppEncoder:
         raise TypeError(f"state items must be str or dict, got {type(item)}")
 
     def encode_state(self, items: Sequence[Union[str, dict]],
-                     prompt_name: str | None = "Classification") -> np.ndarray:
+                     prompt_name: str | None = "SearchQuery") -> np.ndarray:
         rows = [self._embed_text(self._prep(i, prompt_name)) for i in items]
         return np.stack(rows)
 
