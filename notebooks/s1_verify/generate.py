@@ -176,7 +176,10 @@ print("peak cuda GiB:", round(torch.cuda.max_memory_allocated() / 2**30, 2))
 np.savez_compressed(WORK / "verify_scores.npz",
                     emb_train=S_tr, emb_val=S_val, scores_val=SC_val,
                     scores_test=SC_te, label_vecs=LV,
-                    y_train=y_tr_i, y_val=y_val, y_test=y_te)
+                    y_train=y_tr_i, y_val=y_val, y_test=y_te,
+                    y_val_col=to_cols(y_val), y_test_col=to_cols(y_te),
+                    intent_ids=np.array(INTENT_IDS),
+                    intent_texts=np.array(INTENT_TEXTS))
 write_status("encoded")
 '''),
 
@@ -288,10 +291,20 @@ RESULTS["head_in_scope_acc"] = head_acc
 # v19 conformal-set audit had to recover the head from its bundle and re-derive
 # the raw-id → column mapping by hand, which is how a false 53% accuracy was
 # read before the mapping was found. Two extra arrays make that avoidable.
+# Self-describing save: the column->intent map (INTENT_IDS) travels with
+# the scores, and y is saved in BOTH raw-id and column space. Offline
+# re-evaluation (the glial regional probe, the conformal audits) must not
+# have to reconstruct the mapping — a column/raw mismatch is exactly how
+# the v19 false-53% bug happened, and head_scores.npz as saved could not
+# reproduce the reported head accuracy under any column mapping. The map
+# plus column-space gold makes the artifact unambiguous.
 np.savez_compressed(WORK / "head_scores.npz",
                     scores_val=LH_val, scores_test=LH_TE,
-                    y_val=y_val, y_test=y_te)
-print("head scores saved for offline re-evaluation")
+                    y_val=y_val, y_test=y_te,
+                    y_val_col=to_cols(y_val), y_test_col=to_cols(y_te),
+                    intent_ids=np.array(INTENT_IDS),
+                    intent_texts=np.array(INTENT_TEXTS))
+print("head scores saved (self-describing: intent map + column-space gold)")
 write_status("policy-eval")
 '''),
 
