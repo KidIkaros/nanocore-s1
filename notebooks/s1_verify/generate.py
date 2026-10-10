@@ -1466,6 +1466,12 @@ try:
 
     _zm = DecisionModel(encoder=encoder, scorer=None, gate=None, cache=None)
     _gm = DecisionModel(encoder=encoder, scorer=None, gate=gate, cache=None)
+    # Pair scorer for the pair tasks (paws/stsb/boolq): cosine(u,v) with
+    # the SentenceSimilarity prompt — the native similarity primitive the
+    # pooled-state path never used. Built with the real encoder; None
+    # would keep the pooled path.
+    from src.decision.pair import PairScorer as _PairScorer
+    _pair = _PairScorer(encoder=encoder)
     _ANCHOR = ["banking77", "clinc150", "ag_news", "sst2", "imdb",
                "boolq", "paws", "sst5", "stsb"]
     _LIMIT = 300
@@ -1493,7 +1499,8 @@ try:
             _primary = _task.primary
             _arms = {}
             for _arm, _m in (("zeroshot", _zm), ("gated", _gm)):
-                _r = _jev_run(_m, _task, split="eval", limit=_LIMIT)
+                _r = _jev_run(_m, _task, split="eval", limit=_LIMIT,
+                              pair=_pair)
                 _src = (_r["aggregate"] if _primary.head == "*"
                         else _r["heads"].get(_primary.head, {}))
                 _arms[_arm] = {
