@@ -47,6 +47,7 @@ class AdaptConfig:
     policy: str = "full"
     answer_precision: float = 0.90
     glial: bool = False           # attach the label-free slow state to the gate
+    composer: bool = False        # train a composer (component 38) and compose states through it
 
 
 @dataclass
@@ -128,6 +129,18 @@ def _report_metrics(scores: np.ndarray, y: np.ndarray,
             "median_set_size": float(np.median(sizes))}
 
 
+
+def _compose_states(composer, X: np.ndarray) -> np.ndarray:
+    """Compose each (D,) state vector through the composer as a 1-item state.
+
+    adapt() trains on single-item states; the composer still learns and ships
+    for the multi-item loop/conversation case. Returns (n, n_embd)."""
+    import numpy as np
+    item_embs = [X[i][None, :] for i in range(len(X))]
+    from src.decision.composer_adapt import _compose
+    return _compose(composer, item_embs).detach().numpy()
+
+
 def adapt(texts: Sequence[str], labels: Sequence, encoder,
           cfg: Optional[AdaptConfig] = None,
           out_dir=None, oos_texts: Optional[Sequence[str]] = None,
@@ -155,6 +168,24 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
     cos = CosineScorer()
     zs_pred = (X[ti] @ LV.T).argmax(axis=1)
     headroom = {"zeroshot_test_acc": float((zs_pred == y_idx[ti]).mean())}
+
+    # ── optional composer (component 38): train it end-to-end with a head on
+    #    the fit split's item embeddings, then compose the states the head and
+    #    gate see. None (default) = mean-pool, byte-identical to before.
+    composer_obj = None
+    composer_report = None
+    if cfg.composer:
+        from src.decision.composer_adapt import adapt_composer, ComposerAdaptConfig
+        # per-item embeddings: each text is one item, so a state is a 1-item
+        # list here (the multi-item path is the loop/conversation case the
+        # composer enables; adapt() trains on single-item states, the composer
+        # still learns composition and ships for multi-item use).
+        fit_item_embs = [X[i][None, :] for i in fi]
+        cres = adapt_composer(fit_item_embs, y_idx[fi],
+                              ComposerAdaptConfig(seed=cfg.seed))
+        composer_obj = cres.composer
+        composer_report = cres.report
+        X = _compose_states(composer_obj, X)
 
     # ── fit the head on the fit split only
     head = TaskHead(kind=cfg.head_kind, hidden=cfg.hidden)
@@ -187,7 +218,8 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
         glial = {"activate_at": bar, "n_reference": int(len(cal_scores)),
                  "reference_max_score": state.config.reference_max_score}
 
-    model = DecisionModel(encoder=encoder, scorer=head, gate=gate)
+    model = DecisionModel(encoder=encoder, scorer=head, gate=gate,
+                          composer=composer_obj)
 
     # ── evaluate once, on the untouched test split
     report = {
@@ -199,6 +231,7 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
         "calibration": cal,
         "tau_in_schema": tau_in,
         "glial": glial,
+        "composer": composer_report,
         "test": _report_metrics(head.logits(X[ti]), y_idx[ti], gate),
         "config": {"head_kind": cfg.head_kind, "alpha": cfg.alpha,
                    "fit_frac": cfg.fit_frac, "cal_frac": cfg.cal_frac,
