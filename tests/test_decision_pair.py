@@ -280,3 +280,23 @@ def test_pair_scorer_encodes_with_the_valid_prompt():
     assert enc.seen == [SIMILARITY_PROMPT, SIMILARITY_PROMPT]
     from src.decision.encoder import TASK_PROMPTS
     assert all(p in TASK_PROMPTS.values() for p in enc.seen)
+
+def test_encode_handles_tensor_like_encoder_output():
+    """v28b: the encoder runs on CUDA; np.asarray on a cuda tensor raises.
+    _encode must route through to_numpy, which detaches/.cpu()s first."""
+    class _CpuView:
+        def __init__(self, arr): self._a = arr
+        def numpy(self): return self._a
+    class FakeTensor:
+        def __init__(self, arr): self._a = arr
+        def detach(self): return self
+        def float(self): return self
+        def cpu(self): return _CpuView(self._a)
+        def numpy(self): raise TypeError("can't convert cuda:0 device tensor to numpy")
+    class CudaEncoder:
+        def encode(self, texts, prompt_name=None):
+            import numpy as np
+            return FakeTensor(np.stack([np.ones(8) for _ in texts]))
+    ps = PairScorer(encoder=CudaEncoder())
+    v = ps._encode("hello")
+    assert v.shape == (8,) and np.isfinite(v).all()

@@ -104,7 +104,11 @@ class PairScorer:
     def _encode(self, text: str) -> np.ndarray:
         if self.encoder is None:
             raise ValueError("PairScorer needs an encoder to encode text")
-        v = self.encoder.encode([text], prompt_name=SIMILARITY_PROMPT)
+        # to_numpy is the canonical GPU/bf16-safe converter — the encoder runs
+        # on CUDA in the kernel, and np.asarray on a cuda tensor raises
+        # "can't convert cuda:0 device tensor to numpy" (v28b: paws/stsb/boolq).
+        from src.decision.items import to_numpy
+        v = to_numpy(self.encoder.encode([text], prompt_name=SIMILARITY_PROMPT))
         v = np.asarray(v, dtype=np.float64)
         return v[0] if v.ndim == 2 else v.reshape(-1)
 
@@ -114,8 +118,9 @@ class PairScorer:
         Texts are encoded with the SentenceSimilarity prompt; vectors
         are used as given (the caller pre-encoded them).
         """
-        a = self._encode(u) if isinstance(u, str) else np.asarray(u, float)
-        b = self._encode(v) if isinstance(v, str) else np.asarray(v, float)
+        from src.decision.items import to_numpy
+        a = self._encode(u) if isinstance(u, str) else np.asarray(to_numpy(u), float)
+        b = self._encode(v) if isinstance(v, str) else np.asarray(to_numpy(v), float)
         return pair_cosine(a, b)
 
     def noul(self, u, v) -> float:
