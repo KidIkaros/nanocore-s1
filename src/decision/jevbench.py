@@ -41,7 +41,14 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 
+import numpy as np
+
 from src.decision.schema import Question
+
+#: A pair state is two text items; the pair scorer reads them directly.
+#: The scorer is injected by the caller (the kernel builds it with the
+#: real encoder); None means no pair path and the pooled-state scoring
+#: stands — the adapter stays weight-free and unit-testable.
 
 _ANONYMOUS_KEY = re.compile(r"^(?:[A-Z]{1,2}|\d+)$")
 
@@ -107,8 +114,36 @@ def _choice_answer(model, state, q: dict) -> Optional[dict]:
             "probabilities": probs, "confidence": confidence(list(probs.values()))}
 
 
-def _noul_answer(model, state, q: dict) -> Optional[dict]:
+def _pair_items(state) -> Optional[list]:
+    """The two text items of a pair state, or ``None`` if not a pair.
+
+    A pair is a state with exactly two string items — the two sentences
+    a pair question relates (paws/stsb sentence_1+sentence_2, boolq
+    passage+question). The pair scorer reads them directly; any other
+    shape (single item, media, three-plus items) is not a pair and
+    scores through the pooled-state path.
+    """
+    items = getattr(state, "items", state)
+    if isinstance(items, (str, dict)) or not isinstance(items, (list, tuple)):
+        return None
+    items = [i for i in items if isinstance(i, str)]
+    # A pair is two text items. The choice path folds the instruction in
+    # as a leading item (3 total); the pair is the two NON-instruction
+    # items, so take the last two when exactly 2 or 3 string items exist.
+    if len(items) in (2, 3):
+        return items[-2:]
+    return None
+
+
+def _noul_answer(model, state, q: dict, pair=None) -> Optional[dict]:
     prop = _fmt(q["instructions"])
+    items = _pair_items(state)
+    if items is not None and pair is not None:
+        # Pair noul: P(the two items match) via cosine(u,v). The
+        # proposition is the relationship, not an option — prop-in-options
+        # would score the proposition text against a pooled state, the
+        # failure the pair path exists to replace.
+        return {"type": "noul", "noul": float(pair.noul(items[0], items[1]))}
     pred = model.decide(state, Question(
         qtype="noul", options=[prop, NOUL_NEGATIVE]))
     if pred.action not in _ANSWERED:
@@ -116,9 +151,27 @@ def _noul_answer(model, state, q: dict) -> Optional[dict]:
     return {"type": "noul", "noul": float(pred.probabilities.get(prop, 0.0))}
 
 
-def _score_answer(model, state, q: dict) -> Optional[dict]:
+def _score_answer(model, state, q: dict, pair=None) -> Optional[dict]:
     levels = list(q["criteria"])
     labels = [_level_text(l) for l in levels]
+    items = _pair_items(state)
+    if items is not None and pair is not None and len(levels) >= 2:
+        # Pair score: the rubric rates the SIMILARITY of the two items.
+        # Map the cosine onto the level scale so the expected index
+        # varies with the pair instead of sitting at the middle.
+        cos = pair.similarity(items[0], items[1])
+        # cosine [-1,1] -> level index [0, k-1]
+        frac = (cos + 1.0) / 2.0
+        expected = frac * (len(levels) - 1)
+        # a peaked distribution at the expected level keeps the harness's
+        # argmax and spearman well-defined without a second forward pass
+        w = np.exp(-0.5 * ((np.arange(len(levels)) - expected) / 0.6) ** 2)
+        w /= w.sum()
+        return {"type": "score",
+                "score": float(expected),
+                "legend": {str(i): _fmt(l) for i, l in enumerate(levels)},
+                "probabilities": {str(i): float(p) for i, p in enumerate(w)},
+                "confidence": confidence(list(w))}
     pred = model.decide(state, Question(qtype="score", options=labels))
     if pred.action not in _ANSWERED:
         return None
@@ -153,13 +206,20 @@ def _state_items(state: Any) -> list:
     return [str(s) for s in state]
 
 
-def nanocore_answers(model, state: Any, questions: Dict[str, dict]
-                     ) -> Optional[Dict[str, dict]]:
+def nanocore_answers(model, state: Any, questions: Dict[str, dict],
+                     pair=None) -> Optional[Dict[str, dict]]:
     """One harness request → Jev-format answers, or ``None`` on abstention.
 
     ``model`` is a ``DecisionModel`` (or anything with a compatible
     ``decide(state, question)``). The returned dict keys are the harness's
     question ids; values are the answer shapes ``evaluate.compute`` consumes.
+
+    ``pair`` is an optional ``PairScorer``. When supplied AND the state is
+    a two-text-item pair, noul and score questions route through
+    ``cosine(u, v)`` — the native similarity primitive — instead of
+    scoring a pooled state against option text. ``None`` (the default)
+    keeps the pooled-state path, so the adapter stays weight-free and
+    unit-testable.
 
     Abstention is example-level: a request bundles several heads (one state,
     many questions — GoEmotions fans out to ~28 nouls), so a single withheld
@@ -190,9 +250,9 @@ def nanocore_answers(model, state: Any, questions: Dict[str, dict]
         if kind == "choice":
             a = _choice_answer(model, state_obj, q)
         elif kind == "noul":
-            a = _noul_answer(model, state_obj, q)
+            a = _noul_answer(model, state_obj, q, pair=pair)
         elif kind == "score":
-            a = _score_answer(model, state_obj, q)
+            a = _score_answer(model, state_obj, q, pair=pair)
         else:
             raise ValueError(f"unknown question type {kind!r}")
         if a is None:
@@ -201,7 +261,8 @@ def nanocore_answers(model, state: Any, questions: Dict[str, dict]
     return out
 
 
-def run_task(model, task, split: str = "eval", limit: int | None = None) -> dict:
+def run_task(model, task, split: str = "eval", limit: int | None = None,
+             pair=None) -> dict:
     """Run one harness task with NanoCore as the model; return its metrics.
 
     Uses the harness's own ``examples``/``compute`` — identical requests,
@@ -209,10 +270,14 @@ def run_task(model, task, split: str = "eval", limit: int | None = None) -> dict
     answer slots. Abstained examples count in ``n_examples``/``coverage`` but
     not in the metrics — the same accounting the harness applies to timed-out
     or rejected requests.
+
+    ``pair`` is an optional ``PairScorer`` forwarded to
+    ``nanocore_answers``; see its docstring.
     """
     from jev_benchmarking.evaluate import compute
     exs = task.examples(split, limit=limit)
-    answered = [(e, nanocore_answers(model, e.state, e.questions)) for e in exs]
+    answered = [(e, nanocore_answers(model, e.state, e.questions, pair=pair))
+                for e in exs]
     kept = [(e, a) for e, a in answered if a is not None]
     metrics = compute(task, [e for e, _ in kept], [a for _, a in kept]) if kept else {}
     return {"task": task.name, "n_examples": len(exs), "n_answered": len(kept),

@@ -1057,7 +1057,11 @@ try:
     y_all = np.array([int(sq[s][i]["answer"]) for s, i in all_idx], dtype=int)
 
     def arm_eval(vecs):
-        """(n, N_OPT) cosine scores → (calibrated gate block + set stats, errors)."""
+        """(n, N_OPT) cosine scores → (calibrated gate block + set stats, errors).
+
+        Also returns the per-example probability matrix P so the arms can
+        be fused post-hoc (late fusion aggregates predictions, not
+        embeddings) without re-encoding."""
         S = np.einsum("nd,nkd->nk", vecs, O)
         S_tr, S_te = S[:n_tr], S[n_tr:]
         y_tr, y_te = y_all[:n_tr], y_all[n_tr:]
@@ -1071,15 +1075,16 @@ try:
         summary = {"block": rigor_block(P, y_te, resamples=200),
                    "coverage": cov, "mean_set_size": float(sizes.mean()),
                    "t_set": g.t_set, "qhat": g.qhat}
-        return summary, (P.argmax(1) != y_te).astype(float)
+        return summary, (P.argmax(1) != y_te).astype(float), P, y_te
 
     RESULTS["multimodal"] = {"status": "ran", "n_fit": n_tr, "n_test": len(te_idx),
                              "n_options": N_OPT, "arms": {}}
-    errors = {}
+    errors, P_by_arm, y_te_ref = {}, {}, None
     for name, vecs in arms.items():
-        r, err = arm_eval(vecs)
+        r, err, P, y_te_ref = arm_eval(vecs)
         RESULTS["multimodal"]["arms"][name] = r
         errors[name] = err
+        P_by_arm[name] = P
         b = r["block"]
         print(f"{name:11} acc={b['acc']['point']:.3f} "
               f"[{b['acc']['lo']:.3f},{b['acc']['hi']:.3f}] "
@@ -1102,6 +1107,40 @@ try:
         d = delta["delta"]
         print(f"full vs {other:11}: {d['point']:+.4f} "
               f"[{d['lo']:+.4f}, {d['hi']:+.4f}] -> {delta['verdict']}")
+
+    # LATE FUSION arm — decision-level, not embedding-level. 'full' mean-pools
+    # the vectors (early fusion) and measured BELOW image_only; late fusion
+    # aggregates the per-modality PREDICTIONS instead (Baltrusaitis et al.,
+    # Multimodal Deep Learning §4.2.4). Post-hoc over the saved probability
+    # matrices — no re-encoding. This is the arm E4's composition claim
+    # actually needs.
+    if "image_only" in P_by_arm and "text_only" in P_by_arm and y_te_ref is not None:
+        from src.decision.fusion import aggregate as _fuse
+        _P_img, _P_txt = P_by_arm["image_only"], P_by_arm["text_only"]
+
+        def _fuse_arm(rule):
+            out = np.zeros((len(_P_img), N_OPT))
+            for i in range(len(_P_img)):
+                d0 = {str(j): _P_img[i, j] for j in range(N_OPT)}
+                d1 = {str(j): _P_txt[i, j] for j in range(N_OPT)}
+                agg = _fuse([d0, d1], rule=rule)
+                out[i] = [agg[str(j)] for j in range(N_OPT)]
+            return out
+
+        for _rule in ("mean", "product", "max"):
+            _fused = _fuse_arm(_rule)
+            _err = (_fused.argmax(1) != y_te_ref).astype(float)
+            _acc = float(1.0 - _err.mean())
+            _blk = rigor_block(_fused, y_te_ref, resamples=200)
+            RESULTS["multimodal"]["arms"][f"late_{_rule}"] = {
+                "block": _blk, "coverage": None, "mean_set_size": None,
+                "t_set": None, "qhat": None}
+            print(f"late_{_rule:7} acc={_acc:.3f} "
+                  f"[{_blk['acc']['lo']:.3f},{_blk['acc']['hi']:.3f}]")
+            _d = paired_readout("error_rate", errors["image_only"], _err)
+            RESULTS["multimodal"][f"late_{_rule}_vs_image"] = _d
+            print(f"late_{_rule} vs image_only: {_d['delta']['point']:+.4f} "
+                  f"-> {_d['verdict']}")
     del enc_v
     torch.cuda.empty_cache()
 except Exception as e:
