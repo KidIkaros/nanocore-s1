@@ -300,3 +300,34 @@ def test_encode_handles_tensor_like_encoder_output():
     ps = PairScorer(encoder=CudaEncoder())
     v = ps._encode("hello")
     assert v.shape == (8,) and np.isfinite(v).all()
+
+
+# ── the tensor_like stub catches GPU-path bugs locally ─────────────────────
+
+def test_tensor_like_stub_reproduces_cuda_failure_on_raw_asarray():
+    """The stub must mimic a cuda tensor: raw np.asarray fails, to_numpy works.
+    This is the guard that would have caught v28b's crash before Kaggle."""
+    from src.decision.backends import StubEncoder
+    enc = StubEncoder(dim=16, tensor_like=True)
+    out = enc.encode(["hello"])
+    with pytest.raises(TypeError):
+        np.asarray(out, dtype=np.float64)  # the buggy path
+
+
+def test_pair_scorer_survives_tensor_like_encoder():
+    """End-to-end: the pair path works when the encoder returns tensor-like
+    output — the v28b crash, now caught locally."""
+    from src.decision.backends import StubEncoder
+    enc = StubEncoder(dim=16, tensor_like=True)
+    ps = PairScorer(encoder=enc)
+    v = ps.similarity("alpha beta", "alpha beta")
+    assert isinstance(v, float) and -1.0 <= v <= 1.0
+    p = ps.noul("alpha beta", "gamma delta")
+    assert 0.0 <= p <= 1.0
+
+
+def test_default_stub_is_plain_numpy():
+    """The default stays numpy so existing tests are unaffected."""
+    from src.decision.backends import StubEncoder
+    enc = StubEncoder(dim=16)
+    assert isinstance(enc.encode(["x"]), np.ndarray)

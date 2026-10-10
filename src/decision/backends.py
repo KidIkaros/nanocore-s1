@@ -80,6 +80,41 @@ class LlamaCppEncoder:
         return np.stack(rows)
 
 
+class _TensorLike:
+    """A pure-numpy stand-in for a CUDA tensor's conversion behavior.
+
+    Mimics the real encoder output so GPU-path bugs surface locally:
+    ``.numpy()`` raises (as a cuda tensor does) unless the value is first
+    routed through ``to_numpy`` (``.detach().float().cpu().numpy()``). No
+    torch import — this lives in the torch-free backends module.
+    """
+
+    def __init__(self, arr: np.ndarray):
+        self._arr = np.asarray(arr)
+
+    def detach(self):
+        return self
+
+    def float(self):
+        return self
+
+    def cpu(self):
+        return _CpuArray(self._arr)
+
+    def numpy(self):
+        raise TypeError(
+            "can't convert cuda:0 device type tensor to numpy. "
+            "Use Tensor.cpu() to copy the tensor to host memory first.")
+
+
+class _CpuArray:
+    def __init__(self, arr: np.ndarray):
+        self._arr = arr
+
+    def numpy(self):
+        return self._arr
+
+
 class StubEncoder:
     """Deterministic weightless encoder for dry-runs and tests.
 
@@ -93,8 +128,9 @@ class StubEncoder:
     """
     model_name = "stub"
 
-    def __init__(self, dim: int = 64):
+    def __init__(self, dim: int = 64, tensor_like: bool = False):
         self.dim = dim
+        self.tensor_like = tensor_like
 
     def _vec(self, text: str) -> np.ndarray:
         key = str(text).split()[-1] if str(text).split() else "empty"
@@ -107,7 +143,14 @@ class StubEncoder:
         return v / np.linalg.norm(v)
 
     def encode(self, texts: Sequence[str], **kw) -> np.ndarray:
-        return np.stack([self._vec(t) for t in texts])
+        arr = np.stack([self._vec(t) for t in texts])
+        # tensor_like=True mimics the real encoder's CUDA output: .numpy()
+        # raises unless routed through to_numpy (.detach/.cpu first). This is
+        # how GPU-path bugs (v28b's cuda-tensor crash) surface LOCALLY instead
+        # of burning a Kaggle run. No torch import — a pure-numpy stand-in.
+        if self.tensor_like:
+            return _TensorLike(arr)
+        return arr
 
     def encode_state(self, items, prompt_name=None):
         return self.encode(
