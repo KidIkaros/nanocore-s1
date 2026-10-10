@@ -1064,6 +1064,35 @@ try:
         "image_only": _unit(E_img),
     }
 
+    # COMPOSED arm (component 38): train a composer on the (image, question)
+    # item pairs from the fit split, compose each state through it, score.
+    # This is the E4-deciding arm — composition that LEARNS the image+text
+    # relation instead of mean-pooling it. Fit on train only; test/val
+    # composed through the fitted composer. The composer report carries the
+    # earn-the-slot margin vs the pooled 'full' arm.
+    try:
+        from src.decision.composer_adapt import adapt_composer, ComposerAdaptConfig
+        # per-state item embeddings: [image_vec, question_vec] for fit rows
+        _fit_items = [np.stack([E_img[i], E_q[i]]) for i in range(n_tr)]
+        _cres = adapt_composer(_fit_items, y_all[:n_tr],
+                               ComposerAdaptConfig(n_embd=768, n_layer=2,
+                                                   n_head=6, epochs=20,
+                                                   seed=0))
+        _comp = _cres.composer
+        from src.decision.composer_adapt import _compose as _compose_fn
+        _all_items = [np.stack([E_img[i], E_q[i]]) for i in range(len(all_idx))]
+        E_comp = _unit(_compose_fn(_comp, _all_items).detach().cpu().numpy())
+        arms["composed"] = E_comp
+        RESULTS.setdefault("multimodal", {})["composer"] = _cres.report
+        print(f"composer: margin_test={_cres.report['margin_test']} "
+              f"earns_slot={_cres.report['earns_slot']} "
+              f"composed={_cres.report['composed']['test_acc']} "
+              f"pooled={_cres.report['pooled']['test_acc']}")
+    except Exception as _ce:
+        print(f"composer arm failed: {repr(_ce)[:200]}")
+        RESULTS.setdefault("multimodal", {})["composer"] = {
+            "status": "failed", "error": repr(_ce)[:200]}
+
     flat_opts = [c for s, i in all_idx for c in sq[s][i]["choices"]]
     O = _unit(to_numpy(enc_v.encode(flat_opts, prompt_name="Document",
                                     batch_size=64))).reshape(len(all_idx), N_OPT, -1)
@@ -1119,6 +1148,14 @@ try:
         RESULTS["multimodal"][f"vs_{other}"] = delta
         d = delta["delta"]
         print(f"full vs {other:11}: {d['point']:+.4f} "
+              f"[{d['lo']:+.4f}, {d['hi']:+.4f}] -> {delta['verdict']}")
+    # composed vs full (mean-pool): the E4 earn-the-slot readout — does the
+    # trained composer beat the pooled baseline it must beat?
+    if "composed" in errors and "full" in errors:
+        delta = paired_readout("error_rate", errors["full"], errors["composed"])
+        RESULTS["multimodal"]["composed_vs_full"] = delta
+        d = delta["delta"]
+        print(f"composed vs full   : {d['point']:+.4f} "
               f"[{d['lo']:+.4f}, {d['hi']:+.4f}] -> {delta['verdict']}")
 
     # LATE FUSION arm — decision-level, not embedding-level. 'full' mean-pools
