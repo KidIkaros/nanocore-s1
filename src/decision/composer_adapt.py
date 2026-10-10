@@ -50,25 +50,23 @@ class ComposerAdaptResult:
     classes: List = field(default_factory=list)
 
 
-def _pad_states(item_embs: Sequence[np.ndarray]):
-    """Variable-length item lists -> padded (B, T, D) batch + real-item mask."""
-    B = len(item_embs)
-    D = int(item_embs[0].shape[1])
-    T = max(int(e.shape[0]) for e in item_embs)
-    X = torch.zeros(B, T, D, dtype=torch.float32)
-    mask = torch.zeros(B, T, dtype=torch.bool)
-    for i, e in enumerate(item_embs):
-        t = min(int(e.shape[0]), T)
-        X[i, :t] = torch.as_tensor(np.asarray(e[:t]), dtype=torch.float32)
-        mask[i, :t] = True
-    return X, mask
-
-
 def _compose(composer: EmbeddingComposer, item_embs: Sequence[np.ndarray]):
-    """Compose a batch of item-embedding lists -> (B, n_embd) state vectors."""
-    X, mask = _pad_states(item_embs)
-    mid = torch.zeros(X.shape[0], X.shape[1], dtype=torch.long)  # all-text
-    return composer(X, mid, pad_mask=mask)
+    """Compose a batch of item-embedding lists -> (B, n_embd) state vectors.
+
+    Delegates each row to ``composer.compose_items`` — the single canonical
+    composition path shared with ``DecisionModel`` — so the composer factory
+    cannot drift into a second composition semantics (the E6 twin-vs-shipped
+    failure mode). Placeholder text items of the right length drive the
+    all-text modality tags; padding is handled per-row, not batched, so a
+    short state never sees a padded longer one.
+    """
+    from src.decision.composer import compose_items
+    rows = []
+    for e in item_embs:
+        e = np.asarray(e, dtype=np.float32)
+        items = ["x"] * int(e.shape[0])          # all-text modality tags
+        rows.append(compose_items(items, torch.as_tensor(e), composer))
+    return torch.stack(rows)
 
 
 def _pool(item_embs: Sequence[np.ndarray]) -> np.ndarray:

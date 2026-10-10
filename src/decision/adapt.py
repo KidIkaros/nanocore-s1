@@ -135,10 +135,9 @@ def _compose_states(composer, X: np.ndarray) -> np.ndarray:
 
     adapt() trains on single-item states; the composer still learns and ships
     for the multi-item loop/conversation case. Returns (n, n_embd)."""
-    import numpy as np
-    item_embs = [X[i][None, :] for i in range(len(X))]
     from src.decision.composer_adapt import _compose
-    return _compose(composer, item_embs).detach().numpy()
+    return _compose(composer, [X[i][None, :] for i in range(len(X))]
+                    ).detach().numpy()
 
 
 def adapt(texts: Sequence[str], labels: Sequence, encoder,
