@@ -86,6 +86,11 @@ with zipfile.ZipFile(io.BytesIO(base64.b64decode(BUNDLE))) as z:
     z.extractall(REPO)
 sys.path.insert(0, REPO)
 
+subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                "jev-benchmarking @ git+https://github.com/"
+                "AppliedMachineLearning-Lab/jev-benchmarking"
+                "@87562114d23597f610754f057e5e0da8659dbcfb"], check=True)
+
 r = subprocess.run([sys.executable, "-m", "pytest", "tests/", "-q", "--no-header"],
                    capture_output=True, text=True, cwd=REPO)
 print((r.stdout + r.stderr)[-3000:])
@@ -1172,6 +1177,7 @@ thresholds the way the twin did".
 RESULTS["slow_shipped"] = {"status": "skipped"}
 try:
     import datasets as _ds
+    from dataclasses import asdict
     from src.decision.gate import ConformalGate
     from src.decision.schema import Question
     from src.decision.slow import SlowStateConfig, observe_row
@@ -1208,6 +1214,9 @@ try:
                         d["correct"] += 1
                     else:
                         d["unsafe"] += 1
+            # The thresholds a phase actually ran under — a collapsed or
+            # unmoved bar is invisible in outcome counts alone (v27-E6).
+            d["thresholds"] = asdict(m.gate.active_thresholds())
         for d in out.values():
             d["wrong_answer_rate"] = d["unsafe"] / d["n"]
             d["escalation_rate"] = 1 - d["answered"] / d["n"]
@@ -1404,13 +1413,8 @@ the published per-task numbers are read alongside for a same-protocol table.
 RESULTS["jev_anchor"] = {"status": "skipped"}
 try:
     import json as _json
-    import subprocess as _sp
     import urllib.request as _urlreq
 
-    _sp.run([sys.executable, "-m", "pip", "install", "-q",
-             "jev-benchmarking @ git+https://github.com/"
-             "AppliedMachineLearning-Lab/jev-benchmarking"],
-            check=True, capture_output=True)
     from jev_benchmarking.tasks import TASKS as _JEV_TASKS
     from src.decision.jevbench import run_task as _jev_run
 
@@ -1525,7 +1529,10 @@ try:
         t0 = _time.perf_counter()
         pred = model.decide(text, q)
         logger.record(text=text, question=q, pred=pred,
-                      latency_ms=(_time.perf_counter() - t0) * 1000, policy=None)
+                      latency_ms=(_time.perf_counter() - t0) * 1000, policy=None,
+                      stream_id="operate-leg",
+                      thresholds=(model.gate.active_thresholds()
+                                  if getattr(model, "gate", None) else None))
     records = read_log(log_path)
     print(f"logged {len(records)} real decisions")
 
@@ -1774,8 +1781,15 @@ verdict = {
         RESULTS.get("multimodal", {}).get("arms", {}).get("image_only", {})
         .get("block", {}).get("acc", {}).get("lo", 0.0)
         > 1.0 / max(RESULTS.get("multimodal", {}).get("n_options", 4), 1)),
-    "multimodal_combination_beats_both_singles": all(
+    "multimodal_combination_strictly_beats_both": all(
         RESULTS.get("multimodal", {}).get(f"vs_{o}", {}).get("verdict") == "improved"
+        for o in ("text_only", "image_only")),
+    # What n=600 can actually adjudicate: the two-field path is at most a
+    # 5-point margin worse than each single. E4 gates on this; the strict
+    # version above is the aspiration, unresolvable at this sample size.
+    "multimodal_combination_noninferior_5pt": all(
+        RESULTS.get("multimodal", {}).get(f"vs_{o}", {})
+        .get("delta", {}).get("hi", 1.0) < 0.05
         for o in ("text_only", "image_only")),
     "breadth_head_ge_tfidf": all(
         r["blocks"]["taskhead"]["acc"]["point"]

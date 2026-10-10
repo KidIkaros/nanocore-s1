@@ -192,18 +192,28 @@ class ConformalGate:
         """The calibrated thresholds, before any slow-state movement."""
         return PolicyThresholds(self.tau_answer, self.k_clarify, self.tau_in_schema)
 
+    def active_thresholds(self) -> PolicyThresholds:
+        """The thresholds in force *now* — what a decision was actually chosen
+        under. Public because the prediction log records them for off-policy
+        replay (component 42): replaying a logged score row under logged
+        thresholds must reproduce the logged action."""
+        return self._active_thresholds()
+
     def _active_thresholds(self) -> PolicyThresholds:
         return self.slow.thresholds() if self.slow is not None else self.base_thresholds()
 
     # ── inference ────────────────────────────────────────────────────────
 
-    def decide(self, scores: np.ndarray, labels: Sequence[str]) -> GateResult:
-        """Score vector → probabilities, prediction set, action.
+    def evaluate(self, scores: np.ndarray, labels: Sequence[str],
+                 thresholds: Optional[PolicyThresholds] = None) -> GateResult:
+        """Score vector → probabilities, prediction set, action. No state
+        written — this is the pure stage.
 
-        Order of checks (ADR-0013, corrected triggers): out-of-schema first,
-        then calibrated-confidence answer, then small-set clarify, else escalate.
-        A slow state, when attached, observes this decision and moves the
-        thresholds the checks read — the gate's own fitted values stay the base.
+        ``thresholds=None`` uses the thresholds in force now; an explicit
+        ``PolicyThresholds`` replays the decision under logged thresholds —
+        the off-policy path components 46/47 require. Replaying trajectories
+        through ``decide`` instead would feed phantom observations into the
+        live regulator and measure a moving target.
         """
         labels = list(labels)
         scores = np.asarray(scores, dtype=np.float64).reshape(-1)
@@ -220,20 +230,31 @@ class ConformalGate:
         pred_set = [labels[i] for i in members]
         probs = {l: float(p) for l, p in zip(labels, P)}
 
-        thresholds = self._active_thresholds()
+        if thresholds is None:
+            thresholds = self._active_thresholds()
+        action = self._gate_action(top_prob, max_score, len(pred_set), thresholds)
+        return GateResult(probabilities=probs, prediction_set=pred_set,
+                          action=action, top_prob=top_prob,
+                          max_score=max_score, alpha=self.alpha)
+
+    def decide(self, scores: np.ndarray, labels: Sequence[str]) -> GateResult:
+        """``evaluate`` plus feeding the slow state — the one write in the path.
+
+        Order of checks (ADR-0013, corrected triggers): out-of-schema first,
+        then calibrated-confidence answer, then small-set clarify, else escalate.
+        A slow state, when attached, observes this decision and moves the
+        thresholds the checks read — the gate's own fitted values stay the base.
+        """
+        result = self.evaluate(scores, labels)
         if self.slow is not None:
-            # observe_row recomputes what this method already has. That is
+            # observe_row recomputes what evaluate already has. That is
             # deliberate: the state must see exactly the statistics a caller
             # builds the healthy reference from, and two code paths for the
             # same statistics is how the calibration drifted out of agreement
             # twice already.
             obs, _ = observe_row(scores, self.t_prob, self.qhat, self.t_set)
             self.slow.observe(obs)
-
-        action = self._gate_action(top_prob, max_score, len(pred_set), thresholds)
-        return GateResult(probabilities=probs, prediction_set=pred_set,
-                          action=action, top_prob=top_prob,
-                          max_score=max_score, alpha=self.alpha)
+        return result
 
     def _gate_action(self, top_prob: float, max_score: float, set_size: int,
                      thresholds: PolicyThresholds) -> str:

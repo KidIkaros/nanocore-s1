@@ -60,6 +60,58 @@ def test_gate_escalates_more_once_anomalies_sustain():
     assert gate.slow.thresholds().tau_answer > gate.tau_answer
 
 
+def test_schema_bar_survives_a_raw_score_scale():
+    """v27-E6: TAU_CEILING is a probability ceiling, but the head bundle's
+    tau_in_schema lives at ~10 logits — clamping it to 0.999 deleted the
+    out-of-schema check the moment a slow state attached, before any streak.
+    """
+    base = PolicyThresholds(tau_answer=0.30, k_clarify=3, tau_in_schema=9.8)
+    slow = SlowState(base, SlowStateConfig(reference_max_score=12.0))
+    assert slow.thresholds().tau_in_schema == pytest.approx(9.8)
+    anomalous = Observation(top_prob=0.10, set_size=4, entropy=1.4,
+                            pred=0, max_score=5.0, margin=0.01)
+    for _ in range(30):
+        slow.observe(anomalous)
+    assert slow.thresholds().tau_in_schema > 9.8
+
+
+def test_slow_state_keeps_the_schema_boundary_on_raw_scores():
+    """The v27 failure at gate level: an out-of-schema row whose max score
+    sits below a raw-unit boundary must still escalate with the state on."""
+    gate = _gate()
+    gate.tau_in_schema = 9.8            # head-bundle scale: logits, not probs
+    gate.attach_slow_state(SlowStateConfig(reference_max_score=12.0))
+    oos = np.array([6.0, 1.0, 0.0, 0.0])   # confident head, below schema bar
+    assert gate.decide(oos, ["a", "b", "c", "d"]).action == "escalate"
+
+
+def test_evaluate_is_pure_and_decide_is_the_write():
+    """The pure stage must not feed the regulator: replaying trajectories
+    through a state-writing path would pollute the live slow state (the
+    earn-the-slot candidate evaluation in component 46 depends on this)."""
+    gate = _gate()
+    gate.attach_slow_state(SlowStateConfig(reference_max_score=3.0))
+    for _ in range(60):
+        gate.evaluate(_anomalous_row(), ["a", "b", "c", "d"])
+    assert gate.slow.thresholds().tau_answer == pytest.approx(gate.tau_answer)
+    for _ in range(60):
+        gate.decide(_anomalous_row(), ["a", "b", "c", "d"])
+    assert gate.slow.thresholds().tau_answer > gate.tau_answer
+
+
+def test_evaluate_replays_a_logged_decision_exactly():
+    """Off-policy replay: a logged score row under its logged thresholds must
+    reproduce the logged action and probabilities — the 42 corpus contract."""
+    gate = _gate()
+    gate.attach_slow_state(SlowStateConfig(reference_max_score=3.0))
+    row = np.array([2.0, 0.5, 0.1, 0.0])
+    live = gate.decide(row, ["a", "b", "c", "d"])
+    replayed = gate.evaluate(row, ["a", "b", "c", "d"],
+                             thresholds=gate.base_thresholds())
+    assert replayed.action == live.action
+    assert replayed.probabilities == live.probabilities
+
+
 def test_gate_calibrates_the_bar_from_a_reference_stream():
     gate = _gate()
     gate.attach_slow_state(SlowStateConfig())
@@ -203,6 +255,16 @@ def test_adaptive_arm_counts_an_escalated_item_as_safe():
     arm.observe(obs)
     arm.observe_labeled(obs, label=3)
     assert arm.thresholds().tau_in_schema < 0.70
+
+
+def test_adaptive_arm_keeps_a_raw_scale_bar():
+    """Same units bug as v27-E6: default bounds were probability-scale, so a
+    head-bundle schema bar (~10 logits) was clamped to 0.99 at construction."""
+    from src.decision.policy import AdaptivePolicy, AdaptivePolicyConfig
+
+    base = PolicyThresholds(tau_answer=0.30, k_clarify=3, tau_in_schema=9.8)
+    arm = AdaptivePolicy(base, AdaptivePolicyConfig(delay=0))
+    assert arm.thresholds().tau_in_schema == pytest.approx(9.8)
 
 
 def test_adaptive_arm_fails_loudly_on_a_label_with_no_pending_decision():

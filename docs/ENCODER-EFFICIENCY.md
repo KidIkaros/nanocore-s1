@@ -221,7 +221,40 @@ fine, and the GGUF's own `convert.log` confirms it was produced by llama.cpp's s
 
 ---
 
-## 5. Experiment plan
+## 5. Sub-1-bit candidates — the LittleBit recipe (Samsung Labs, NeurIPS'25 / ICML'26)
+
+`github.com/SamsungLabs/LittleBit` compresses weights to 1.0–0.1 **bits per weight**:
+factorize each matrix into low-rank latent factors → binarize the factors → restore
+magnitude with learned scales (optional residual low-rank path). LittleBit-2's fix is
+geometric: Joint-ITQ aligns the SVD factors to the binary hypercube *before* QAT —
+**the geometry, not the rounding, is where compression succeeds or fails.**
+
+What to take — and what to leave:
+
+- **Binarized prototypes for the scorer (Phase-8 candidate).** `CosineScorer`
+  prototypes are the perfect LittleBit substrate: binarize to sign vectors →
+  scoring becomes Hamming distance (XOR+popcount — no float matmul on-device),
+  learned per-prototype scales restore magnitude. No QAT needed — prototypes can
+  be binarized post-hoc *with* the geometry-alignment trick (align to the
+  hypercube first, then round). Probe first: paired-CI the binarized scorer vs
+  the float scorer on held-out embeddings; gate on non-inferiority, same
+  discipline as every artifact that earns the slot.
+- **Field compression path.** If the competence field becomes parametric
+  (GMM/prototype centroids per glial-regulator §queue), binarized centroids ship
+  as kilobytes and query as Hamming lookups.
+- **Compression belongs to the artifact layer, never the architecture** —
+  LittleBit's "no inference-time change" rule matches the bundle contract:
+  compress packaging, keep contracts.
+
+The guard, explicit: **do not sub-1-bit the encoder without a geometry probe.**
+EG2's embedding geometry is the substrate — gate calibration, the field's
+spatial structure, `state_hash` linkage all key off it. LittleBit's supported
+list is decoder LLMs (OPT/Llama); EG2 is an embedding encoder outside that
+envelope, and embedding degradation poisons downstream in ways accuracy legs
+don't see. Q8_0 GGUF remains the proven floor; sub-1-bit EG2 is a research bet
+that needs its own evidence before it's a deployment option.
+
+## 6. Experiment plan
 
 Each step is cheap and independently verifiable, in dependency order.
 
@@ -243,7 +276,7 @@ Steps 1–3 are CPU-only and cost no GPU quota.
 
 ---
 
-## 6. Sources
+## 7. Sources
 
 - EG2 `config.json` (layer types, hidden size, GQA) and model card (MTEB figures, precision
   constraint, quantization RAM) — `google/embeddinggemma-2`.

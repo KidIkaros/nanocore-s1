@@ -100,10 +100,48 @@ state → EG2 (frozen perception) → scorer/head → conformal gate → Predict
 - **Same prerequisite as every learned layer:** outcome-joined decision logs
   (component 42) — the regulator has nothing to learn from until they exist.
 
-## 6. First falsification probe (cheap, next run)
+## 6. First falsification probe — **RAN 2026-10-10, result: supports, with a caveat**
 
-The regional-competence premise is testable on artifacts we already save: per-example
-score matrices (.npz) plus wrong/right labels. **Do errors cluster in score-space
-regions?** If yes → a regional regulator has structure to learn. If errors are spatially
-uniform → the field hypothesis is weak and the regulator degenerates to global
-modulation. One clustering leg on cached data, no new architecture required.
+`scripts/regional_error_probe.py` on `reports/runs/v26/verify_scores.npz`
+(CLINC150 val, n=3100, real EG2 embeddings — no model load, pure arrays):
+
+- base error rate (zero-shot cosine): 0.5997
+- local error rate among the k=10 cosine neighbors of error points: **0.8706** —
+  lift 1.45×, permutation test p = 0.0000 (null 0.599 ± 0.006)
+- mean cosine sim, error pairs vs all pairs: 0.5757 vs 0.5740 — **nearly identical**;
+  errors do not sit in spatially denser pockets, they concentrate by *class*
+- within-predicted-class analysis: **7/33** classes with ≥5 errors show local lift
+  >1.5× — genuine sub-class error pockets exist (worst: class 74, local 0.971 vs
+  class base 0.620)
+
+**Follow-up (same session): does spatial beat per-class?** Out-of-sample
+prediction of val errors from train-side structure, Mann-Whitney AUC:
+
+| predictor of P(val error) | AUC |
+|---|---|
+| per-class error rate (train) | 0.940 |
+| spatial kNN error rate (k=25, train embeddings) | **0.978** |
+| spatial residual (kNN rate − neighbor class baselines) | 0.862 |
+| class rate + spatial residual | 0.979 |
+
+**Verdict: the premise survives, with the shape now measured.** Errors cluster
+above chance, and the spatial field carries real signal *beyond* class identity
+(residual AUC 0.86 — a per-class baseline can't capture those pockets; class-74-
+type sub-class pockets exist). Caveats: this is zero-shot cosine at 0.60 error —
+dense failure makes spatial signal easy to find; re-run under a fitted TaskHead
+(~.92 acc) where errors are sparser before sizing the field's value. And kNN is
+the crudest spatial estimator — the learned field's job is to do better than
+raw neighborhood frequency.
+
+### Probe queue (`.npz`-only, no encoder needed)
+
+1. **Re-probe under a fitted TaskHead** — the 0.978 AUC was measured at 0.60
+   zero-shot error density; at ~.92 fitted accuracy errors are sparser and the
+   field's *value* is the honest question (carried caveat).
+2. **PCA error-submanifold check** — do error embeddings collapse onto a low-rank
+   submanifold vs correct ones? If errors live in fewer effective dimensions,
+   the field's learned form gets drastically cheaper — and the parametric upgrade
+   path is named: kNN field → GMM over error locations (weights, not corpus).
+   Pure-array experiment on the same cached matrices.
+3. **Non-inferiority discipline for field-vs-baselines** — apply the E4 lesson:
+   report paired CIs on the difference, not flickering point comparisons.

@@ -312,7 +312,10 @@ class SlowState:
         if self._base.tau_in_schema is None or reference is None:
             schema_bar = self._base.tau_in_schema
         else:
-            schema_bar = min(TAU_CEILING, self._base.tau_in_schema + shift * reference)
+            # No TAU_CEILING here: tau_in_schema is a raw-score boundary, not a
+            # probability — head logits sit at ~10 and clamping them to 0.999
+            # deletes the out-of-schema check entirely (measured: E6 v27).
+            schema_bar = self._base.tau_in_schema + shift * reference
         return PolicyThresholds(
             tau_answer=min(TAU_CEILING, self._base.tau_answer + shift),
             k_clarify=max(1, self._base.k_clarify - int(streak > 0)),

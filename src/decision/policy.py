@@ -170,11 +170,16 @@ class RecalibratePolicy:
 
 @dataclass(frozen=True)
 class AdaptivePolicyConfig:
-    """The ACI arm's information budget and update."""
+    """The ACI arm's information budget and update.
+
+    ``bounds`` clamps the moving bar; left None it derives from the base bar's
+    own scale — tau_in_schema is a raw score (head logits sit at ~10), so
+    probability-scale bounds would collapse the boundary on construction.
+    """
     delay: int = 200
     target: float = 0.02
     step: float = 0.01
-    bounds: tuple = (0.30, 0.99)
+    bounds: Optional[tuple] = None
 
     def __post_init__(self) -> None:
         if self.delay < 0:
@@ -198,8 +203,10 @@ class AdaptivePolicy:
     def __init__(self, base: PolicyThresholds, cfg: AdaptivePolicyConfig):
         self._base, self._cfg = base, cfg
         bar = base.tau_in_schema if base.tau_in_schema is not None else 0.7
+        bounds = cfg.bounds or (min(bar * 0.5, bar * 2.0),
+                                max(bar * 0.5, bar * 2.0))
         self._threshold = AdaptiveThreshold(bar, AciConfig(
-            target=cfg.target, step=cfg.step, bounds=cfg.bounds))
+            target=cfg.target, step=cfg.step, bounds=bounds))
         self._pending: deque = deque()
         self.label_delay = cfg.delay
         self.name = f"adaptive(delay={cfg.delay}, step={cfg.step:g})"

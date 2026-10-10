@@ -3,6 +3,10 @@
 Date: 2026-10-07. Status: **revised architecture.** This document describes the architecture as
 decided, with an honest validation column. It is an inventory, not a proposal.
 
+> **Scope note (2026-10-10):** this is the map of the **decide ability** — the most
+> mature organ, not the whole organism. For the system-level view (shared latent
+> state, glial regulator, transition head, container) see `ARCHITECTURE-SYSTEM.md`.
+
 The revision is recorded in `adr/0007`–`adr/0012`; three earlier ADRs were amended
 (`0001` partially superseded, `0003` deprecated, `0005` superseded). Measured evidence for every
 claim is in `reports/runs/`.

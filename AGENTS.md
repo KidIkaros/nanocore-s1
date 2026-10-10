@@ -78,6 +78,24 @@ Rules:
   working tree must be clean of known fixes: run the clean-code and
   clean-architecture review pass *after every fix*, not after the push. When
   the owner says push, the code that goes up is the code that was reviewed.
+- **Pre-push gap audit — run it as a checklist, not a vibe.** Caught a
+  run-killer in 2026-10: a new test file needed a package only installed 40
+  cells later, inside a MUST_PASS gate. Before every push, answer:
+  1. **New test files since the last run?** Diff `reports/runs/<last>/nanocore-s1/tests/`
+     vs `tests/`. Every new file's imports must resolve in-session — check what
+     the Kaggle base image lacks and where in the notebook each dep is installed.
+  2. **Cell ordering = contract.** Any leg using a package must come *after* its
+     install cell; the pytest suite cell must come after *all* deps the suite
+     imports. Grep the built `.ipynb` for install sites vs use sites.
+  3. **Never-run legs get read twice.** A leg absent from the last run's
+     `results.json` has zero hardware evidence — trace its scope (variables,
+     imports, task/split names) against what's actually defined at that point.
+  4. **Severity check before panic.** A failed verdict flag is a wasted run only
+     if it feeds MUST_PASS — check `src/decision/qualify.py` severities before
+     treating a leg failure as blocking.
+  5. **Rebuild + re-verify the artifact.** `generate.py` → `.ipynb` → cell-by-cell
+     `ast.parse`, and confirm the fixes landed in the built cells, not just the
+     generator.
 - **One notebook per experiment family, iterating versions** — do not create a new
   notebook directory for each iteration. Kaggle versions natively; git history keeps
   the old generator. Per-run *evidence* still goes to `reports/runs/<run>/` so every
@@ -95,8 +113,16 @@ Rules:
 ## Verification
 
 ```bash
-python -m pytest tests/ -q          # unit + protocol suite, no model loading
+.venv/bin/python scripts/dry_run.py    # local-safe suite: torch-free tier only
 ```
+
+**Never run `pytest tests/` bare on this host.** The suite is "no weights" but
+NOT no-torch: collection imports `head`/`legacy`/`composer`/`encoder`
+(module-level torch) and adapt/fit paths pull it lazily — the import alone cost
+~1–2 GB and OOM'd the host once. `dry_run.py` classifies tests by torch reach
+(AST scan), syntax-checks every file, and runs only the torch-free tier
+(~250 tests, ~10 s). The torch tier is Kaggle's job — the kernel runs the full
+protocol test.
 
 Kernels are syntax-checked cell-by-cell and their pure-logic paths dry-run on
 synthetic arrays locally before any push.
