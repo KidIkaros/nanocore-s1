@@ -37,10 +37,13 @@ from typing import Optional, Sequence
 
 import numpy as np
 
-#: The task prompt that trains the symmetric similarity pairing. EG2
-#: exposes it (encoder.TASK_PROMPTS["sentence_similarity"]); the scalar
-#: scorers never used it because they score options, not pairs.
-SIMILARITY_PROMPT = "sentence_similarity"
+#: The task prompt that trains the symmetric similarity pairing. This is
+#: the VALUE from encoder.TASK_PROMPTS, not the key — the model's prompts
+#: dict is keyed by the TitleCase names ("SentenceSimilarity"), and passing
+#: the lowercase key ("sentence_similarity") raises "Prompt name not found"
+#: (v28: paws/stsb/boolq all crashed on exactly this). The scalar scorers
+#: never used it because they score options, not pairs.
+SIMILARITY_PROMPT = "SentenceSimilarity"
 
 
 def pair_cosine(u: np.ndarray, v: np.ndarray) -> float:

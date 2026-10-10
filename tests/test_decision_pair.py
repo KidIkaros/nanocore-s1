@@ -242,3 +242,41 @@ def test_single_field_state_ignores_pair_scorer():
     out = nanocore_answers(M(), "buy now", q, pair=ps)
     assert out["answer"]["noul"] == pytest.approx(0.6)
     assert ps.calls == []
+
+
+# ── regression: the prompt must be the TASK_PROMPTS VALUE, not the key ────
+# v28 crashed paws/stsb/boolq because SIMILARITY_PROMPT was the lowercase
+# dict KEY ("sentence_similarity"); the model's prompts dict is keyed by
+# the TitleCase VALUE ("SentenceSimilarity"). Evidence: "SearchQuery" (a
+# value) completed v28's clinc encode; the lowercase key raised.
+
+
+def test_similarity_prompt_is_a_valid_task_prompts_value():
+    """SIMILARITY_PROMPT must be one of encoder.TASK_PROMPTS's VALUES —
+    the names the model's prompts dict actually accepts."""
+    from src.decision.encoder import TASK_PROMPTS
+    assert SIMILARITY_PROMPT in TASK_PROMPTS.values()
+
+
+def test_similarity_prompt_is_not_a_lowercase_key():
+    """Guard the exact v28 bug: the lowercase key is NOT a valid prompt."""
+    from src.decision.encoder import TASK_PROMPTS
+    assert SIMILARITY_PROMPT not in TASK_PROMPTS
+    assert SIMILARITY_PROMPT == "SentenceSimilarity"
+
+
+def test_pair_scorer_encodes_with_the_valid_prompt():
+    """End-to-end: the prompt that reaches the encoder is a valid value."""
+    class RecordingEnc:
+        def __init__(self):
+            self.seen = []
+        def encode(self, texts, prompt_name=None):
+            self.seen.append(prompt_name)
+            import numpy as np
+            return np.stack([np.ones(8) for _ in texts])
+    enc = RecordingEnc()
+    ps = PairScorer(encoder=enc)
+    ps.similarity("a", "b")
+    assert enc.seen == [SIMILARITY_PROMPT, SIMILARITY_PROMPT]
+    from src.decision.encoder import TASK_PROMPTS
+    assert all(p in TASK_PROMPTS.values() for p in enc.seen)
