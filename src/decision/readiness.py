@@ -168,3 +168,36 @@ def memorization_verdict(rotation_consistency: Optional[float],
             "rotation_invariant": bool(rot_ok),
             "withholding_collapses": bool(w_ok),
             "passed": bool(rot_ok and w_ok)}
+
+
+def noul_placement(p_yes: np.ndarray, gold: np.ndarray) -> Dict:
+    """The binary-judgment placement diagnostic (arXiv:2609.37647).
+
+    The reference evaluation found binary ``P(yes)`` **ranks** well
+    (AUROC high) while being **poorly placed** at a fixed 0.5 — the mean
+    predicted probability sits off the observed positive rate, so
+    threshold-based metrics suffer even though the ranking is sound.
+    Their numbers: mean P(yes) 0.465 vs observed rate 0.518 across eight
+    binary datasets (systematic under-confidence). We already report
+    F1@0.5 *and* F1 at a tuned threshold; what was missing is the
+    *placement gap* itself — the number that says whether a well-ranked
+    but misplaced P(yes) is the failure, before any threshold is fitted.
+
+    Args:
+        p_yes: predicted P(yes) per example.
+        gold: boolean positive labels.
+
+    Returns:
+        ``mean_p_yes`` vs ``observed_rate`` and the signed ``gap``
+        (positive = over-confident: predicts yes more often than it
+        occurs; negative = under-confident). ``base_rate`` mirrors the
+        leg's existing field name. ``None`` on empty input.
+    """
+    p = np.asarray(p_yes, dtype=np.float64).reshape(-1)
+    g = np.asarray(gold, dtype=float).reshape(-1)
+    if len(p) == 0 or len(p) != len(g):
+        return {"mean_p_yes": None, "observed_rate": None, "gap": None}
+    mean_p = float(p.mean())
+    rate = float(g.mean())
+    return {"mean_p_yes": mean_p, "observed_rate": rate,
+            "base_rate": rate, "gap": mean_p - rate}

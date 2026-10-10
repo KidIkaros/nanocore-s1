@@ -1301,6 +1301,7 @@ Two arms, both honest:
 RESULTS["noul"] = {"status": "skipped"}
 try:
     from sklearn.metrics import f1_score, roc_auc_score
+    from src.decision.readiness import noul_placement
     from src.decision.schema import Question
 
     # Arm 1 — a schema-bound bundle must fail loudly on out-of-space options.
@@ -1367,7 +1368,12 @@ try:
                 "f1_tuned": float(f1_score(_gold[_eval], _pys[_eval] > _t_star,
                                            zero_division=0)),
                 "tuned_threshold": float(_t_star),
-                "base_rate": float(_gold.mean())}
+                "base_rate": float(_gold.mean()),
+                # Placement diagnostic (arXiv:2609.37647): mean P(yes) vs
+                # observed rate. A well-ranked but misplaced P(yes) shows
+                # here BEFORE any threshold is fitted — the gap is the
+                # miscalibration signal, not the F1.
+                **noul_placement(_pys, _gold)}
     RESULTS["noul"] = {"status": "ran", "n_per_prop": int(len(_idx)),
                        "bundle_refuses": _refused, "arms": _arms,
                        "gate": "none — a noul gate needs its own calibration"}
@@ -1375,6 +1381,7 @@ try:
         print(_arm + ": " + "  ".join(
             f"{k} auroc={v['auroc']} f1@0.5={v['f1_at_half']:.2f}"
             f" f1@t={v['f1_tuned']:.2f}(t{v['tuned_threshold']:.2f})"
+            f" placement gap={v.get('gap', float('nan')):+.3f}"
             for k, v in _rows.items()))
     print(f"bundle refuses out-of-schema noul: {_refused}")
 except Exception as e:
