@@ -46,7 +46,8 @@ def test_taskhead_fit_and_score_survives_gpu_encoder(gpu_encoder):
 def test_pair_scorer_survives_gpu_encoder(gpu_encoder):
     ps = PairScorer(encoder=gpu_encoder)
     s = ps.similarity("alpha beta", "alpha beta")
-    assert -1.0 <= s <= 1.0
+    # identical texts -> cosine ~1.0; float arithmetic can overshoot by an ulp
+    assert isinstance(s, float) and abs(s - 1.0) < 1e-6
 
 
 def test_loop_survives_gpu_encoder(gpu_encoder):

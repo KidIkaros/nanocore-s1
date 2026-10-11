@@ -1,0 +1,86 @@
+[{"stream_name":"stderr","time":5.611579797,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":5.611623892,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":6.451719601,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":6.451763493,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":6.451768831,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":6.451772667,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":7.026530004,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":7.026569326,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":7.026574006,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":7.026578163,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":9.729461174,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":9.729496101,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":9.729501071,"data":"\n"}
+,{"stream_name":"stdout","time":205.702922054,"data":"........................................................................ [ 12%]\n"}
+,{"stream_name":"stdout","time":205.702965674,"data":"........................................................................ [ 25%]\n"}
+,{"stream_name":"stdout","time":205.70297468,"data":"........................................................................ [ 38%]\n"}
+,{"stream_name":"stdout","time":205.702977732,"data":"........................................................................ [ 51%]\n"}
+,{"stream_name":"stdout","time":205.702980653,"data":"............F.........................ss................................ [ 64%]\n"}
+,{"stream_name":"stdout","time":205.702983594,"data":"...............................................s........................ [ 77%]\n"}
+,{"stream_name":"stdout","time":205.70298645,"data":"........................................................................ [ 90%]\n"}
+,{"stream_name":"stdout","time":205.702989142,"data":"...................................................                      [100%]\n"}
+,{"stream_name":"stdout","time":205.702991893,"data":"=================================== FAILURES ===================================\n"}
+,{"stream_name":"stdout","time":205.702994587,"data":"________________ test_pair_scorer_survives_tensor_like_encoder _________________\n"}
+,{"stream_name":"stdout","time":205.702997304,"data":"\n"}
+,{"stream_name":"stdout","time":205.702999892,"data":"    def test_pair_scorer_survives_tensor_like_encoder():\n"}
+,{"stream_name":"stdout","time":205.703002668,"data":"        \"\"\"End-to-end: the pair path works when the encoder returns tensor-like\n"}
+,{"stream_name":"stdout","time":205.70300551,"data":"        output — the v28b crash, now caught locally.\"\"\"\n"}
+,{"stream_name":"stdout","time":205.703015777,"data":"        from src.decision.backends import StubEncoder\n"}
+,{"stream_name":"stdout","time":205.703043933,"data":"        enc = StubEncoder(dim=16, tensor_like=True)\n"}
+,{"stream_name":"stdout","time":205.703048395,"data":"        ps = PairScorer(encoder=enc)\n"}
+,{"stream_name":"stdout","time":205.703051947,"data":"        v = ps.similarity(\"alpha beta\", \"alpha beta\")\n"}
+,{"stream_name":"stdout","time":205.703055522,"data":"\u003e       assert isinstance(v, float) and -1.0 \u003c= v \u003c= 1.0\n"}
+,{"stream_name":"stdout","time":205.703059642,"data":"E       assert (True and 1.0000000000000002 \u003c= 1.0)\n"}
+,{"stream_name":"stdout","time":205.703063028,"data":"E        +  where True = isinstance(1.0000000000000002, float)\n"}
+,{"stream_name":"stdout","time":205.703066358,"data":"\n"}
+,{"stream_name":"stdout","time":205.70306952,"data":"tests/test_decision_pair.py:328: AssertionError\n"}
+,{"stream_name":"stdout","time":205.70307283,"data":"=============================== warnings summary ===============================\n"}
+,{"stream_name":"stdout","time":205.703081682,"data":"tests/test_decision_cli_adapt.py::test_adapt_writes_a_bundle_and_a_report\n"}
+,{"stream_name":"stdout","time":205.703084205,"data":"tests/test_decision_cli_adapt.py::test_the_bundle_adapt_produced_can_be_decided_with\n"}
+,{"stream_name":"stdout","time":205.703086468,"data":"tests/test_decision_phase8.py::test_a_decision_makes_no_network_call\n"}
+,{"stream_name":"stdout","time":205.703088652,"data":"tests/test_decision_slow.py::test_attach_slow_state_inherits_gate_t_set\n"}
+,{"stream_name":"stdout","time":205.703090983,"data":"  /kaggle/working/nanocore-s1/src/decision/scoring.py:141: UserWarning: fit_temperature bound-limited at the ceiling (t=4.0); widen `ceiling` before trusting the fit\n"}
+,{"stream_name":"stdout","time":205.703093405,"data":"    warnings.warn(f\"fit_temperature bound-limited at the ceiling \"\n"}
+,{"stream_name":"stdout","time":205.703095725,"data":"\n"}
+,{"stream_name":"stdout","time":205.70309921,"data":"tests/test_decision_evaluate.py::test_tfidf_baseline_column_alignment\n"}
+,{"stream_name":"stdout","time":205.703101444,"data":"tests/test_decision_evaluate.py::test_tfidf_baseline_missing_class\n"}
+,{"stream_name":"stdout","time":205.703103632,"data":"tests/test_decision_evaluate.py::test_dataset_suite_end_to_end\n"}
+,{"stream_name":"stdout","time":205.703105915,"data":"  /usr/local/lib/python3.13/dist-packages/sklearn/linear_model/_logistic.py:451: DeprecationWarning: scipy.optimize: The `disp` and `iprint` options of the L-BFGS-B solver are deprecated and will be removed in SciPy 1.18.0.\n"}
+,{"stream_name":"stdout","time":205.703109279,"data":"    opt_res = optimize.minimize(\n"}
+,{"stream_name":"stdout","time":205.703111422,"data":"\n"}
+,{"stream_name":"stdout","time":205.703114286,"data":"-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n"}
+,{"stream_name":"stdout","time":205.703128957,"data":"=========================== short test summary info ============================\n"}
+,{"stream_name":"stdout","time":205.703132949,"data":"FAILED tests/test_decision_pair.py::test_pair_scorer_survives_tensor_like_encoder\n"}
+,{"stream_name":"stdout","time":205.703136915,"data":"1 failed, 551 passed, 3 skipped, 7 warnings in 177.77s (0:02:57)\n"}
+,{"stream_name":"stdout","time":205.70314102,"data":"\n"}
+,{"stream_name":"stderr","time":206.448785033,"data":"Traceback (most recent call last):\n"}
+,{"stream_name":"stderr","time":206.449397779,"data":"  File \"\u003cstring\u003e\", line 1, in \u003cmodule\u003e\n"}
+,{"stream_name":"stderr","time":206.449416411,"data":"    import sys;import papermill as pm;pm.execute_notebook(\"__notebook__.ipynb\",\"__notebook__.ipynb\",progress_bar=False,log_output=True,stdout_file=sys.stdout,stderr_file=sys.stderr,allow_errors=False,timeout=43200)\n"}
+,{"stream_name":"stderr","time":206.44943054,"data":"                                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":206.449434807,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 131, in execute_notebook\n"}
+,{"stream_name":"stderr","time":206.449438717,"data":"    raise_for_execution_errors(nb, output_path)\n"}
+,{"stream_name":"stderr","time":206.449442219,"data":"    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":206.449445357,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 251, in raise_for_execution_errors\n"}
+,{"stream_name":"stderr","time":206.44944893,"data":"    raise error\n"}
+,{"stream_name":"stderr","time":206.449452073,"data":"papermill.exceptions.PapermillExecutionError: \n"}
+,{"stream_name":"stderr","time":206.449455513,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":206.449458733,"data":"Exception encountered at \"In [2]\":\n"}
+,{"stream_name":"stderr","time":206.449461886,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":206.449465203,"data":"AssertionError                            Traceback (most recent call last)\n"}
+,{"stream_name":"stderr","time":206.449468421,"data":"/tmp/ipykernel_23/2185328135.py in \u003ccell line: 0\u003e()\n"}
+,{"stream_name":"stderr","time":206.449471758,"data":"     15                    capture_output=True, text=True, cwd=REPO)\n"}
+,{"stream_name":"stderr","time":206.449474842,"data":"     16 print((r.stdout + r.stderr)[-3000:])\n"}
+,{"stream_name":"stderr","time":206.44947792,"data":"---\u003e 17 assert r.returncode == 0, \"test suite failed on Kaggle\"\n"}
+,{"stream_name":"stderr","time":206.449481462,"data":"     18 write_status(\"tests-green\")\n"}
+,{"stream_name":"stderr","time":206.449484947,"data":"\n"}
+,{"stream_name":"stderr","time":206.449488572,"data":"AssertionError: test suite failed on Kaggle\n"}
+,{"stream_name":"stderr","time":206.449492858,"data":"\n"}
+,{"stream_name":"stderr","time":208.608412418,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":208.608456142,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":208.761766845,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":208.761792354,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":209.499742355,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":209.599940858,"data":"[NbConvertApp] Writing 523297 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":212.107156187,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":213.036327267,"data":"[NbConvertApp] Writing 1137487 bytes to __results__.html\n"}
+]

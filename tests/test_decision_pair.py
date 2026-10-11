@@ -325,7 +325,9 @@ def test_pair_scorer_survives_tensor_like_encoder():
     enc = StubEncoder(dim=16, tensor_like=True)
     ps = PairScorer(encoder=enc)
     v = ps.similarity("alpha beta", "alpha beta")
-    assert isinstance(v, float) and -1.0 <= v <= 1.0
+    # identical texts -> cosine ~1.0; float arithmetic can push it a hair over
+    # (1.0000000000000002), so assert within tolerance, not <= 1.0 exactly.
+    assert isinstance(v, float) and abs(v - 1.0) < 1e-6
     p = ps.noul("alpha beta", "gamma delta")
     assert 0.0 <= p <= 1.0
 

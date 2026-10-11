@@ -31,6 +31,16 @@ TORCH_TOP = {"src.decision.head", "src.decision.legacy", "src.decision.composer"
 # `adapt(` in the test source
 TORCH_CALLS = ("adapt(", ".fit(", "TaskHead(", "OrdinalScorer(",
                '"adapt"', "'adapt'")
+# Files PROVEN to run with torch blocked (import torch + pytest with an import
+# hook that raises) — the classifier marks them 'torch' because they reference
+# torch-adjacent symbols, but their tests only use the torch-free StubEncoder.
+# These are exactly the GPU-fidelity guards that must RUN locally, not just be
+# syntax-checked, or Kaggle-only bugs slip through (v4: a float-tolerance
+# assertion in a fidelity test never ran locally). Keep this list honest: a
+# file belongs here only if `pytest <file>` passes with torch blocked.
+VERIFIED_TORCH_FREE = {
+    "test_decision_gpu_fidelity.py",
+}
 
 
 def classify(path: Path) -> str:
@@ -62,7 +72,10 @@ def main() -> int:
 
     tiers = {"free": [], "torch": []}
     for f in files:
-        tiers[classify(f)].append(f)
+        # a proven-torch-free file is RUN, not just syntax-checked, even if the
+        # coarse classifier would shelve it — the fidelity guards must execute
+        tier = "free" if f.name in VERIFIED_TORCH_FREE else classify(f)
+        tiers[tier].append(f)
 
     print(f"torch-free tier: {len(tiers['free'])} files")
     print(f"torch tier (syntax-checked only, Kaggle runs them): "
