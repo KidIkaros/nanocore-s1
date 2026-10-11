@@ -342,7 +342,9 @@ class TaskHead:
         if kind not in self.KINDS:
             raise ValueError(f"kind must be one of {self.KINDS}, got {kind!r}")
         self.kind, self.hidden = kind, hidden
-        self._torch = None          # fitted module (torch.nn.Module)
+        self._torch = None          # fitted module (torch.nn.Module) — train-time
+        self._W = self._b = None    # linear numpy weights (torch-free inference)
+        self._W1 = self._b1 = self._W2 = self._b2 = None  # mlp numpy weights
         self.labels_: Optional[list] = None
         self.temperature = 1.0      # fitted by the gate's calibrate step
         self._mu = self._sd = None  # input standardization, fitted on train
@@ -388,18 +390,46 @@ class TaskHead:
             batch_size=batch_size, seed=seed, val_fraction=val_fraction,
             patience=patience, weight_decay=l2, verbose=verbose)
         self._torch = net
+        self._extract_numpy_weights()   # so scores() can run torch-free (ADR-0007)
         return {**rec, "n_classes": k}
+
+    def _extract_numpy_weights(self) -> None:
+        """Copy the fitted torch net's weights to numpy arrays for torch-free
+        inference (ADR-0007). Linear: W,b; MLP: W1,b1,W2,b2."""
+        sd = self._torch.state_dict()
+        if self.kind == "linear":
+            self._W = sd["weight"].detach().cpu().numpy().astype(np.float32)
+            self._b = sd["bias"].detach().cpu().numpy().astype(np.float32)
+        else:
+            self._W1 = sd["0.weight"].detach().cpu().numpy().astype(np.float32)
+            self._b1 = sd["0.bias"].detach().cpu().numpy().astype(np.float32)
+            self._W2 = sd["2.weight"].detach().cpu().numpy().astype(np.float32)
+            self._b2 = sd["2.bias"].detach().cpu().numpy().astype(np.float32)
 
     # ── inference ────────────────────────────────────────────────────────
 
     def logits(self, X: np.ndarray) -> np.ndarray:
-        """``(n, k)`` pre-softmax logits — the gate owns temperature."""
-        import torch
-        if self._torch is None:
-            raise RuntimeError("TaskHead is not fitted")
+        """``(n, k)`` pre-softmax logits — the gate owns temperature.
+
+        Torch-free when numpy weights are present (ADR-0007): a loaded npz
+        head, or any head whose weights were extracted at fit time, runs pure
+        numpy matmuls. Torch is used only if numpy weights are absent and a
+        fitted net exists (the train-time path)."""
         X = (np.asarray(X, dtype=np.float32) - self._mu) / self._sd
+        if self._torch is None:
+            if self._W is not None or self._W1 is not None:
+                return self._numpy_forward(X)
+            raise RuntimeError("TaskHead is not fitted")
+        import torch
         with torch.no_grad():
             return self._torch(torch.as_tensor(X)).numpy()
+
+    def _numpy_forward(self, X: np.ndarray) -> np.ndarray:
+        """Pure-numpy linear/MLP forward — the torch-free inference path."""
+        if self.kind == "linear":
+            return X @ self._W.T + self._b
+        h = np.maximum(X @ self._W1.T + self._b1, 0.0)   # ReLU
+        return h @ self._W2.T + self._b2
 
     def scores(self, state_vec: np.ndarray, option_vecs=None) -> np.ndarray:
         """Per-label logits for one state; ``option_vecs`` unused (schema-bound)."""
@@ -439,4 +469,41 @@ class TaskHead:
         net.load_state_dict(d["state_dict"])
         net.eval()
         head._torch = net
+        head._extract_numpy_weights()
+        return head
+
+    # ── numpy persistence (torch-free load, ADR-0007) ─────────────────────
+
+    def save_np(self, path) -> None:
+        """Export the head as a torch-free .npz — the shipped bundle format.
+
+        Carries the numpy weights + standardization + temperature + labels, so
+        ``load_np`` reconstructs a head whose ``scores()`` runs without torch.
+        """
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        d = {"kind": self.kind, "hidden": self.hidden,
+             "labels": np.array(self.labels_, dtype=object),
+             "temperature": self.temperature,
+             "mu": self._mu, "sd": self._sd}
+        if self.kind == "linear":
+            d.update({"W": self._W, "b": self._b})
+        else:
+            d.update({"W1": self._W1, "b1": self._b1,
+                      "W2": self._W2, "b2": self._b2})
+        np.savez(path, **d)
+
+    @classmethod
+    def load_np(cls, path) -> "TaskHead":
+        """Rebuild a torch-free head from a .npz export — no torch import."""
+        d = np.load(Path(path), allow_pickle=True)
+        head = cls(kind=str(d["kind"]), hidden=int(d["hidden"]))
+        head.labels_ = list(d["labels"])
+        head.temperature = float(d["temperature"])
+        head._mu, head._sd = d["mu"], d["sd"]
+        if head.kind == "linear":
+            head._W, head._b = d["W"], d["b"]
+        else:
+            head._W1, head._b1 = d["W1"], d["b1"]
+            head._W2, head._b2 = d["W2"], d["b2"]
         return head
