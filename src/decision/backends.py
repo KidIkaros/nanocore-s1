@@ -106,6 +106,18 @@ class _TensorLike:
             "can't convert cuda:0 device type tensor to numpy. "
             "Use Tensor.cpu() to copy the tensor to host memory first.")
 
+    # array-like access so callers that index/iterate (TaskHead.fit) behave
+    # as they would on a real tensor
+    def __len__(self):
+        return len(self._arr)
+
+    def __getitem__(self, i):
+        return self._arr[i]
+
+    @property
+    def shape(self):
+        return self._arr.shape
+
 
 class _CpuArray:
     def __init__(self, arr: np.ndarray):

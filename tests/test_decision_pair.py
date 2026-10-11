@@ -304,14 +304,18 @@ def test_encode_handles_tensor_like_encoder_output():
 
 # ── the tensor_like stub catches GPU-path bugs locally ─────────────────────
 
-def test_tensor_like_stub_reproduces_cuda_failure_on_raw_asarray():
-    """The stub must mimic a cuda tensor: raw np.asarray fails, to_numpy works.
-    This is the guard that would have caught v28b's crash before Kaggle."""
+def test_tensor_like_stub_numpy_raises_like_cuda():
+    """The stub mimics a cuda tensor's defining trait: .numpy() raises unless
+    routed through to_numpy. This is the guard that would have caught v28b's
+    crash before Kaggle."""
     from src.decision.backends import StubEncoder
     enc = StubEncoder(dim=16, tensor_like=True)
     out = enc.encode(["hello"])
     with pytest.raises(TypeError):
-        np.asarray(out, dtype=np.float64)  # the buggy path
+        out.numpy()  # the buggy path: raw .numpy() on a cuda tensor
+    # but to_numpy handles it
+    from src.decision.items import to_numpy
+    assert to_numpy(out).shape == (1, 16)
 
 
 def test_pair_scorer_survives_tensor_like_encoder():
