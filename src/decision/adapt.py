@@ -25,7 +25,8 @@ from typing import Dict, Optional, Sequence
 
 import numpy as np
 
-from src.decision.scoring import CosineScorer, TaskHead, softmax_rows, aps_members
+from src.decision.scoring import (CosineScorer, TaskHead, OrdinalScorer,
+                                  softmax_rows, aps_members)
 from src.decision.items import to_numpy
 from src.decision.gate import ConformalGate
 from src.decision.model import DecisionModel
@@ -48,8 +49,11 @@ class AdaptConfig:
     answer_precision: float = 0.90
     glial: bool = False           # attach the label-free slow state to the gate
     composer: bool = False        # train a composer (component 38) and compose states through it
-    scorer: str = "auto"          # "auto" | "taskhead" | "cosine" — auto measures
-                                  # both on cal and ships the winner (ADR-0008)
+    scorer: str = "auto"          # "auto" | "taskhead" | "cosine" | "ordinal" —
+                                  # auto measures the applicable scorers on cal
+                                  # and ships the winner (ADR-0008)
+    ordinal_labels: bool = False  # labels are ordered (sst5/mnli): auto also
+                                  # considers the ordinal head
 
 
 @dataclass
@@ -205,13 +209,25 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
     #    wins). "auto" measures both on the cal split and ships the winner;
     #    explicit "taskhead"/"cosine" forces the choice. Zero-shot cosine is
     #    always the cold-start fallback (no labeled fit data).
+    ordinal_head = None
+    if cfg.ordinal_labels:
+        ordinal_head = OrdinalScorer()
+        ordinal_head.fit(X[fi], y_idx[fi], labels=classes, seed=cfg.seed,
+                         **cfg.head_kwargs)
+        ordinal_head.temperature = gate.t_prob
+
     scorer_choice = cfg.scorer
     if scorer_choice == "auto":
         cos_pred_cal = (X[ci] @ LV.T).argmax(axis=1)
         cos_cal_acc = float((cos_pred_cal == y_idx[ci]).mean())
         head_cal_acc = float((head.logits(X[ci]).argmax(axis=1) == y_idx[ci]).mean())
-        scorer_choice = "taskhead" if head_cal_acc >= cos_cal_acc else "cosine"
-    shipped_scorer = head if scorer_choice == "taskhead" else CosineScorer(temperature=gate.t_prob)
+        candidates = {"cosine": cos_cal_acc, "taskhead": head_cal_acc}
+        if ordinal_head is not None:
+            candidates["ordinal"] = float(
+                (ordinal_head.level_probs(X[ci]).argmax(1) == y_idx[ci]).mean())
+        scorer_choice = max(candidates, key=candidates.get)
+    shipped_scorer = {"taskhead": head, "ordinal": ordinal_head}.get(
+        scorer_choice, CosineScorer(temperature=gate.t_prob))
 
     # ── optional in-schema threshold (needs real OOS examples)
     tau_in = None

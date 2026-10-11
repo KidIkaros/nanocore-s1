@@ -238,6 +238,7 @@ class OrdinalScorer:
 
     def __init__(self):
         self._torch = None
+        self._W = self._b = None    # numpy weights (torch-free inference, ADR-0007)
         self.labels_: Optional[list] = None
         self.temperature = 1.0
         self._mu = self._sd = None
@@ -270,16 +271,27 @@ class OrdinalScorer:
             epochs=epochs, lr=lr, batch_size=batch_size, seed=seed,
             val_fraction=val_fraction, patience=patience, weight_decay=1e-4)
         self._torch = net
+        self._extract_numpy_weights()   # torch-free inference (ADR-0007)
         return {**rec, "n_levels": k}
 
+    def _extract_numpy_weights(self) -> None:
+        sd = self._torch.state_dict()
+        self._W = sd["weight"].detach().cpu().numpy().astype(np.float32)
+        self._b = sd["bias"].detach().cpu().numpy().astype(np.float32)
+
     def level_probs(self, X: np.ndarray) -> np.ndarray:
-        """CORN reconstruction: cumulative sigmoids → per-level mass ``(n, k)``."""
-        import torch
-        if self._torch is None:
+        """CORN reconstruction: cumulative sigmoids → per-level mass ``(n, k)``.
+
+        Torch-free when numpy weights are present (ADR-0007)."""
+        if self._torch is None and self._W is None:
             raise RuntimeError("OrdinalScorer is not fitted")
         X = (np.asarray(X, dtype=np.float32) - self._mu) / self._sd
-        with torch.no_grad():
-            cum = torch.sigmoid(self._torch(torch.as_tensor(X))).numpy()  # P(y > j)
+        if self._W is not None:
+            cum = 1.0 / (1.0 + np.exp(-(X @ self._W.T + self._b)))  # sigmoid
+        else:
+            import torch
+            with torch.no_grad():
+                cum = torch.sigmoid(self._torch(torch.as_tensor(X))).numpy()  # P(y > j)
         # CORN logits aren't guaranteed monotone — project to non-increasing so
         # differencing can't produce negative mass, then renormalize.
         cum = np.minimum.accumulate(cum, axis=1)
@@ -324,6 +336,28 @@ class OrdinalScorer:
         net = nn.Linear(d["state_dict"]["weight"].shape[1], k - 1)
         net.load_state_dict(d["state_dict"]); net.eval()
         s._torch = net
+        s._extract_numpy_weights()
+        return s
+
+    # ── numpy persistence (torch-free load, ADR-0007) ─────────────────────
+
+    def save_np(self, path) -> None:
+        """Export the ordinal head as a torch-free .npz."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(path, kind="ordinal", labels=np.array(self.labels_, dtype=object),
+                 temperature=self.temperature, mu=self._mu, sd=self._sd,
+                 W=self._W, b=self._b)
+
+    @classmethod
+    def load_np(cls, path) -> "OrdinalScorer":
+        """Rebuild a torch-free ordinal head from .npz — no torch import."""
+        d = np.load(Path(path), allow_pickle=True)
+        s = cls()
+        s.labels_ = list(d["labels"])
+        s.temperature = float(d["temperature"])
+        s._mu, s._sd = d["mu"], d["sd"]
+        s._W, s._b = d["W"], d["b"]
         return s
 
 

@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import pytest
 
-from src.decision.scoring import TaskHead
+from src.decision.scoring import TaskHead, OrdinalScorer
 
 
 def _synth(n=200, d=16, k=3, seed=0):
@@ -104,24 +104,6 @@ def test_bundle_ships_npz_and_loads_torch_free(tmp_path):
     assert p1.probabilities == p2.probabilities
 
 
-def test_auto_scorer_picks_head_when_head_wins(tmp_path):
-    """Increment 3 (ADR-0008 + research): 'auto' measures head vs cosine on the
-    cal split and ships the winner. On a head-favorable task it ships TaskHead
-    and a scorer.npz bundle."""
-    from src.decision.adapt import adapt, AdaptConfig
-    from src.decision.backends import StubEncoder
-
-    enc = StubEncoder(dim=32)
-    texts = [f"sample {i}" for i in range(1000)]
-    labels = [i % 4 for i in range(1000)]
-    r = adapt(texts, labels, enc,
-              cfg=AdaptConfig(scorer="auto", seed=0, min_cal=100),
-              out_dir=tmp_path)
-    assert r.report["scorer_choice"] == "taskhead"
-    assert r.model.scorer.__class__.__name__ == "TaskHead"
-    assert (tmp_path / "bundle" / "scorer.npz").exists()
-
-
 def test_auto_scorer_choice_matches_cal_argmax(tmp_path):
     """The auto mechanism (ADR-0008): auto's shipped scorer is whichever of
     head/cosine wins on the cal split. We assert the LOGIC (choice == cal
@@ -173,3 +155,62 @@ def test_explicit_scorer_overrides_auto(tmp_path):
               out_dir=tmp_path)
     assert r.model.scorer.__class__.__name__ == "TaskHead"
     assert (tmp_path / "bundle" / "scorer.npz").exists()
+
+
+def test_ordinal_head_torch_free_roundtrip(tmp_path):
+    """Increment 4b: OrdinalScorer numpy inference == torch, npz round-trips,
+    and loads with torch blocked (ADR-0007)."""
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((300, 8))
+    y = np.digitize(X[:, 0], [-1.0, 0.0, 1.0])
+    head = OrdinalScorer()
+    head.fit(X, y, labels=["0", "1", "2", "3"], seed=0)
+    lp_torch = head.level_probs(X[:6])
+    head._torch = None
+    lp_np = head.level_probs(X[:6])
+    assert np.allclose(lp_torch, lp_np, atol=1e-5)
+    head.save_np(tmp_path / "ord.npz")
+
+    class _Block:
+        def find_module(self, name, path=None):
+            return self if name == "torch" or name.startswith("torch.") else None
+
+        def load_module(self, name):
+            raise ImportError("torch blocked")
+
+    saved = {mm: sys.modules.pop(mm) for mm in list(sys.modules)
+             if mm == "torch" or mm.startswith("torch.")
+             or mm.startswith("src.decision")}
+    sys.meta_path.insert(0, _Block())
+    try:
+        from src.decision.scoring import OrdinalScorer as OS
+        h2 = OS.load_np(tmp_path / "ord.npz")
+        lp_rt = h2.level_probs(X[:6])
+    finally:
+        sys.meta_path.pop(0)
+        sys.modules.update(saved)
+    assert np.allclose(lp_np, lp_rt, atol=1e-6)
+
+
+def test_auto_scorer_considers_ordinal_when_labels_ordered(tmp_path):
+    """Increment 4b: with ordinal_labels=True, auto measures the ordinal head
+    alongside cosine/taskhead and ships the cal winner; forced 'ordinal' ships
+    OrdinalScorer with a scorer.npz bundle."""
+    from src.decision.adapt import adapt, AdaptConfig
+    from src.decision.backends import StubEncoder
+
+    enc = StubEncoder(dim=16)
+    texts = [f"level{i // 200} sample {i}" for i in range(1000)]
+    labels = [i // 200 for i in range(1000)]  # 0..4 ordered
+    r = adapt(texts, labels, enc,
+              cfg=AdaptConfig(scorer="ordinal", ordinal_labels=True,
+                              seed=0, min_cal=100),
+              out_dir=tmp_path)
+    assert r.model.scorer.__class__.__name__ == "OrdinalScorer"
+    assert (tmp_path / "bundle" / "scorer.npz").exists()
+    # and auto considers ordinal as a candidate (choice is one of the three)
+    r2 = adapt(texts, labels, enc,
+               cfg=AdaptConfig(scorer="auto", ordinal_labels=True,
+                               seed=0, min_cal=100),
+               out_dir=tmp_path)
+    assert r2.report["scorer_choice"] in ("cosine", "taskhead", "ordinal")

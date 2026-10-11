@@ -260,11 +260,14 @@ class DecisionModel:
         if sc.get("path"):
             if sc.get("format") == "npz":
                 # torch-free load (ADR-0007)
-                if sc.get("class") != "TaskHead":
+                np_loaders = {"TaskHead": TaskHead.load_np,
+                              "OrdinalScorer": OrdinalScorer.load_np}
+                np_loader = np_loaders.get(sc.get("class"))
+                if np_loader is None:
                     raise ValueError(
-                        f"npz scorer format only supports TaskHead, got "
+                        f"npz scorer format supports TaskHead/OrdinalScorer, got "
                         f"{sc.get('class')!r}")
-                scorer = TaskHead.load_np(d / sc["path"])
+                scorer = np_loader(d / sc["path"])
             else:
                 loaders = {"TaskHead": TaskHead.load,
                            "OrdinalScorer": OrdinalScorer.load}
