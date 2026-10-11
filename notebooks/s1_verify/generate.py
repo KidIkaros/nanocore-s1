@@ -1064,6 +1064,11 @@ try:
         "image_only": _unit(E_img),
     }
 
+    flat_opts = [c for s, i in all_idx for c in sq[s][i]["choices"]]
+    O = _unit(to_numpy(enc_v.encode(flat_opts, prompt_name="Document",
+                                    batch_size=64))).reshape(len(all_idx), N_OPT, -1)
+    y_all = np.array([int(sq[s][i]["answer"]) for s, i in all_idx], dtype=int)
+
     # COMPOSED arm (component 38): train a composer on the (image, question)
     # item pairs from the fit split, compose each state through it, score.
     # This is the E4-deciding arm — composition that LEARNS the image+text
@@ -1092,11 +1097,6 @@ try:
         print(f"composer arm failed: {repr(_ce)[:200]}")
         RESULTS.setdefault("multimodal", {})["composer"] = {
             "status": "failed", "error": repr(_ce)[:200]}
-
-    flat_opts = [c for s, i in all_idx for c in sq[s][i]["choices"]]
-    O = _unit(to_numpy(enc_v.encode(flat_opts, prompt_name="Document",
-                                    batch_size=64))).reshape(len(all_idx), N_OPT, -1)
-    y_all = np.array([int(sq[s][i]["answer"]) for s, i in all_idx], dtype=int)
 
     def arm_eval(vecs):
         """(n, N_OPT) cosine scores → (calibrated gate block + set stats, errors).
