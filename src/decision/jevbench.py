@@ -100,9 +100,18 @@ def confidence(probs: List[float]) -> float:
     return max(0.0, min(1.0, (k * max(probs) - 1) / (k - 1))) if k > 1 else 1.0
 
 
-def _choice_answer(model, state, q: dict) -> Optional[dict]:
+def _choice_answer(model, state, q: dict, pair=None) -> Optional[dict]:
     keys = list(q["criteria"])
     labels = [option_label(k, q["criteria"][k]) for k in keys]
+    items = _pair_items(state)
+    # Pair choice: a 2-option binary judgment on a pair state (boolq yes/no,
+    # paws paraphrase) reads cosine(u,v) as P(first option) — the native
+    # similarity primitive, not a pooled-state cosine against label text.
+    if items is not None and pair is not None and len(keys) == 2:
+        p_yes = float(pair.noul(items[0], items[1]))
+        probs = {keys[0]: p_yes, keys[1]: 1.0 - p_yes}
+        return {"type": "choice", "choice": keys[0] if p_yes >= 0.5 else keys[1],
+                "probabilities": probs, "confidence": confidence(list(probs.values()))}
     pred = model.decide(state, Question(qtype="choice", options=labels))
     if pred.action not in _ANSWERED:
         return None
@@ -248,7 +257,7 @@ def nanocore_answers(model, state: Any, questions: Dict[str, dict],
         else:
             state_obj = State(items=items)
         if kind == "choice":
-            a = _choice_answer(model, state_obj, q)
+            a = _choice_answer(model, state_obj, q, pair=pair)
         elif kind == "noul":
             a = _noul_answer(model, state_obj, q, pair=pair)
         elif kind == "score":

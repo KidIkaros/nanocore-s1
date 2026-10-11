@@ -143,3 +143,47 @@ def test_score_answer_legend_uses_original_levels():
     out = nanocore_answers(_StubModel(), "the movie was great", q)
     assert out["rate"]["legend"] == {"0": "Very negative.", "1": "Neutral.",
                                      "2": "Very positive."}
+
+
+def test_pair_choice_routes_through_pair_scorer():
+    """Increment 4a: a 2-option choice on a pair state reads cosine(u,v) as
+    P(first option) — the native similarity primitive, not pooled cosine."""
+    from src.decision.pair import PairScorer
+    from src.decision.backends import StubEncoder
+    from src.decision.jevbench import nanocore_answers
+
+    enc = StubEncoder(dim=16)
+    pair = PairScorer(encoder=enc)
+    state = {"sentence1": "the cat sat on the mat",
+             "sentence2": "a feline rested on the rug"}
+    q = {"type": "choice", "instructions": "are these paraphrases?",
+         "criteria": {"yes": "yes", "no": "no"}}
+
+    class FakeModel:
+        def decide(self, *a, **k):
+            raise AssertionError("pooled path must not run for a pair choice")
+
+    ans = nanocore_answers(FakeModel(), state, {"q1": q}, pair=pair)
+    assert ans is not None and "q1" in ans
+    a = ans["q1"]
+    assert a["type"] == "choice"
+    assert a["choice"] in ("yes", "no")
+    assert abs(sum(a["probabilities"].values()) - 1.0) < 1e-9
+
+
+def test_non_pair_choice_still_uses_pooled_path():
+    """A single-field state keeps the pooled-state cosine path (no regression)."""
+    from src.decision.pair import PairScorer
+    from src.decision.backends import StubEncoder
+    from src.decision.jevbench import nanocore_answers
+    from src.decision.model import DecisionModel
+    from src.decision.scoring import CosineScorer
+
+    enc = StubEncoder(dim=16)
+    pair = PairScorer(encoder=enc)
+    model = DecisionModel(encoder=enc, scorer=CosineScorer(), gate=None, cache=None)
+    state = "a single sentence"  # not a pair
+    q = {"type": "choice", "instructions": "classify",
+         "criteria": {"a": "class a", "b": "class b"}}
+    ans = nanocore_answers(model, state, {"q1": q}, pair=pair)
+    assert ans is not None and "q1" in ans  # went through pooled decide()
