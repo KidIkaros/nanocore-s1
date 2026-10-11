@@ -48,6 +48,8 @@ class AdaptConfig:
     answer_precision: float = 0.90
     glial: bool = False           # attach the label-free slow state to the gate
     composer: bool = False        # train a composer (component 38) and compose states through it
+    scorer: str = "auto"          # "auto" | "taskhead" | "cosine" — auto measures
+                                  # both on cal and ships the winner (ADR-0008)
 
 
 @dataclass
@@ -198,6 +200,19 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
     cal = gate.calibrate(head.logits(X[ci]), y_idx[ci], seed=cfg.seed)
     head.temperature = gate.t_prob
 
+    # ── scorer selection (ADR-0008 + scoring-improvement research): the head
+    #    is NOT a universal win (banking77: tie; emotion/ag_news/dbpedia: head
+    #    wins). "auto" measures both on the cal split and ships the winner;
+    #    explicit "taskhead"/"cosine" forces the choice. Zero-shot cosine is
+    #    always the cold-start fallback (no labeled fit data).
+    scorer_choice = cfg.scorer
+    if scorer_choice == "auto":
+        cos_pred_cal = (X[ci] @ LV.T).argmax(axis=1)
+        cos_cal_acc = float((cos_pred_cal == y_idx[ci]).mean())
+        head_cal_acc = float((head.logits(X[ci]).argmax(axis=1) == y_idx[ci]).mean())
+        scorer_choice = "taskhead" if head_cal_acc >= cos_cal_acc else "cosine"
+    shipped_scorer = head if scorer_choice == "taskhead" else CosineScorer(temperature=gate.t_prob)
+
     # ── optional in-schema threshold (needs real OOS examples)
     tau_in = None
     if oos_texts:
@@ -217,7 +232,7 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
         glial = {"activate_at": bar, "n_reference": int(len(cal_scores)),
                  "reference_max_score": state.config.reference_max_score}
 
-    model = DecisionModel(encoder=encoder, scorer=head, gate=gate,
+    model = DecisionModel(encoder=encoder, scorer=shipped_scorer, gate=gate,
                           composer=composer_obj)
 
     # ── evaluate once, on the untouched test split
@@ -226,6 +241,7 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
         "splits": {"fit": len(fi), "cal": len(ci), "test": len(ti),
                    "time_ordered": cfg.time_ordered, "seed": cfg.seed},
         "headroom": headroom,
+        "scorer_choice": scorer_choice,
         "head": {"kind": cfg.head_kind, **train_rec},
         "calibration": cal,
         "tau_in_schema": tau_in,

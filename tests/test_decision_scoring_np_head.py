@@ -102,3 +102,74 @@ def test_bundle_ships_npz_and_loads_torch_free(tmp_path):
         sys.meta_path.pop(0)
         sys.modules.update(saved)
     assert p1.probabilities == p2.probabilities
+
+
+def test_auto_scorer_picks_head_when_head_wins(tmp_path):
+    """Increment 3 (ADR-0008 + research): 'auto' measures head vs cosine on the
+    cal split and ships the winner. On a head-favorable task it ships TaskHead
+    and a scorer.npz bundle."""
+    from src.decision.adapt import adapt, AdaptConfig
+    from src.decision.backends import StubEncoder
+
+    enc = StubEncoder(dim=32)
+    texts = [f"sample {i}" for i in range(1000)]
+    labels = [i % 4 for i in range(1000)]
+    r = adapt(texts, labels, enc,
+              cfg=AdaptConfig(scorer="auto", seed=0, min_cal=100),
+              out_dir=tmp_path)
+    assert r.report["scorer_choice"] == "taskhead"
+    assert r.model.scorer.__class__.__name__ == "TaskHead"
+    assert (tmp_path / "bundle" / "scorer.npz").exists()
+
+
+def test_auto_scorer_choice_matches_cal_argmax(tmp_path):
+    """The auto mechanism (ADR-0008): auto's shipped scorer is whichever of
+    head/cosine wins on the cal split. We assert the LOGIC (choice == cal
+    argmax) rather than a fragile stub outcome, and that the shipped scorer
+    and bundle artifact follow the choice."""
+    from src.decision.adapt import adapt, AdaptConfig, split_indices
+    from src.decision.backends import StubEncoder
+    from src.decision.scoring import TaskHead
+    import numpy as np
+
+    enc = StubEncoder(dim=32)
+    texts = [f"topic{i % 3} text sample {i}" for i in range(900)]
+    labels = [i % 3 for i in range(900)]
+    r = adapt(texts, labels, enc,
+              cfg=AdaptConfig(scorer="auto", seed=0, min_cal=100),
+              out_dir=tmp_path)
+
+    # recompute the cal argmax independently
+    X = enc.encode(texts)
+    y_idx = np.array(labels)
+    fi, ci, ti = split_indices(900, 0.5, 0.25, 0, y=y_idx)
+    classes = sorted(set(labels))
+    LV = enc.encode_options(classes)
+    cos_acc = float(((X[ci] @ LV.T).argmax(1) == y_idx[ci]).mean())
+    h = TaskHead()
+    h.fit(X[fi], y_idx[fi], labels=classes, seed=0)
+    head_acc = float((h.logits(X[ci]).argmax(1) == y_idx[ci]).mean())
+    expected = "taskhead" if head_acc >= cos_acc else "cosine"
+
+    assert r.report["scorer_choice"] == expected
+    if expected == "taskhead":
+        assert r.model.scorer.__class__.__name__ == "TaskHead"
+        assert (tmp_path / "bundle" / "scorer.npz").exists()
+    else:
+        assert r.model.scorer.__class__.__name__ == "CosineScorer"
+        assert not (tmp_path / "bundle" / "scorer.npz").exists()
+
+
+def test_explicit_scorer_overrides_auto(tmp_path):
+    """An explicit 'taskhead'/'cosine' forces the choice regardless of cal."""
+    from src.decision.adapt import adapt, AdaptConfig
+    from src.decision.backends import StubEncoder
+
+    enc = StubEncoder(dim=32)
+    texts = [f"topic{i % 3} text sample {i}" for i in range(900)]
+    labels = [i % 3 for i in range(900)]
+    r = adapt(texts, labels, enc,
+              cfg=AdaptConfig(scorer="taskhead", seed=0, min_cal=100),
+              out_dir=tmp_path)
+    assert r.model.scorer.__class__.__name__ == "TaskHead"
+    assert (tmp_path / "bundle" / "scorer.npz").exists()
