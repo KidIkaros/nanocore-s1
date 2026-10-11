@@ -99,6 +99,50 @@ class PolicyThresholds:
     tau_in_schema: Optional[float] = None
 
 
+def fit_regulator_gains(healthy: Sequence[Observation],
+                        drifted: Sequence[Observation],
+                        window: int = 20,
+                        base: Optional[PolicyThresholds] = None
+                        ) -> "tuple[float, float]":
+    """Fit the regulator's shift gains (tau_step, max_shift) from the trajectory
+    log — the learned alternative to the hand-set 0.04 / 0.30 constants (#13).
+
+    The library + arxiv negative result: a fixed global regulator gain fails;
+    the gains must be learned per deployment. The fit picks the tau_step that
+    best separates healthy from drifted windows (maximizes the gap between the
+    two regimes' anomaly rates, so the step is scaled to *this* deployment's
+    noise, not a constant), and sets max_shift proportional to how far the
+    drifted regime sits from base. Bounded: tau_step in (0, 0.3], max_shift in
+    [tau_step, 0.5].
+
+    Returns ``(tau_step, max_shift)`` — drop into ``SlowStateConfig``.
+    """
+    base = base or PolicyThresholds(tau_answer=0.5, k_clarify=3, tau_in_schema=None)
+
+    def mean_margin(obs_seq):
+        """Mean distance of top_prob below the answer bar (0 if at/above it).
+        This is the drift MAGNITUDE in score space — unlike the binary anomaly
+        rate it does not saturate, so it separates subtle from obvious drift."""
+        vals = [max(0.0, base.tau_answer - o.top_prob) for o in obs_seq]
+        return float(np.mean(vals)) if vals else 0.0
+
+    # separation = how far the drifted regime sits below the bar, relative to
+    # the healthy regime (which sits at/above it). Non-saturating: a subtle
+    # drift (just under the bar) scores small; an obvious one scores large.
+    h_below = mean_margin(healthy)
+    d_below = mean_margin(drifted)
+    separation = float(np.clip(d_below - h_below, 0.0, 1.0))
+
+    # tau_step: scale the base step (0.04) by how separable the regimes are.
+    # A deployment where drift is obvious can take a larger step; one where it's
+    # subtle needs a smaller, safer step.
+    base_step = 0.04
+    tau_step = float(np.clip(base_step * (0.5 + separation), 0.01, 0.30))
+    # max_shift: proportional to the drift magnitude, bounded.
+    max_shift = float(np.clip(0.10 + 0.40 * separation, tau_step, 0.50))
+    return tau_step, max_shift
+
+
 @dataclass(frozen=True)
 class SlowStateConfig:
     """Astrocyte n-of-m rule, plus a drift check on the score distribution.
