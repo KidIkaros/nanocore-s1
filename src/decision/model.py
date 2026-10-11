@@ -223,7 +223,13 @@ class DecisionModel:
         manifest = {"encoder_id": self.encoder_id, "scorer": None, "gate": None}
 
         if self.scorer is not None:
-            if hasattr(self.scorer, "save"):
+            if hasattr(self.scorer, "save_np"):
+                # torch-free artifact (ADR-0007): the shipped bundle carries
+                # numpy weights, loadable and inferable without torch
+                self.scorer.save_np(d / "scorer.npz")
+                manifest["scorer"] = {"class": self.scorer.__class__.__name__,
+                                      "path": "scorer.npz", "format": "npz"}
+            elif hasattr(self.scorer, "save"):
                 self.scorer.save(d / "scorer.pt")
                 manifest["scorer"] = {"class": self.scorer.__class__.__name__,
                                       "path": "scorer.pt"}
@@ -252,13 +258,22 @@ class DecisionModel:
         manifest = json.loads((d / "manifest.json").read_text())
         sc = manifest.get("scorer") or {}
         if sc.get("path"):
-            loaders = {"TaskHead": TaskHead.load, "OrdinalScorer": OrdinalScorer.load}
-            loader = loaders.get(sc.get("class"))
-            if loader is None:
-                raise ValueError(
-                    f"bundle carries scorer class {sc.get('class')!r} with a "
-                    f"persisted artifact, but no loader is registered for it")
-            scorer = loader(d / sc["path"])
+            if sc.get("format") == "npz":
+                # torch-free load (ADR-0007)
+                if sc.get("class") != "TaskHead":
+                    raise ValueError(
+                        f"npz scorer format only supports TaskHead, got "
+                        f"{sc.get('class')!r}")
+                scorer = TaskHead.load_np(d / sc["path"])
+            else:
+                loaders = {"TaskHead": TaskHead.load,
+                           "OrdinalScorer": OrdinalScorer.load}
+                loader = loaders.get(sc.get("class"))
+                if loader is None:
+                    raise ValueError(
+                        f"bundle carries scorer class {sc.get('class')!r} with a "
+                        f"persisted artifact, but no loader is registered for it")
+                scorer = loader(d / sc["path"])
         elif sc.get("class") in (None, "CosineScorer") or "temperature" in sc:
             scorer = CosineScorer(temperature=sc.get("temperature", 1.0))
         else:

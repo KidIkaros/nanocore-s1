@@ -416,9 +416,12 @@ class TaskHead:
         numpy matmuls. Torch is used only if numpy weights are absent and a
         fitted net exists (the train-time path)."""
         X = (np.asarray(X, dtype=np.float32) - self._mu) / self._sd
+        # prefer the torch-free numpy path whenever numpy weights are present
+        # (ADR-0007): a fitted head extracted them at fit time, so scores()
+        # never needs torch even though _torch is still set from training
+        if self._W is not None or self._W1 is not None:
+            return self._numpy_forward(X)
         if self._torch is None:
-            if self._W is not None or self._W1 is not None:
-                return self._numpy_forward(X)
             raise RuntimeError("TaskHead is not fitted")
         import torch
         with torch.no_grad():

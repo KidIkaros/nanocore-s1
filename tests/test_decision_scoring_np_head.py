@@ -59,3 +59,46 @@ def test_npz_roundtrip_and_torch_free_load(kind, tmp_path):
         sys.meta_path.pop(0)
         sys.modules.update(saved)
     assert np.allclose(lg_before, lg_after, atol=1e-6)
+
+
+def test_bundle_ships_npz_and_loads_torch_free(tmp_path):
+    """Increment 2: a DecisionModel with a TaskHead scorer saves scorer.npz
+    (no scorer.pt), and load() rebuilds a torch-free model with identical
+    decisions — the ADR-0007 bundle guarantee for the promoted scorer."""
+    from src.decision.model import DecisionModel
+    from src.decision.backends import StubEncoder
+    from src.decision.schema import Question
+
+    enc = StubEncoder(dim=16)
+    texts = [f"class {i % 3} sample {i}" for i in range(200)]
+    labels = [i % 3 for i in range(200)]
+    E = enc.encode(texts)
+    head = TaskHead(kind="linear")
+    head.fit(E, labels, labels=["0", "1", "2"], seed=0)
+    m = DecisionModel(encoder=enc, scorer=head, gate=None, cache=None)
+    q = Question(qtype="choice", options=["0", "1", "2"])
+    p1 = m.decide("class 1 sample 5", q)
+
+    m.save(tmp_path)
+    files = sorted(p.name for p in tmp_path.iterdir())
+    assert "scorer.npz" in files and "scorer.pt" not in files
+
+    class _Block:
+        def find_module(self, name, path=None):
+            return self if name == "torch" or name.startswith("torch.") else None
+
+        def load_module(self, name):
+            raise ImportError("torch blocked")
+
+    saved = {mm: sys.modules.pop(mm) for mm in list(sys.modules)
+             if mm == "torch" or mm.startswith("torch.")
+             or mm.startswith("src.decision")}
+    sys.meta_path.insert(0, _Block())
+    try:
+        from src.decision.model import DecisionModel as DM
+        m2 = DM.load(tmp_path, encoder=enc)
+        p2 = m2.decide("class 1 sample 5", q)
+    finally:
+        sys.meta_path.pop(0)
+        sys.modules.update(saved)
+    assert p1.probabilities == p2.probabilities
