@@ -284,3 +284,85 @@ def selective_at_coverage(confidences, correct, coverage: float) -> float:
     n = max(1, int(round(coverage * len(hit))))
     order = np.argsort(-conf)
     return float(hit[order[:n]].mean())
+
+
+# ── debiased calibration estimation (ticket #11) ─────────────────────────────
+# Equal-width binning is biased UPWARD, worst for already-calibrated models
+# (arXiv:2012.08668) — which is why the first-cut ECE in #10 narrowly missed the
+# 0.05 bar on a head that is probably fine. Equal-MASS bins remove that bias.
+# The bootstrap CI for ECE is invalid (arXiv:2408.08998); the l2-ECE has an
+# asymptotic normal CI (each sample contributes a mass-weighted per-bin gap).
+
+def equal_mass_ece(confidences, correct, n_bins: int = 15) -> float:
+    """Debiased ECE via equal-MASS (equal-count) bins instead of equal-width.
+
+    Same weighted-mean-of-gaps definition as ``expected_calibration_error``, but
+    bin edges are quantiles of the confidence distribution so every bin holds
+    ~n/B samples. Equal-width bins oversample the sparse high-confidence tail
+    and bias ECE upward — worst exactly when the model is already calibrated
+    (arXiv:2012.08668), the regime a good decision head lives in.
+    """
+    conf = np.asarray(confidences, dtype=np.float64).reshape(-1)
+    hit = np.asarray(correct, dtype=np.float64).reshape(-1)
+    if conf.shape != hit.shape:
+        raise ValueError("confidences and correct must have the same length")
+    n = len(conf)
+    if n == 0:
+        return float("nan")
+    order = np.argsort(conf)
+    conf, hit = conf[order], hit[order]
+    edges = np.linspace(0, n, n_bins + 1).astype(int)
+    total = 0.0
+    for i in range(n_bins):
+        lo, hi = edges[i], edges[i + 1]
+        if hi <= lo:
+            continue
+        m = hi - lo
+        gap = abs(float(conf[lo:hi].mean()) - float(hit[lo:hi].mean()))
+        total += (m / n) * gap
+    return float(total)
+
+
+def equal_mass_ece_ci(confidences, correct, n_bins: int = 15,
+                      confidence: float = 0.95) -> Dict[str, float]:
+    """Point estimate + asymptotic normal CI for the equal-mass ECE.
+
+    The l2-ECE is an average of per-sample terms ``w_i * |gap_i|`` where each
+    sample's contribution is its bin's mass-weighted confidence-vs-accuracy gap.
+    Under the asymptotic-normal result (arXiv:2408.08998) the CI is
+    ``point ± z * sd(terms) / sqrt(n)`` — a valid interval, unlike the bootstrap
+    (arXiv:2408.08998 shows the percentile bootstrap is invalid for ECE).
+    """
+    conf = np.asarray(confidences, dtype=np.float64).reshape(-1)
+    hit = np.asarray(correct, dtype=np.float64).reshape(-1)
+    if conf.shape != hit.shape:
+        raise ValueError("confidences and correct must have the same length")
+    n = len(conf)
+    if n == 0:
+        return {"point": float("nan"), "lo": float("nan"), "hi": float("nan")}
+    order = np.argsort(conf)
+    conf, hit = conf[order], hit[order]
+    edges = np.linspace(0, n, n_bins + 1).astype(int)
+    # Point = the equal-mass ECE (mass-weighted mean of per-bin |conf-acc| gaps),
+    # identical to ``equal_mass_ece``. The asymptotic SE comes from the per-sample
+    # deviations ``e_i = w_bin * (|conf_i - hit_i| - gap_bin)``: each sample's
+    # own absolute error minus its bin's mean gap. Summing e_i gives ~0 (they
+    # average to the ECE); Var(e_i)/n is the variance of the estimator
+    # (arXiv:2408.08998). Using the raw |conf-hit| as the term would sum to
+    # ~n*ECE, not ECE — that was the bug; the mean-gap centering is the fix.
+    point = 0.0
+    dev_terms = np.zeros(n)
+    for i in range(n_bins):
+        lo, hi = edges[i], edges[i + 1]
+        if hi <= lo:
+            continue
+        m = hi - lo
+        w = m / n
+        gap = abs(float(conf[lo:hi].mean()) - float(hit[lo:hi].mean()))
+        point += w * gap
+        dev_terms[lo:hi] = w * (np.abs(conf[lo:hi] - hit[lo:hi]) - gap)
+    sd = float(dev_terms.std(ddof=1)) if n > 1 else 0.0
+    z = {0.90: 1.645, 0.95: 1.960, 0.99: 2.576}.get(round(confidence, 2), 1.960)
+    half = z * sd / np.sqrt(n)
+    return {"point": point, "lo": max(0.0, point - half), "hi": point + half,
+            "n": n, "n_bins": n_bins, "confidence": confidence}
