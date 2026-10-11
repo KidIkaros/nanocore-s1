@@ -10,7 +10,12 @@ here; ticket #11 adds the debiased equal-mass estimator + asymptotic CI.
 Reproducible from cached artifacts alone — no encoder load, deterministic seed.
 """
 import json
+import sys
+from pathlib import Path
+
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root for `src`
 from src.decision.scoring import TaskHead, softmax_rows, aps_members
 from src.decision.gate import ConformalGate
 
