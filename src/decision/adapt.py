@@ -29,6 +29,7 @@ from src.decision.scoring import (CosineScorer, TaskHead, OrdinalScorer,
                                   softmax_rows, aps_members)
 from src.decision.items import to_numpy
 from src.decision.gate import ConformalGate
+from src.decision.metrics import brier_score
 from src.decision.model import DecisionModel
 from src.decision.slow import SlowStateConfig, observe_row
 
@@ -54,6 +55,37 @@ class AdaptConfig:
                                   # and ships the winner (ADR-0008)
     ordinal_labels: bool = False  # labels are ordered (sst5/mnli): auto also
                                   # considers the ordinal head
+
+
+def select_scorer_gated(cos_scores: np.ndarray, head_scores: np.ndarray,
+                        y_idx: np.ndarray, t_cos: float, t_head: float,
+                        forced: Optional[str] = None,
+                        margin: float = 0.02) -> str:
+    """Gated per-anchor scorer choice (#14) — the #6 gate's decision leg.
+
+    Ships the trained head only if it beats cosine on the **proper score**
+    (Brier, lower better) by ``margin``; a near-tie or a cosine win keeps
+    cosine (ADR-0008 non-inferiority). Raw cal-accuracy argmax is wrong:
+    banking77's head ties on accuracy (+0.001) but its Brier is 7.6x better,
+    so the proper score — the gate's primary criterion — is what decides.
+
+    ``forced`` ("taskhead"/"cosine") overrides auto. Returns "taskhead" or
+    "cosine".
+    """
+    if forced in ("taskhead", "cosine"):
+        return forced
+    y_idx = np.asarray(y_idx)
+    k = cos_scores.shape[1]
+    onehot = np.eye(k)[y_idx]
+    brier_cos = brier_score(_softmax(cos_scores, t_cos), onehot)
+    brier_head = brier_score(_softmax(head_scores, t_head), onehot)
+    delta = brier_cos - brier_head          # >0 => head better (lower Brier)
+    return "taskhead" if delta > margin else "cosine"
+
+
+def _softmax(scores: np.ndarray, t: float) -> np.ndarray:
+    from src.decision.scoring import softmax_rows
+    return softmax_rows(np.asarray(scores, dtype=np.float64), t)
 
 
 @dataclass
@@ -218,14 +250,27 @@ def adapt(texts: Sequence[str], labels: Sequence, encoder,
 
     scorer_choice = cfg.scorer
     if scorer_choice == "auto":
-        cos_pred_cal = (X[ci] @ LV.T).argmax(axis=1)
-        cos_cal_acc = float((cos_pred_cal == y_idx[ci]).mean())
-        head_cal_acc = float((head.logits(X[ci]).argmax(axis=1) == y_idx[ci]).mean())
-        candidates = {"cosine": cos_cal_acc, "taskhead": head_cal_acc}
+        # Gated selection (#14): the head ships only if it wins the proper-score
+        # (Brier) comparison by a margin; a near-tie keeps cosine (ADR-0008).
+        # Cosine scores on the cal split at the gate's t_prob; head logits at
+        # its fitted temperature. Raw cal-accuracy argmax is retired — it would
+        # flip banking77 on a +0.001 accuracy tie the proper score says is a
+        # non-inferiority keep-cosine (the head's Brier win is the real signal,
+        # but ADR-0008 wants a real margin, not a coin-flip accuracy tie).
+        cos_cal_scores = X[ci] @ LV.T
+        head_cal_scores = head.logits(X[ci])
+        gated = select_scorer_gated(cos_cal_scores, head_cal_scores, y_idx[ci],
+                                    t_cos=gate.t_prob or 1.0,
+                                    t_head=head.temperature)
+        # ordinal, when present, competes on the same proper score
         if ordinal_head is not None:
-            candidates["ordinal"] = float(
-                (ordinal_head.level_probs(X[ci]).argmax(1) == y_idx[ci]).mean())
-        scorer_choice = max(candidates, key=candidates.get)
+            ord_cal = ordinal_head.level_probs(X[ci])
+            ord_brier = brier_score(ord_cal, np.eye(len(classes))[y_idx[ci]])
+            head_brier = brier_score(_softmax(head_cal_scores, head.temperature),
+                                     np.eye(len(classes))[y_idx[ci]])
+            if ord_brier < head_brier - 0.02:
+                gated = "ordinal"
+        scorer_choice = gated
     shipped_scorer = {"taskhead": head, "ordinal": ordinal_head}.get(
         scorer_choice, CosineScorer(temperature=gate.t_prob))
 
