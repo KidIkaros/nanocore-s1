@@ -352,3 +352,22 @@ def test_slow_state_is_reexported_for_the_experiment_module():
     from src.decision import policy
     assert policy.SlowState is SlowState
     assert policy.PolicyThresholds is PolicyThresholds
+
+
+def test_attach_slow_state_inherits_gate_t_set():
+    """G9 / pre-mortem #6: the slow state's set_size must be built at the same
+    t_set the action was chosen on. attach_slow_state inherits the gate's
+    fitted t_set so a direct SlowState construction cannot drift."""
+    import numpy as np
+    from src.decision.gate import ConformalGate
+    from src.decision.slow import SlowStateConfig
+    rng = np.random.default_rng(0)
+    scores = rng.standard_normal((200, 5))
+    y = rng.integers(0, 5, 200)
+    g = ConformalGate()
+    g.calibrate(scores, y, seed=0)
+    slow = g.attach_slow_state(SlowStateConfig())
+    assert slow._cfg.t_set == g.t_set, "slow state must inherit the gate's t_set"
+    # and an explicit override still wins
+    slow2 = g.attach_slow_state(SlowStateConfig(t_set=0.5))
+    assert slow2._cfg.t_set == 0.5

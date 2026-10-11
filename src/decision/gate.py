@@ -19,7 +19,7 @@ Three measured traps are encoded as defaults:
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
@@ -179,7 +179,12 @@ class ConformalGate:
         policy exactly. Call ``calibrate_slow`` with a healthy reference stream
         before serving — the activation bar is fitted, not guessed.
         """
-        self.slow = SlowState(self.base_thresholds(), cfg or SlowStateConfig())
+        cfg = cfg or SlowStateConfig()
+        if cfg.t_set is None:
+            # inherit the gate's own fitted set temperature so the slow
+            # state's set_size matches the action's set (G9 / pre-mortem #6)
+            cfg = replace(cfg, t_set=self.t_set)
+        self.slow = SlowState(self.base_thresholds(), cfg)
         return self.slow
 
     def calibrate_slow(self, reference: Sequence[Observation]) -> int:

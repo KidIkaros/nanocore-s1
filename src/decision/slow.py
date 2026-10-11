@@ -114,6 +114,12 @@ class SlowStateConfig:
     tau_step: float = 0.04
     max_shift: float = 0.30
     reference_max_score: Optional[float] = None
+    # The temperature the conformal set (and therefore set_size, which
+    # k_clarify reads) is built at. The gate fills this from its OWN fitted
+    # t_set at attach time, so the slow state can never measure a different
+    # set than the action was chosen on — the v26/v27 threshold-collapse class
+    # (pre-mortem #6 / mechanism G9). None means "inherit from the gate".
+    t_set: Optional[float] = None
     drift_margin: float = 0.10
 
 
