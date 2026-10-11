@@ -115,3 +115,44 @@ def test_near_tie_keeps_cosine_despite_marginal_head_cal_acc(tmp_path):
     s = rng.normal(0, 2, (n, k))
     from src.decision.adapt import select_scorer_gated
     assert select_scorer_gated(s, s.copy(), y, t_cos=1.0, t_head=1.0) == "cosine"
+
+
+def test_forced_ordinal_ships_npz_torch_free(tmp_path):
+    """#15 acceptance: an ordered-label anchor forced to 'ordinal' ships an
+    OrdinalScorer as scorer.npz, and the bundle loads + decides with torch
+    blocked (ADR-0007)."""
+    import sys
+    from src.decision.adapt import adapt, AdaptConfig
+    from src.decision.backends import StubEncoder
+    from src.decision.schema import Question
+
+    enc = StubEncoder(dim=16)
+    texts = [f"level{i // 200} sample {i}" for i in range(1000)]  # ordered 0..4
+    labels = [i // 200 for i in range(1000)]
+    r = adapt(texts, labels, enc,
+              cfg=AdaptConfig(scorer="ordinal", ordinal_labels=True,
+                              seed=0, min_cal=100),
+              out_dir=tmp_path)
+    assert r.model.scorer.__class__.__name__ == "OrdinalScorer"
+    assert (tmp_path / "bundle" / "scorer.npz").exists()
+
+    class _Block:
+        def find_module(self, name, path=None):
+            return self if name == "torch" or name.startswith("torch.") else None
+
+        def load_module(self, name):
+            raise ImportError("torch blocked")
+
+    saved = {mm: sys.modules.pop(mm) for mm in list(sys.modules)
+             if mm == "torch" or mm.startswith("torch.")
+             or mm.startswith("src.decision")}
+    sys.meta_path.insert(0, _Block())
+    try:
+        from src.decision.model import DecisionModel
+        m2 = DecisionModel.load(tmp_path / "bundle", encoder=enc)
+        p = m2.decide("level1 sample 5",
+                      Question(qtype="score", options=["0", "1", "2", "3", "4"]))
+    finally:
+        sys.meta_path.pop(0)
+        sys.modules.update(saved)
+    assert abs(sum(p.probabilities.values()) - 1.0) < 1e-6
