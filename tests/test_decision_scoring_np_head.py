@@ -104,14 +104,22 @@ def test_bundle_ships_npz_and_loads_torch_free(tmp_path):
     assert p1.probabilities == p2.probabilities
 
 
-def test_auto_scorer_choice_matches_cal_argmax(tmp_path):
-    """The auto mechanism (ADR-0008): auto's shipped scorer is whichever of
-    head/cosine wins on the cal split. We assert the LOGIC (choice == cal
-    argmax) rather than a fragile stub outcome, and that the shipped scorer
-    and bundle artifact follow the choice."""
+def test_auto_scorer_choice_matches_brier_gate(tmp_path):
+    """The auto mechanism (ADR-0008): auto's shipped scorer is the gated winner
+    — the head ships only if it beats cosine on the Brier proper score by a
+    margin; a near-tie or cosine win keeps cosine. We assert the LOGIC (choice
+    == the Brier gate) rather than a fragile stub outcome, and that the shipped
+    scorer and bundle artifact follow the choice.
+
+    (This replaced an argmax version: raw cal-accuracy argmax was retired by
+    #14 — on a stub where head ties cosine on accuracy, argmax says taskhead but
+    the Brier gate correctly says cosine, and the razor-thin delta made the old
+    assertion flaky. The Brier gate is the shipped rule; assert that.)
+    """
     from src.decision.adapt import adapt, AdaptConfig, split_indices
     from src.decision.backends import StubEncoder
-    from src.decision.scoring import TaskHead
+    from src.decision.scoring import TaskHead, softmax_rows
+    from src.decision.metrics import brier_score
     import numpy as np
 
     enc = StubEncoder(dim=32)
@@ -121,17 +129,19 @@ def test_auto_scorer_choice_matches_cal_argmax(tmp_path):
               cfg=AdaptConfig(scorer="auto", seed=0, min_cal=100),
               out_dir=tmp_path)
 
-    # recompute the cal argmax independently
+    # recompute the Brier gate independently (the shipped selection rule)
     X = enc.encode(texts)
     y_idx = np.array(labels)
     fi, ci, ti = split_indices(900, 0.5, 0.25, 0, y=y_idx)
     classes = sorted(set(labels))
+    k = len(classes)
     LV = enc.encode_options(classes)
-    cos_acc = float(((X[ci] @ LV.T).argmax(1) == y_idx[ci]).mean())
+    onehot = np.eye(k)[y_idx[ci]]
+    brier_cos = brier_score(softmax_rows(X[ci] @ LV.T, r.model.gate.t_prob or 1.0), onehot)
     h = TaskHead()
     h.fit(X[fi], y_idx[fi], labels=classes, seed=0)
-    head_acc = float((h.logits(X[ci]).argmax(1) == y_idx[ci]).mean())
-    expected = "taskhead" if head_acc >= cos_acc else "cosine"
+    brier_head = brier_score(softmax_rows(h.logits(X[ci]), h.temperature), onehot)
+    expected = "taskhead" if (brier_cos - brier_head) > 0.02 else "cosine"
 
     assert r.report["scorer_choice"] == expected
     if expected == "taskhead":

@@ -86,6 +86,17 @@ def main() -> int:
         for f in tiers["free"]:
             print(f"  [free]  {f.name}")
         return 0
+    # --full runs the ENTIRE suite (torch tier included) in-process. The default
+    # dry run is torch-free because full collection costs ~1-2 GB and OOM'd the
+    # host once — but that means a stale assertion in a torch-tier file is
+    # invisible locally and surfaces as a Kaggle crash (v4 float-tolerance, v7
+    # this argmax-vs-Brier stale test). --full is the pre-push gate: it catches
+    # torch-tier staleness that the default dry run structurally cannot.
+    if "--full" in sys.argv:
+        print("running FULL suite (torch tier included)...")
+        return subprocess.call(
+            [sys.executable, "-m", "pytest", "-q", "--no-header", "tests/"],
+            cwd=ROOT)
     if not tiers["free"]:
         print("nothing to run")
         return 0

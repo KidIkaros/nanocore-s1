@@ -1,0 +1,99 @@
+[{"stream_name":"stderr","time":7.499616438,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":7.499661752,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":8.529910353,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.529957536,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.529963712,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.529967921,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":9.177600091,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.177631514,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.177635093,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.177637578,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":13.03121017,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":13.03124513,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":13.031250155,"data":"\n"}
+,{"stream_name":"stdout","time":213.723546448,"data":": auto's shipped scorer is whichever of\n"}
+,{"stream_name":"stdout","time":213.723608486,"data":"        head/cosine wins on the cal split. We assert the LOGIC (choice == cal\n"}
+,{"stream_name":"stdout","time":213.723615121,"data":"        argmax) rather than a fragile stub outcome, and that the shipped scorer\n"}
+,{"stream_name":"stdout","time":213.723619968,"data":"        and bundle artifact follow the choice.\"\"\"\n"}
+,{"stream_name":"stdout","time":213.723624869,"data":"        from src.decision.adapt import adapt, AdaptConfig, split_indices\n"}
+,{"stream_name":"stdout","time":213.723629701,"data":"        from src.decision.backends import StubEncoder\n"}
+,{"stream_name":"stdout","time":213.723634742,"data":"        from src.decision.scoring import TaskHead\n"}
+,{"stream_name":"stdout","time":213.723640311,"data":"        import numpy as np\n"}
+,{"stream_name":"stdout","time":213.723645167,"data":"    \n"}
+,{"stream_name":"stdout","time":213.723649843,"data":"        enc = StubEncoder(dim=32)\n"}
+,{"stream_name":"stdout","time":213.723654832,"data":"        texts = [f\"topic{i % 3} text sample {i}\" for i in range(900)]\n"}
+,{"stream_name":"stdout","time":213.723659568,"data":"        labels = [i % 3 for i in range(900)]\n"}
+,{"stream_name":"stdout","time":213.723664348,"data":"        r = adapt(texts, labels, enc,\n"}
+,{"stream_name":"stdout","time":213.723669117,"data":"                  cfg=AdaptConfig(scorer=\"auto\", seed=0, min_cal=100),\n"}
+,{"stream_name":"stdout","time":213.723673817,"data":"                  out_dir=tmp_path)\n"}
+,{"stream_name":"stdout","time":213.723678187,"data":"    \n"}
+,{"stream_name":"stdout","time":213.72368278,"data":"        # recompute the cal argmax independently\n"}
+,{"stream_name":"stdout","time":213.723688688,"data":"        X = enc.encode(texts)\n"}
+,{"stream_name":"stdout","time":213.723705375,"data":"        y_idx = np.array(labels)\n"}
+,{"stream_name":"stdout","time":213.723709503,"data":"        fi, ci, ti = split_indices(900, 0.5, 0.25, 0, y=y_idx)\n"}
+,{"stream_name":"stdout","time":213.723712984,"data":"        classes = sorted(set(labels))\n"}
+,{"stream_name":"stdout","time":213.723716482,"data":"        LV = enc.encode_options(classes)\n"}
+,{"stream_name":"stdout","time":213.723719964,"data":"        cos_acc = float(((X[ci] @ LV.T).argmax(1) == y_idx[ci]).mean())\n"}
+,{"stream_name":"stdout","time":213.723723854,"data":"        h = TaskHead()\n"}
+,{"stream_name":"stdout","time":213.723727376,"data":"        h.fit(X[fi], y_idx[fi], labels=classes, seed=0)\n"}
+,{"stream_name":"stdout","time":213.723730951,"data":"        head_acc = float((h.logits(X[ci]).argmax(1) == y_idx[ci]).mean())\n"}
+,{"stream_name":"stdout","time":213.723734669,"data":"        expected = \"taskhead\" if head_acc \u003e= cos_acc else \"cosine\"\n"}
+,{"stream_name":"stdout","time":213.723739229,"data":"    \n"}
+,{"stream_name":"stdout","time":213.723742792,"data":"\u003e       assert r.report[\"scorer_choice\"] == expected\n"}
+,{"stream_name":"stdout","time":213.723747512,"data":"E       AssertionError: assert 'cosine' == 'taskhead'\n"}
+,{"stream_name":"stdout","time":213.723751269,"data":"E         \n"}
+,{"stream_name":"stdout","time":213.723755269,"data":"E         - taskhead\n"}
+,{"stream_name":"stdout","time":213.72375961,"data":"E         + cosine\n"}
+,{"stream_name":"stdout","time":213.723763302,"data":"\n"}
+,{"stream_name":"stdout","time":213.723766909,"data":"tests/test_decision_scoring_np_head.py:136: AssertionError\n"}
+,{"stream_name":"stdout","time":213.723770685,"data":"=============================== warnings summary ===============================\n"}
+,{"stream_name":"stdout","time":213.723774891,"data":"tests/test_decision_evaluate.py::test_tfidf_baseline_column_alignment\n"}
+,{"stream_name":"stdout","time":213.723779011,"data":"tests/test_decision_evaluate.py::test_tfidf_baseline_missing_class\n"}
+,{"stream_name":"stdout","time":213.723782943,"data":"tests/test_decision_evaluate.py::test_dataset_suite_end_to_end\n"}
+,{"stream_name":"stdout","time":213.723786699,"data":"  /usr/local/lib/python3.13/dist-packages/sklearn/linear_model/_logistic.py:451: DeprecationWarning: scipy.optimize: The `disp` and `iprint` options of the L-BFGS-B solver are deprecated and will be removed in SciPy 1.18.0.\n"}
+,{"stream_name":"stdout","time":213.723797848,"data":"    opt_res = optimize.minimize(\n"}
+,{"stream_name":"stdout","time":213.723802073,"data":"\n"}
+,{"stream_name":"stdout","time":213.723805738,"data":"tests/test_decision_phase8.py::test_a_decision_makes_no_network_call\n"}
+,{"stream_name":"stdout","time":213.723809315,"data":"tests/test_decision_scorer_selection.py::test_adapt_artifact_matches_choice\n"}
+,{"stream_name":"stdout","time":213.723812975,"data":"tests/test_decision_scorer_selection.py::test_forced_ordinal_ships_npz_torch_free\n"}
+,{"stream_name":"stdout","time":213.723816649,"data":"tests/test_decision_scoring_np_head.py::test_auto_scorer_considers_ordinal_when_labels_ordered\n"}
+,{"stream_name":"stdout","time":213.723820185,"data":"tests/test_decision_slow.py::test_attach_slow_state_inherits_gate_t_set\n"}
+,{"stream_name":"stdout","time":213.723823935,"data":"  /kaggle/working/nanocore-s1/src/decision/scoring.py:141: UserWarning: fit_temperature bound-limited at the ceiling (t=4.0); widen `ceiling` before trusting the fit\n"}
+,{"stream_name":"stdout","time":213.723827895,"data":"    warnings.warn(f\"fit_temperature bound-limited at the ceiling \"\n"}
+,{"stream_name":"stdout","time":213.723831704,"data":"\n"}
+,{"stream_name":"stdout","time":213.723840091,"data":"-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n"}
+,{"stream_name":"stdout","time":213.723843855,"data":"=========================== short test summary info ============================\n"}
+,{"stream_name":"stdout","time":213.723847068,"data":"FAILED tests/test_decision_scoring_np_head.py::test_auto_scorer_choice_matches_cal_argmax\n"}
+,{"stream_name":"stdout","time":213.723850355,"data":"1 failed, 580 passed, 3 skipped, 8 warnings in 179.51s (0:02:59)\n"}
+,{"stream_name":"stdout","time":213.723853963,"data":"\n"}
+,{"stream_name":"stderr","time":214.470337709,"data":"Traceback (most recent call last):\n"}
+,{"stream_name":"stderr","time":214.471005184,"data":"  File \"\u003cstring\u003e\", line 1, in \u003cmodule\u003e\n"}
+,{"stream_name":"stderr","time":214.471025643,"data":"    import sys;import papermill as pm;pm.execute_notebook(\"__notebook__.ipynb\",\"__notebook__.ipynb\",progress_bar=False,log_output=True,stdout_file=sys.stdout,stderr_file=sys.stderr,allow_errors=False,timeout=43200)\n"}
+,{"stream_name":"stderr","time":214.471031096,"data":"                                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":214.471049334,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 131, in execute_notebook\n"}
+,{"stream_name":"stderr","time":214.471054007,"data":"    raise_for_execution_errors(nb, output_path)\n"}
+,{"stream_name":"stderr","time":214.471057877,"data":"    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":214.471061949,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 251, in raise_for_execution_errors\n"}
+,{"stream_name":"stderr","time":214.47106665,"data":"    raise error\n"}
+,{"stream_name":"stderr","time":214.471082683,"data":"papermill.exceptions.PapermillExecutionError: \n"}
+,{"stream_name":"stderr","time":214.471087102,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":214.471090903,"data":"Exception encountered at \"In [2]\":\n"}
+,{"stream_name":"stderr","time":214.471094496,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":214.47109821,"data":"AssertionError                            Traceback (most recent call last)\n"}
+,{"stream_name":"stderr","time":214.471101825,"data":"/tmp/ipykernel_22/4276944225.py in \u003ccell line: 0\u003e()\n"}
+,{"stream_name":"stderr","time":214.471105594,"data":"     15                    capture_output=True, text=True, cwd=REPO)\n"}
+,{"stream_name":"stderr","time":214.471110986,"data":"     16 print((r.stdout + r.stderr)[-3000:])\n"}
+,{"stream_name":"stderr","time":214.47111801,"data":"---\u003e 17 assert r.returncode == 0, \"test suite failed on Kaggle\"\n"}
+,{"stream_name":"stderr","time":214.471120595,"data":"     18 write_status(\"tests-green\")\n"}
+,{"stream_name":"stderr","time":214.471123154,"data":"\n"}
+,{"stream_name":"stderr","time":214.471125406,"data":"AssertionError: test suite failed on Kaggle\n"}
+,{"stream_name":"stderr","time":214.471127738,"data":"\n"}
+,{"stream_name":"stderr","time":216.672559243,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":216.672588498,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":216.847757757,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":216.847796415,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":217.642415423,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":217.744138975,"data":"[NbConvertApp] Writing 545753 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":220.228796325,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":221.179838481,"data":"[NbConvertApp] Writing 1160695 bytes to __results__.html\n"}
+]
