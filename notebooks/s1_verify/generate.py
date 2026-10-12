@@ -286,6 +286,21 @@ print("head leg:", json.dumps({k: round(v, 3) if isinstance(v, float) else v
                                for k, v in v_head.items()}))
 RESULTS["taskhead_leg"] = v_head
 RESULTS["head_in_scope_acc"] = head_acc
+# Frontier diagnostic (#17): does the head have a DEPTH problem (accuracy falls
+# with decision difficulty) or a VOLUME problem (falls with competing stored
+# evidence), or neither? Re-ranks the SAME per-example head records along both
+# axes — no new encoder pass. The verdict gates which frontier organ (predictive
+# vs typed-memory) is real. Runs on the real head here because its embeddings
+# aren't cached locally.
+from src.decision.frontier_diag import diagnose_frontier
+# rec_head holds ONLY in-scope examples (appended under `if in_mask[i]` in
+# policy_eval), so align LH_TE to the same rows in the same order — passing the
+# full matrix would misalign scores against the per-example records.
+_te_in_idx = np.asarray(te_in, dtype=bool)
+_diag = diagnose_frontier(rec_head, LH_TE[_te_in_idx], n_buckets=4, slope_thresh=0.10)
+RESULTS["frontier_diagnostic"] = _diag.to_dict()
+print("frontier diagnostic:", json.dumps(_diag.to_dict(), indent=2))
+print("FRONTIER VERDICT:", _diag.recommendation)
 # Persist the head's own scores. `verify_scores.npz` holds only the *cosine*
 # scores (`S @ LV.T`), so the head path could not be re-evaluated offline — the
 # v19 conformal-set audit had to recover the head from its bundle and re-derive
