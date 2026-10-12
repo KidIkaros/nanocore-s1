@@ -98,6 +98,66 @@ not here. Derived from the owner's source library (41 books) — see
 - **Shared latent state `z`** — the one space all organs read and write. EG2 space
   today; a learned subspace is the target.
 
+## The frontier (post-v1 — charted, not built)
+
+Resolved by the frontier grill from the owner's library (world-model / memory
+books). **Convergent finding across independent clusters: the literature does not
+support a *generative* organ. It supports a *predictive* organ and a *typed
+memory* organ — both cleanly separable from generation.** Decide-on-embeddings is
+not the ceiling, but the ceiling is crossed by depth over typed history, not by
+decoding.
+
+- **World model** — in this literature means **predicting a decision-relevant
+  scalar readout**, not reconstructing or generating. Two sources:
+  - *Consequence prediction* (Language Models as AI Research World Models):
+    `M(state, action, history) → median measured gain`. No rollout, no tokens —
+    one scalar by design. **Key ablation: knowledge beats capacity beats effort**
+    — the weakest backbone *with* typed records beat the strongest *without*
+    (0.638 vs 0.621); adding knowledge moved Spearman 0.609→0.892 vs effort's
+    +0.04. Payoff is in **record volume, not head capacity**. This is a frozen
+    model + typed history + a predictive readout — structurally v1's trajectory
+    log already.
+  - *Offline recurrent consolidation / "sleep"* (Do LLMs Need Sleep): fast-weight
+    state `S ← α·S + β·v kᵀ` (data-dependent gates), N offline recurrent passes
+    refine `S` before buffer eviction, **single-pass prediction preserved at
+    decision time** — the cleanest proof that recurrence ≠ generation. **Caveat:
+    gains concentrate on the *deepest* instances and saturate on easy ones** — run
+    the diagnostic (hold info fixed, vary decision depth) before building.
+  - *MuZero statement* (cited): a recurrent model that predicts rewards, values,
+    policies **without reconstructing observations**. The value readout *is* the
+    world model. This is the non-generative branch; latent rollouts / imagination
+    (Dreamer) is the generative branch — **not** needed unless multi-step planning
+    is required.
+
+- **Memory-type routing** (MemoType): a single shared-encoder similarity metric
+  has a **provable ceiling** `1 − (C−1)δ/2C` on query–doc alignment that tightens
+  as the type space grows (Theorem 3.3) — exactly the geometry of a typed decision
+  head. Fix: **partition the memory by the type the head already emits, and score
+  each partition with a strategy matched to it.** The router needs no generation
+  (BERT/RoBERTa within ~1–3 pts of a 1.7B LLM router); Recall@1 +6–9. Per-type
+  scoring: event-like → decompose-then-align; preference/state → reverse-HyDE.
+
+- **Typed multi-relational memory plane** (Jev-Mem): one node set, four typed edge
+  views (semantic / temporal / causal / entity), deterministic insertion, edge
+  weight threshold. Multi-hop 0.528→0.623, adversarial 0.742→0.962. Fully
+  separable from generation (typed edges + weights, no tokens).
+
+- **Adaptive stopping** (Jev-Mem): terminate when evidence is sufficient *or*
+  expected utility of more search < threshold — the accuracy lever that also
+  guards against distractor memories degrading the decision. Two scalar
+  thresholds.
+
+- **Valence channel** (Do LLMs Feel?): emotion *readout* is a linear probe on the
+  frozen encoder's pooled vector (99.65%-controllable, ~2–4 MLP neurons/layer) —
+  a legitimate **decision-gating feature** (bias escalate/abort/confirm). The
+  *intervention* half is out of scope (needs a decoder path the frozen encoder
+  lacks). Readout only, not control.
+
+- **Consolidation is typed, not sleep-weight** (for a frozen encoder): Jev-Mem's
+  consolidation is a *controller decision* (merge / promote / keep-separate over a
+  bounded candidate set), not a weight update. Fast weights would mean retraining
+  the head — a much bigger step than the framing suggests.
+
 ## The training discipline
 
 - **Depth dial** — one integer sets width, LR, token budget, and cost. The
