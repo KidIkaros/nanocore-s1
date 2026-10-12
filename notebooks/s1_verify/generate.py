@@ -1688,6 +1688,9 @@ try:
     for i, (texts, labels) in enumerate(slices, start=1):
         out = adapt(texts, labels, encoder, cfg=AdaptConfig(min_cal=150),
                     out_dir=ops / f"retrain{i}")
+        # the gated per-anchor selection (#14): record which scorer shipped,
+        # so the run proves the head was promoted where it wins the gate.
+        print(f"retrain slice {i}: scorer_choice={out.report.get('scorer_choice')}")
         bundles.append((out.bundle_dir, out.report, data_fingerprint(texts, labels)))
     reg = Registry(ops / "registry")
     v1 = reg.register("clinc", bundles[0][0], bundles[0][1], bundles[0][2])
@@ -1702,6 +1705,7 @@ try:
     after_promote = reg.current("clinc")
     restored = reg.rollback("clinc")
     RESULTS["operate"]["registry"] = {
+        "scorer_choices": [b[1].get("scorer_choice") for b in bundles],
         "versions": reg.versions("clinc"), "parent_of_v2": lineage.get("parent"),
         "promoted": after_promote, "rolled_back_to": restored,
         "current_after_rollback": reg.current("clinc"),
