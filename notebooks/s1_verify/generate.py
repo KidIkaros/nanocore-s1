@@ -307,7 +307,8 @@ print("FRONTIER VERDICT:", _diag.recommendation)
 # yet (the loop has no production caller). Drive the confirmation loop over the
 # held-out test set, STRATIFIED BY DIFFICULTY so the corpus contains the hard
 # quartile where the depth bottleneck lives. Emits self-describing traces.
-from src.decision.traj_corpus import generate_traces, corpus_stats
+from src.decision.traj_corpus import (generate_traces, corpus_stats,
+                                      make_narrowing_proposer)
 from src.decision.model import DecisionModel as _DM
 from src.decision.schema import Question
 
@@ -331,11 +332,19 @@ _easy_idx = _rng.choice(_order[_HARD_N:], size=_HARD_N, replace=False) \
 _sel = np.concatenate([_hard_idx, _easy_idx])
 
 _shared_q = Question(qtype="choice", options=INTENT_TEXTS)
+# candidate[0] is the iteration-1 proposal (the test text); the narrowing
+# proposer re-proposes from the gate's prediction set on non-answer verdicts.
 _cand_sets = [[_X_te_in[i]] + INTENT_TEXTS[:8] for i in _sel]  # true + 8 alts
+# DP4 narrowing proposer: on a non-answer verdict, re-propose the top SURVIVING
+# option from the gate's prediction set (the head ranks survivors). This produces
+# genuine recovery traces (iter-2 can resolve) — the v10 linear proposer
+# escalated forever and gave a one-sided corpus. `head` is the trained scorer.
+def _proposer_factory(cands):
+    return make_narrowing_proposer(cands, head, INTENT_TEXTS, encoder=encoder)
 _traces = generate_traces(_cand_sets, _traj_model, _shared_q,
                           true_intents=[int(_y_te_in[i]) for i in _sel],
                           difficulties=[float(_diff[i]) for i in _sel],
-                          max_iterations=3)
+                          max_iterations=3, proposer_factory=_proposer_factory)
 _traj_stats = corpus_stats(_traces)
 RESULTS["trajectory_corpus"] = _traj_stats
 print("trajectory corpus:", json.dumps(_traj_stats, indent=2))

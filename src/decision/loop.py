@@ -51,6 +51,7 @@ class LoopStep:
     action: str                    # the gate's verdict
     top_prob: float = 0.0
     state_items: int = 0           # how much history the state carried
+    prediction_set: Optional[List[str]] = None  # APS survivors at this verdict
 
 
 @dataclass
@@ -112,7 +113,9 @@ def run_loop(model, propose: Callable[[List[LoopStep]], Any],
                         action=pred.action,
                         top_prob=float(max(pred.probabilities.values()))
                         if pred.probabilities else 0.0,
-                        state_items=len(history) + 1)
+                        state_items=len(history) + 1,
+                        prediction_set=list(pred.prediction_set)
+                        if getattr(pred, "prediction_set", None) else None)
         steps.append(step)
         if on_step is not None:
             on_step(step)

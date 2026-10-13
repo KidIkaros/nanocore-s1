@@ -1,0 +1,9 @@
+{
+ "encoder_id": "stub",
+ "scorer": {
+  "class": "TaskHead",
+  "path": "scorer.npz",
+  "format": "npz"
+ },
+ "gate": "gate.json"
+}

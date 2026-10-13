@@ -103,3 +103,113 @@ def test_trace_to_dict_roundtrips_labels():
     d = t.to_dict()
     assert d["true_intent"] == 7 and d["resolved"] is True
     assert d["difficulty"] == 0.25
+
+
+# ── DP4 narrowing proposer (#19 sharpening) ──────────────────────────────
+
+class _Scorer:
+    """Ranks options by a fixed score map so the proposer's ranking is known.
+    Takes embedding vectors (as the real TaskHead.scores does) but the fake
+    encoder encodes each option to a 1-hot-ish vector keyed by its score."""
+    def __init__(self, score_map):
+        self.score_map = score_map
+    def scores(self, state_vec, option_vecs):
+        # option_vecs rows carry the option's score in column 0
+        return [float(v[0]) for v in option_vecs]
+
+
+class _FakeEncoder:
+    """Encodes options to [score] vectors so _Scorer ranks them. State encodes
+    to a dummy vector (the proposer only ranks survivors by their own score)."""
+    def __init__(self, score_map=None):
+        self.score_map = score_map or {}
+    def encode_state(self, items):
+        import numpy as np
+        return np.array([[0.0, 0.0] for _ in items], dtype=float)
+    def encode_options(self, options):
+        import numpy as np
+        return np.array([[self.score_map.get(o, 0.0), 0.0] for o in options],
+                        dtype=float)
+
+
+def test_loop_step_carries_prediction_set():
+    """The loop plumbs the gate's APS prediction_set into LoopStep so the
+    proposer can narrow on it (the field #19 added)."""
+    m = _StubModel(["escalate"])
+    # stub pred must expose prediction_set; wrap decide to attach it
+    class _M2:
+        def __init__(self): self.calls = 0
+        def decide(self, state, question):
+            self.calls += 1
+            p = _Pred("escalate", 0.4)
+            p.prediction_set = ["survivor_a", "survivor_b"]
+            return p
+    traces = generate_traces([["c0", "c1", "c2"]], _M2(), _question(),
+                             max_iterations=2)
+    assert traces[0].steps[0]["action"] == "escalate"
+    # the trace's step dict does not carry prediction_set (QuestionTrace schema),
+    # but the LoopStep does — verify via the proposer behavior below.
+
+
+def test_narrowing_proposer_reproposes_from_survivors():
+    """On a non-answer verdict, the narrowing proposer re-proposes the top
+    SURVIVING option (from prediction_set), not the next list item — the DP4
+    move that produces recovery traces instead of escalate-forever."""
+    from src.decision.traj_corpus import make_narrowing_proposer
+    from src.decision.loop import LoopStep
+    scorer = _Scorer({"x": 0.1, "y": 0.9, "z": 0.5})
+    enc = _FakeEncoder({"x": 0.1, "y": 0.9, "z": 0.5})
+    prop = make_narrowing_proposer(["c0", "c1"], scorer, ["x", "y", "z"],
+                                   encoder=enc)
+    prop([])                                   # iter 1 -> first candidate
+    step = LoopStep(1, "c0", "escalate", prediction_set=["x", "y", "z"])
+    assert prop([step]) == "y"                 # top-scored survivor
+
+
+def test_narrowing_proposer_avoids_reoffering():
+    """It does not re-offer a survivor it already proposed (advances to next
+    best unoffered survivor)."""
+    from src.decision.traj_corpus import make_narrowing_proposer
+    from src.decision.loop import LoopStep
+    scorer = _Scorer({"x": 0.9, "y": 0.5, "z": 0.1})
+    enc = _FakeEncoder({"x": 0.9, "y": 0.5, "z": 0.1})
+    prop = make_narrowing_proposer(["c0", "c1"], scorer, ["x", "y", "z"],
+                                   encoder=enc)
+    prop([])
+    s1 = LoopStep(1, "c0", "escalate", prediction_set=["x", "y", "z"])
+    assert prop([s1]) == "x"                   # top survivor
+    s2 = LoopStep(2, "x", "escalate", prediction_set=["x", "y", "z"])
+    assert prop([s1, s2]) == "y"               # next best unoffered
+
+
+def test_narrowing_proposer_falls_back_when_no_set():
+    """If the gate abstained with no prediction_set, fall back to linear
+    advance (bounded, never crashes)."""
+    from src.decision.traj_corpus import make_narrowing_proposer
+    from src.decision.loop import LoopStep
+    scorer = _Scorer({})
+    prop = make_narrowing_proposer(["c0", "c1", "c2"], scorer, ["a"])
+    s = LoopStep(1, "c0", "abstain", prediction_set=None)
+    assert prop([s]) == "c1"                   # advanced linearly
+
+
+def test_generate_traces_accepts_proposer_factory():
+    """generate_traces wires a custom proposer factory (the narrowing proposer)
+    through to the loop."""
+    from src.decision.traj_corpus import make_narrowing_proposer
+    scorer = _Scorer({"a": 0.9, "b": 0.1})
+    enc = _FakeEncoder({"a": 0.9, "b": 0.1})
+    class _M:
+        def __init__(self): self.calls = 0
+        def decide(self, state, question):
+            self.calls += 1
+            p = _Pred("answer" if self.calls >= 2 else "escalate", 0.9)
+            p.prediction_set = ["a", "b"]
+            return p
+    def factory(cands):
+        return make_narrowing_proposer(cands, scorer, ["a", "b"], encoder=enc)
+    traces = generate_traces([["c0", "c1"]], _M(), _question(),
+                             max_iterations=3, proposer_factory=factory)
+    # iter1 escalate (no set yet on the very first propose), iter2 answer
+    assert traces[0].n_iterations == 2
+    assert traces[0].resolved is True

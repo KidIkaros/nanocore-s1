@@ -15,6 +15,8 @@ runs it on Kaggle (ADR-0006).
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
+import numpy as np
+
 from src.decision.loop import LoopResult, LoopStep, run_loop
 
 
@@ -48,11 +50,7 @@ def make_proposer(candidates: Sequence[Any],
     This is deliberately simple: no new model. The loop's value is producing
     genuine multi-step traces, not a clever proposer.
     """
-    tried: set = set()
-
     def propose(steps: List[LoopStep]) -> Any:
-        if not steps:
-            tried.clear()
         # candidate index = iteration position (advance through the set on
         # non-answer verdicts); wrap so the loop is bounded by max_iterations.
         idx = len(steps) % len(candidates)
@@ -64,24 +62,101 @@ def make_proposer(candidates: Sequence[Any],
     return propose
 
 
+def make_narrowing_proposer(
+        candidates: Sequence[Any],
+        head_scorer: Any,
+        question_options: Sequence[str],
+        encoder: Any = None) -> Callable[[List[LoopStep]], Any]:
+    """A DP4 proposer that narrows on the gate's surviving prediction set.
+
+    On a non-answer verdict, the loop's ``LoopStep`` now carries the APS
+    ``prediction_set`` — the options the conformal gate kept. Instead of
+    advancing blindly through the candidate list (which escalates forever, as
+    the v10 corpus showed), this proposer re-proposes the **highest-scored
+    surviving option** from that set. That is the "informed by observed
+    behavior" move: use what the gate just told us survived, not the next
+    arbitrary candidate. Produces genuine recovery traces (iteration 2 can
+    resolve) — the two-sided signal the consequence predictor needs.
+
+    ``head_scorer.scores(state_vec, option_vecs)`` takes EMBEDDING vectors, so
+    ``encoder`` (with ``.encode_state``/``.encode_options``) encodes the state
+    and survivors first. Falls back to the linear proposer on iteration 1 (no
+    prediction set yet) or when no encoder is given (scores as zeros → first
+    survivor).
+    """
+    offered: set = set()
+
+    def _rank(survivors: List[str]) -> List[str]:
+        if encoder is None or head_scorer is None:
+            return list(survivors)
+        try:
+            state_vec = _encode_one(encoder, steps_state[0])
+            opt_vecs = encoder.encode_options(list(survivors))
+            sc = head_scorer.scores(state_vec, opt_vecs)
+            sc = sc.tolist() if hasattr(sc, "tolist") else list(sc)
+            return [survivors[i] for i in sorted(
+                range(len(survivors)), key=lambda i: sc[i], reverse=True)]
+        except Exception:
+            return list(survivors)
+
+    steps_state: List[Any] = []
+
+    def propose(steps: List[LoopStep]) -> Any:
+        if not steps:
+            offered.clear()
+            steps_state.clear()
+            return candidates[0]
+        # remember the current state (candidate) so _rank can encode it
+        steps_state[:] = [steps[-1].candidate]
+        last = steps[-1]
+        survivors = last.prediction_set
+        if not survivors:
+            idx = len(steps) % len(candidates)
+            return candidates[idx]
+        ranked = _rank(list(survivors))
+        for opt in ranked:
+            if opt not in offered:
+                offered.add(opt)
+                return opt
+        return ranked[0]
+
+    return propose
+
+
+def _encode_one(encoder: Any, state: Any) -> np.ndarray:
+    """Encode a single state item to a vector via the encoder's state encoder."""
+    import numpy as _np
+    emb = encoder.encode_state([state] if not isinstance(state, (list, tuple))
+                               else list(state))
+    return _np.asarray(emb, dtype=float).reshape(-1)
+
+
 def generate_traces(candidate_sets: Sequence[Sequence[Any]],
                     model: Any,
                     question: Any,
                     true_intents: Optional[Sequence[int]] = None,
                     difficulties: Optional[Sequence[float]] = None,
-                    max_iterations: int = 3) -> List[QuestionTrace]:
+                    max_iterations: int = 3,
+                    proposer_factory: Optional[Callable[
+                        [Sequence[Any]], Callable[[List[LoopStep]], Any]]
+                    ] = None) -> List[QuestionTrace]:
     """Drive the confirmation loop over ``candidate_sets`` and collect traces.
 
     Each entry in ``candidate_sets`` is one question's ordered candidate list;
     the proposer advances through it on non-answer verdicts. ``question`` is the
     shared ``Question`` (the option set) passed to ``decide`` every iteration —
-    the loop's docstring signature. ``true_intents``/``difficulties`` ride along
-    for the corpus labels and depth stratification. Returns one QuestionTrace
-    per candidate set, in input order.
+    the loop's docstring signature. ``proposer_factory`` builds the per-question
+    proposer (default: the linear ``make_proposer``); pass
+    ``make_narrowing_proposer``'s factory for DP4 recovery traces.
+    ``true_intents``/``difficulties`` ride along for the corpus labels and depth
+    stratification. Returns one QuestionTrace per candidate set, in input order.
     """
     traces: List[QuestionTrace] = []
     for qi, candidates in enumerate(candidate_sets):
-        propose = make_proposer(list(candidates))
+        if proposer_factory is not None:
+            propose = proposer_factory(list(candidates))
+        else:
+            propose = make_proposer(list(candidates))
         result: LoopResult = run_loop(model, propose, question,
                                       max_iterations=max_iterations)
         steps = [{"iteration": s.iteration, "candidate": s.candidate,
