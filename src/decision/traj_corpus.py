@@ -161,7 +161,11 @@ def generate_traces(candidate_sets: Sequence[Sequence[Any]],
                                       max_iterations=max_iterations)
         steps = [{"iteration": s.iteration, "candidate": s.candidate,
                   "action": s.action, "top_prob": s.top_prob,
-                  "state_items": s.state_items} for s in result.steps]
+                  "state_items": s.state_items,
+                  "state_emb": (s.state_emb.tolist()
+                                if hasattr(s.state_emb, "tolist")
+                                else s.state_emb)}
+                 for s in result.steps]
         traces.append(QuestionTrace(
             true_intent=(int(true_intents[qi]) if true_intents is not None
                          else None),

@@ -213,3 +213,33 @@ def test_generate_traces_accepts_proposer_factory():
     # iter1 escalate (no set yet on the very first propose), iter2 answer
     assert traces[0].n_iterations == 2
     assert traces[0].resolved is True
+
+
+def test_loop_captures_state_embedding_per_step():
+    """The loop captures the composed state vector decide() saw, so the
+    consequence predictor (#18, path A) can train on f(state_emb, candidate)."""
+    import numpy as np
+
+    class _ModelWithVec:
+        def __init__(self):
+            self.decide_calls = 0
+            self.vec_calls = 0
+        def _state_vec(self, state):
+            # distinct vector per call so we can tell steps apart
+            self.vec_calls += 1
+            return np.array([float(self.vec_calls), 0.0, 0.0])
+        def decide(self, state, question):
+            self.decide_calls += 1
+            p = _Pred("escalate" if self.decide_calls == 1 else "answer", 0.5)
+            p.prediction_set = ["a", "b"]
+            return p
+
+    traces = generate_traces([["c0", "c1"]], _ModelWithVec(), _question(),
+                             max_iterations=2)
+    steps = traces[0].steps
+    assert len(steps) == 2
+    # each step carries a state_emb (list of floats), distinct per iteration
+    assert steps[0]["state_emb"] is not None
+    assert isinstance(steps[0]["state_emb"], list)
+    assert steps[0]["state_emb"][0] == 1.0   # first _state_vec call
+    assert steps[1]["state_emb"][0] == 2.0   # second call, grew with history

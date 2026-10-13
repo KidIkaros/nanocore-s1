@@ -52,6 +52,7 @@ class LoopStep:
     top_prob: float = 0.0
     state_items: int = 0           # how much history the state carried
     prediction_set: Optional[List[str]] = None  # APS survivors at this verdict
+    state_emb: Optional[Any] = None  # the composed state vector decide() saw
 
 
 @dataclass
@@ -109,13 +110,23 @@ def run_loop(model, propose: Callable[[List[LoopStep]], Any],
         history = [f"previous verdict: {s.action}" for s in steps]
         state = [candidate] + history if history else candidate
         pred = model.decide(state, question)
+        # capture the composed state vector decide() actually saw, so the
+        # consequence predictor (#18) can train on f(state_emb, candidate).
+        state_emb = None
+        _sv = getattr(model, "_state_vec", None)
+        if _sv is not None:
+            try:
+                state_emb = _sv(state)
+            except Exception:
+                state_emb = None
         step = LoopStep(iteration=it, candidate=candidate,
                         action=pred.action,
                         top_prob=float(max(pred.probabilities.values()))
                         if pred.probabilities else 0.0,
                         state_items=len(history) + 1,
                         prediction_set=list(pred.prediction_set)
-                        if getattr(pred, "prediction_set", None) else None)
+                        if getattr(pred, "prediction_set", None) else None,
+                        state_emb=state_emb)
         steps.append(step)
         if on_step is not None:
             on_step(step)
