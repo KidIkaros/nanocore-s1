@@ -301,6 +301,51 @@ _diag = diagnose_frontier(rec_head, LH_TE[_te_in_idx], n_buckets=4, slope_thresh
 RESULTS["frontier_diagnostic"] = _diag.to_dict()
 print("frontier diagnostic:", json.dumps(_diag.to_dict(), indent=2))
 print("FRONTIER VERDICT:", _diag.recommendation)
+
+# ── Trajectory-corpus generation leg (#19) ──────────────────────────────
+# The predictive organ (#18) needs (state, action → outcome) records; none exist
+# yet (the loop has no production caller). Drive the confirmation loop over the
+# held-out test set, STRATIFIED BY DIFFICULTY so the corpus contains the hard
+# quartile where the depth bottleneck lives. Emits self-describing traces.
+from src.decision.traj_corpus import generate_traces, corpus_stats
+from src.decision.model import DecisionModel as _DM
+from src.decision.schema import Question
+
+_traj_model = _DM(encoder=encoder, scorer=head, gate=gate_h)
+# difficulty = 1 - head top_prob, per in-scope test item (the depth axis)
+_te_in = np.asarray(te_in, dtype=bool)
+_S_te_in = head.logits(S_te)[_te_in_idx]
+_top = np.sort(_S_te_in, axis=1)[:, ::-1]
+_diff = 1.0 - _top[:, 0]
+_X_te_in = [t for t, m in zip(X_te, _te_in) if m]
+_y_te_in = yt_c[_te_in_idx]
+
+# stratify: take the hardest N (lowest top_prob) + a random easy control, so the
+# corpus has both the bottleneck cases and a baseline. Cap N for kernel time.
+_HARD_N = 400
+_order = np.argsort(_diff)[::-1]          # hardest first
+_hard_idx = _order[:_HARD_N]
+_rng = np.random.default_rng(0)
+_easy_idx = _rng.choice(_order[_HARD_N:], size=_HARD_N, replace=False) \
+    if len(_order) > _HARD_N else np.array([], dtype=int)
+_sel = np.concatenate([_hard_idx, _easy_idx])
+
+_shared_q = Question(qtype="choice", options=INTENT_TEXTS)
+_cand_sets = [[_X_te_in[i]] + INTENT_TEXTS[:8] for i in _sel]  # true + 8 alts
+_traces = generate_traces(_cand_sets, _traj_model, _shared_q,
+                          true_intents=[int(_y_te_in[i]) for i in _sel],
+                          difficulties=[float(_diff[i]) for i in _sel],
+                          max_iterations=3)
+_traj_stats = corpus_stats(_traces)
+RESULTS["trajectory_corpus"] = _traj_stats
+print("trajectory corpus:", json.dumps(_traj_stats, indent=2))
+# self-describing save: intent map travels with the traces (the v19 lesson)
+np.savez_compressed(WORK / "trajectory_corpus.npz",
+                     traces=np.array([t.to_dict() for t in _traces], dtype=object),
+                     intent_texts=np.array(INTENT_TEXTS, dtype=object),
+                     stats=np.array(_traj_stats, dtype=object),
+                     allow_pickle=True)
+print("trajectory corpus saved:", WORK / "trajectory_corpus.npz")
 # Persist the head's own scores. `verify_scores.npz` holds only the *cosine*
 # scores (`S @ LV.T`), so the head path could not be re-evaluated offline — the
 # v19 conformal-set audit had to recover the head from its bundle and re-derive
