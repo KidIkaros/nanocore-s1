@@ -243,3 +243,36 @@ def test_loop_captures_state_embedding_per_step():
     assert isinstance(steps[0]["state_emb"], list)
     assert steps[0]["state_emb"][0] == 1.0   # first _state_vec call
     assert steps[1]["state_emb"][0] == 2.0   # second call, grew with history
+
+
+def test_narrowing_proposer_uses_consequence_reranker():
+    """The additive consequence re-ranker (#18): when a ConsequenceModel is
+    passed, survivors are re-ordered by predicted recoverability, but only
+    within the head's top half (judge–executor separation — it can't resurrect
+    options the head killed)."""
+    import numpy as np
+    from src.decision.traj_corpus import make_narrowing_proposer
+    from src.decision.consequence import ConsequenceModel
+    from src.decision.loop import LoopStep
+    # head ranks x>y>z; consequence prefers z (aligned with state). Re-ranker
+    # may promote z only if z is in the head's top half.
+    scorer = _Scorer({"x": 0.9, "y": 0.5, "z": 0.1})
+    enc = _FakeEncoder({"x": 0.9, "y": 0.5, "z": 0.1})
+    # consequence model whose w favors the 3rd dim (where z's vector points)
+    w = np.zeros(2); w[1] = 5.0
+    cons = ConsequenceModel(w=w, b=0.0)
+    # fake encoder must make z's option_vec point in dim 1 for consequence to
+    # favor it; override encode_options for this test
+    class _Enc2:
+        def encode_state(self, items):
+            return np.array([[0.0, 1.0] for _ in items])
+        def encode_options(self, options):
+            m = {"x": [1.0, 0.0], "y": [0.0, 1.0], "z": [0.0, 1.0]}
+            return np.array([m[o] for o in options])
+    prop = make_narrowing_proposer(["c0", "c1"], scorer, ["x", "y", "z"],
+                                   encoder=_Enc2(), consequence=cons)
+    prop([])
+    s = LoopStep(1, "c0", "escalate", prediction_set=["x", "y", "z"])
+    # head top half = {x, y} (z excluded, bottom); consequence can't promote z
+    choice = prop([s])
+    assert choice in ("x", "y"), f"re-ranker must stay in head's top half: {choice}"

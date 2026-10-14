@@ -336,9 +336,7 @@ _shared_q = Question(qtype="choice", options=INTENT_TEXTS)
 # proposer re-proposes from the gate's prediction set on non-answer verdicts.
 _cand_sets = [[_X_te_in[i]] + INTENT_TEXTS[:8] for i in _sel]  # true + 8 alts
 # DP4 narrowing proposer: on a non-answer verdict, re-propose the top SURVIVING
-# option from the gate's prediction set (the head ranks survivors). This produces
-# genuine recovery traces (iter-2 can resolve) — the v10 linear proposer
-# escalated forever and gave a one-sided corpus. `head` is the trained scorer.
+# option (the head ranks survivors). This produces genuine recovery traces.
 def _proposer_factory(cands):
     return make_narrowing_proposer(cands, head, INTENT_TEXTS, encoder=encoder)
 _traces = generate_traces(_cand_sets, _traj_model, _shared_q,
@@ -348,6 +346,31 @@ _traces = generate_traces(_cand_sets, _traj_model, _shared_q,
 _traj_stats = corpus_stats(_traces)
 RESULTS["trajectory_corpus"] = _traj_stats
 print("trajectory corpus:", json.dumps(_traj_stats, indent=2))
+# Fit the consequence predictor (#18) on the freshly-generated corpus
+# (state_emb -> recoverable). This is the organ's ARTIFACT: the served decide()
+# path uses it as an additive re-ranker over the gate's survivors. The corpus
+# itself is generated head-only (the re-ranker's value is in the serve path, not
+# in regenerating the corpus — chicken-and-egg otherwise).
+from src.decision.consequence import fit_consequence, ConsequenceModel, auc, brier_score
+_Xc = [s["state_emb"] for t in _traces for s in t["steps"]
+       if s["action"] == "escalate" and s.get("state_emb") is not None]
+_yc = [float(t["resolved"]) for t in _traces for s in t["steps"]
+       if s["action"] == "escalate" and s.get("state_emb") is not None]
+_consequence = None
+if len(_yc) >= 20:
+    _Xc, _yc = np.array(_Xc), np.array(_yc)
+    _rng = np.random.default_rng(0); _idx = _rng.permutation(len(_yc))
+    _tr, _te = _idx[:len(_yc) // 2], _idx[len(_yc) // 2:]
+    _consequence = fit_consequence(_Xc[_tr], _yc[_tr], epochs=400, l2=1e-3, seed=0)
+    _p_te = _consequence.predict_proba(_Xc[_te])
+    _cons_eval = {"n_train": int(len(_tr)), "n_test": int(len(_te)),
+                  "test_auc": round(auc(_p_te, _yc[_te]), 4),
+                  "test_brier": round(brier_score(_p_te, _yc[_te]), 4),
+                  "base_rate": round(float(_yc[_te].mean()), 4)}
+    RESULTS["consequence_predictor"] = _cons_eval
+    print("consequence predictor:", json.dumps(_cons_eval, indent=2))
+    _consequence.save_np(WORK / "consequence.npz")
+    print("consequence model saved:", WORK / "consequence.npz")
 # self-describing save: intent map travels with the traces (the v19 lesson)
 np.savez_compressed(WORK / "trajectory_corpus.npz",
                      traces=np.array([t.to_dict() for t in _traces], dtype=object),

@@ -66,7 +66,8 @@ def make_narrowing_proposer(
         candidates: Sequence[Any],
         head_scorer: Any,
         question_options: Sequence[str],
-        encoder: Any = None) -> Callable[[List[LoopStep]], Any]:
+        encoder: Any = None,
+        consequence: Any = None) -> Callable[[List[LoopStep]], Any]:
     """A DP4 proposer that narrows on the gate's surviving prediction set.
 
     On a non-answer verdict, the loop's ``LoopStep`` now carries the APS
@@ -80,9 +81,10 @@ def make_narrowing_proposer(
 
     ``head_scorer.scores(state_vec, option_vecs)`` takes EMBEDDING vectors, so
     ``encoder`` (with ``.encode_state``/``.encode_options``) encodes the state
-    and survivors first. Falls back to the linear proposer on iteration 1 (no
-    prediction set yet) or when no encoder is given (scores as zeros → first
-    survivor).
+    and survivors first. If ``consequence`` (a ConsequenceModel) is given, the
+    head's top survivors are re-ranked by predicted recoverability — the
+    additive re-ranker (#18). Falls back to the linear proposer on iteration 1
+    (no prediction set yet) or when no encoder is given.
     """
     offered: set = set()
 
@@ -94,8 +96,22 @@ def make_narrowing_proposer(
             opt_vecs = encoder.encode_options(list(survivors))
             sc = head_scorer.scores(state_vec, opt_vecs)
             sc = sc.tolist() if hasattr(sc, "tolist") else list(sc)
-            return [survivors[i] for i in sorted(
-                range(len(survivors)), key=lambda i: sc[i], reverse=True)]
+            head_order = sorted(range(len(survivors)),
+                                key=lambda i: sc[i], reverse=True)
+            # additive consequence re-ranker: re-order the head's survivors by
+            # predicted recoverability of re-proposing from this state (#18).
+            if consequence is not None:
+                try:
+                    cons_order = consequence.rank_candidates(state_vec, opt_vecs)
+                    # keep only survivors the head ranked in its top half (don't
+                    # let the consequence model resurrect options the head killed)
+                    keep = set(head_order[:max(1, len(survivors) // 2)])
+                    cons_order = [i for i in cons_order if i in keep] + \
+                                 [i for i in head_order if i not in keep]
+                    return [survivors[i] for i in cons_order]
+                except Exception:
+                    pass
+            return [survivors[i] for i in head_order]
         except Exception:
             return list(survivors)
 
