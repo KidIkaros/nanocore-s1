@@ -84,13 +84,14 @@ class DecisionModel:
     """
 
     def __init__(self, encoder=None, scorer=None, gate=None, cache=None,
-                 encoder_id: str = "", composer=None):
+                 encoder_id: str = "", composer=None, consequence=None):
         from src.decision.scoring import CosineScorer
         self.encoder = encoder
         self.scorer = scorer or CosineScorer()
         self.gate = gate
         self.cache = cache
         self.composer = composer
+        self.consequence = consequence   # ConsequenceModel or None (#18)
         self.encoder_id = encoder_id or getattr(encoder, "model_name", "stub")
         self._option_cache: dict = {}
 
@@ -188,6 +189,27 @@ class DecisionModel:
             action, pred_set, alpha = "unevaluated", [], None
             top, mx = float(p.max()), float(scores.max())
 
+        # Consequence re-ranker (#18): on an escalate verdict, re-order the
+        # gate's APS survivors by predicted recoverability of re-proposing from
+        # this state, so the caller re-proposes the most recoverable option
+        # first. STRICTLY ADDITIVE — it reorders prediction_set only, never the
+        # action or probabilities (judge–executor separation: the gate decides,
+        # the consequence model only ranks its survivors). No-op when no
+        # consequence model is attached (byte-identical to the base path).
+        if (self.consequence is not None and action == "escalate"
+                and len(pred_set) > 1):
+            try:
+                # reuse the cached option vectors (survivors ⊆ options); map each
+                # survivor to its row in `opts` rather than re-encoding.
+                opt_index = {lbl: i for i, lbl in enumerate(question.options)}
+                rows = [opt_index[lbl] for lbl in pred_set if lbl in opt_index]
+                if len(rows) == len(pred_set):
+                    surv_vecs = opts[rows]
+                    order = self.consequence.rank_candidates(s, surv_vecs)
+                    pred_set = [pred_set[i] for i in order]
+            except Exception:
+                pass  # re-rank failure must never break the decision
+
         pred = Prediction(
             qtype=question.qtype, labels=list(question.options),
             probabilities=probs, answer_confidence=top,
@@ -245,6 +267,11 @@ class DecisionModel:
                         "state_dict": self.composer.state_dict()},
                        d / "composer.pt")
             manifest["composer"] = "composer.pt"
+        if self.consequence is not None:
+            # torch-free artifact (ADR-0007): the consequence re-ranker ships as
+            # numpy weights, loadable and inferable without torch (#18)
+            self.consequence.save_np(d / "consequence.npz")
+            manifest["consequence"] = "consequence.npz"
         (d / "manifest.json").write_text(json.dumps(manifest, indent=1))
         return d
 
@@ -293,5 +320,11 @@ class DecisionModel:
                               weights_only=False)
             composer = EmbeddingComposer(ComposerConfig(**blob["config"]))
             composer.load_state_dict(blob["state_dict"])
+        consequence = None
+        if manifest.get("consequence"):
+            # torch-free load (ADR-0007) — the consequence re-ranker (#18)
+            from src.decision.consequence import ConsequenceModel
+            consequence = ConsequenceModel.load_np(d / manifest["consequence"])
         return cls(encoder=encoder, scorer=scorer, gate=gate, cache=cache,
-                   encoder_id=manifest.get("encoder_id", ""), composer=composer)
+                   encoder_id=manifest.get("encoder_id", ""), composer=composer,
+                   consequence=consequence)
