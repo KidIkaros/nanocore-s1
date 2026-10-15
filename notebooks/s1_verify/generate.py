@@ -372,6 +372,28 @@ if len(_yc) >= 20:
     print("consequence predictor:", json.dumps(_cons_eval, indent=2))
     _consequence.save_np(WORK / "consequence.npz")
     print("consequence model saved:", WORK / "consequence.npz")
+
+# ── Success gate (#17 signature): does the re-ranker flatten the depth
+# bottleneck? A/B the served decide() path with and without the consequence
+# re-ranker over the held-out test set. The re-ranker fires inside decide() on
+# escalate, so both models run the full path; only prediction_set ordering on
+# escalations differs. Reports hard-quartile accuracy + depth_slope delta.
+if _consequence is not None:
+    from src.decision.consequence_eval import measure_consequence_gain
+    _m_base = _DM(encoder=encoder, scorer=head, gate=gate_h)
+    _m_cons = _DM(encoder=encoder, scorer=head, gate=gate_h,
+                  consequence=_consequence)
+    _shared_q2 = Question(qtype="choice", options=INTENT_TEXTS)
+    _states = _X_te_in[:800]     # cap for kernel time
+    _in_mask = [bool(m) for m in _te_in[:800]]
+    _ycol = [int(v) for v in _y_te_in[:800]]
+    _gain = measure_consequence_gain(_m_base, _m_cons, _states, _shared_q2,
+                                     _in_mask, _ycol)
+    RESULTS["consequence_success_gate"] = _gain
+    print("consequence success gate:", json.dumps(_gain, indent=2))
+    print("EARNS SLOT:", _gain["earns_slot"],
+          "| hard-quartile delta:", _gain["hard_quartile_delta"],
+          "| depth_slope delta:", _gain["depth_slope_delta"])
 # self-describing save: intent map travels with the traces (the v19 lesson)
 np.savez_compressed(WORK / "trajectory_corpus.npz",
                      traces=np.array([t.to_dict() for t in _traces], dtype=object),
