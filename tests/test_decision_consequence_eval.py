@@ -114,3 +114,82 @@ def test_measure_reports_regression():
                                  _question(), in_mask, y_col)
     assert r["hard_quartile_delta"] < 0
     assert r["earns_slot"] is False
+
+
+def test_action_filter_restricts_to_target_population():
+    """action_filter='escalate' keeps only states where the base model
+    escalates — the population the re-ranker targets. Answered states are
+    dropped from the measurement."""
+    n = 40
+    labels = ["a", "b", "c", "d"]
+    in_mask = [True] * n
+    y_col = list(range(4)) * (n // 4)
+    # base: even=answer, odd=escalate. consequence improves the odd (escalate) ones.
+    base_res = [(0.95, False, True) if i % 2 == 0 else (0.2, True, False)
+                for i in range(n)]
+    cons_res = [(0.95, False, True) if i % 2 == 0 else (0.2, True, True)
+                for i in range(n)]
+    base = _StubModel(base_res, y_col)
+    cons = _StubModel(cons_res, y_col)
+    # unfiltered: consequence improves the hard (odd) states
+    r_all = measure_consequence_gain(base, cons, [f"s{i}" for i in range(n)],
+                                     _question(), in_mask, y_col)
+    # filtered to escalate: only the odd states, where consequence flips wrong->right
+    base2 = _StubModel(base_res, y_col)
+    cons2 = _StubModel(cons_res, y_col)
+    r_esc = measure_consequence_gain(base2, cons2, [f"s{i}" for i in range(n)],
+                                     _question(), in_mask, y_col,
+                                     action_filter="escalate")
+    assert r_esc["n"] < r_all["n"]            # fewer states (escalate-only)
+    assert r_esc["n"] == n // 2               # exactly the odd states
+    # on the escalate population, consequence strictly improves accuracy
+    assert r_esc["consequence"]["accuracy"] > r_esc["base"]["accuracy"]
+    assert r_esc["hard_quartile_delta"] > 0
+    assert r_esc["earns_slot"] is True
+
+
+def test_first_survivor_metric_detects_rerank_gain():
+    """The organ's real signal: first_survivor_hit. When the consequence model
+    reorders prediction_set so the true intent is first (base put it second),
+    first_survivor_delta > 0 even though argmax accuracy is unchanged."""
+    class _PredSet:
+        def __init__(self, conf, pred_set, y_i, labels):
+            self.action = "escalate"
+            self.answer_confidence = conf
+            self.labels = labels
+            # argmax is ALWAYS the true label (single-shot correct) — the
+            # re-ranker never changes this; only pred_set order differs.
+            self.probabilities = {l: (1.0 if l == labels[y_i] else 0.0)
+                                  for l in labels}
+            self.prediction_set = pred_set
+    class _ReorderModel:
+        def __init__(self, first_is_true, y_col, labels):
+            self.first_is_true = first_is_true
+            self.y_col = y_col
+            self.labels = labels
+            self.i = 0
+        def decide(self, state, question):
+            yi = int(self.y_col[self.i]); self.i += 1
+            true_lbl = self.labels[yi]
+            others = [l for l in self.labels if l != true_lbl]
+            if self.first_is_true:
+                pset = [true_lbl] + others       # true intent first
+            else:
+                pset = [others[0], true_lbl] + others[1:]  # true intent second
+            return _PredSet(0.2, pset, yi, self.labels)
+    n = 20
+    labels = ["a", "b", "c", "d"]
+    y_col = list(range(4)) * (n // 4)
+    in_mask = [True] * n
+    base = _ReorderModel(False, y_col, labels)    # true intent NOT first
+    cons = _ReorderModel(True, y_col, labels)     # true intent first
+    r = measure_consequence_gain(base, cons, [f"s{i}" for i in range(n)],
+                                 _question(), in_mask, y_col,
+                                 action_filter="escalate")
+    # argmax accuracy identical (re-ranker never touches probabilities)
+    assert r["base"]["accuracy"] == r["consequence"]["accuracy"]
+    # but the first-survivor hit rate jumps — the organ's real value
+    assert r["base"]["first_survivor_hit"] == 0.0
+    assert r["consequence"]["first_survivor_hit"] == 1.0
+    assert r["first_survivor_delta"] == 1.0
+    assert r["earns_slot"] is True

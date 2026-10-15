@@ -387,13 +387,26 @@ if _consequence is not None:
     _states = _X_te_in[:800]     # cap for kernel time
     _in_mask = [bool(m) for m in _te_in[:800]]
     _ycol = [int(v) for v in _y_te_in[:800]]
+    # Unfiltered A/B (the v15 measurement — dominated by answered states)
     _gain = measure_consequence_gain(_m_base, _m_cons, _states, _shared_q2,
                                      _in_mask, _ycol)
     RESULTS["consequence_success_gate"] = _gain
-    print("consequence success gate:", json.dumps(_gain, indent=2))
-    print("EARNS SLOT:", _gain["earns_slot"],
-          "| hard-quartile delta:", _gain["hard_quartile_delta"],
-          "| depth_slope delta:", _gain["depth_slope_delta"])
+    print("consequence success gate (all):", json.dumps(_gain, indent=2))
+    # Stratified A/B: measure ONLY where the re-ranker fires (escalate states).
+    # The v15 unfiltered gate showed zero delta because the head escalates only
+    # ~4.6% — the organ was never exercised. This is the population it targets.
+    _gain_esc = measure_consequence_gain(_m_base, _m_cons, _states, _shared_q2,
+                                         _in_mask, _ycol,
+                                         action_filter="escalate")
+    RESULTS["consequence_success_gate_escalate"] = _gain_esc
+    print("consequence success gate (escalate-only):",
+          json.dumps(_gain_esc, indent=2))
+    print("EARNS SLOT (all):", _gain["earns_slot"],
+          "| hard-quartile delta:", _gain["hard_quartile_delta"])
+    print("EARNS SLOT (escalate-only):", _gain_esc["earns_slot"],
+          "| n:", _gain_esc["n"],
+          "| hard-quartile delta:", _gain_esc["hard_quartile_delta"],
+          "| depth_slope delta:", _gain_esc["depth_slope_delta"])
 # self-describing save: intent map travels with the traces (the v19 lesson)
 np.savez_compressed(WORK / "trajectory_corpus.npz",
                      traces=np.array([t.to_dict() for t in _traces], dtype=object),
