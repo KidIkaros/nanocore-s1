@@ -2186,6 +2186,49 @@ if "verdict" in RESULTS.get("qualification", {}):
         RESULTS["verdict"]["model_card_written"] = False
         print("delivery failed:", repr(e)[:200])
 
+# ── Frontier leg: type-routed memory on the WEAK-CORE anchor (emotion) ────
+# clinc150 is saturated (head ~0.93, answers 95% of traffic) — the consequence
+# organ (#18) failed there for lack of a population. Emotion is the weak-core
+# anchor: head 0.52, depth_slope 0.432, volume_slope 0.305, 1357 hard examples.
+# This leg tests whether a MemoType-style type-routed memory plane helps a core
+# that actually needs help. Runs on Kaggle (43k-row memory; the similarity
+# matrix is too large for a workstation). Loads cached EG2 embeddings as a
+# dataset input.
+def _emotion_frontier_leg():
+    import glob
+    from src.decision.scoring import TaskHead
+    from src.decision.memory_routing import run_memory_frontier
+
+    cands = glob.glob("/kaggle/input/*/goemotions_embeddings.npz")
+    if not cands:
+        print("emotion frontier leg: embeddings dataset not found — skipped")
+        return
+    d = np.load(cands[0], allow_pickle=True)
+    Etr, Gtr = d["emb_train"], d["gold_train"]
+    Ete, Gte = d["emb_test"], d["gold_test"]
+    emotions = list(d["emotions"]); K = len(emotions)
+    ytr, yte = Gtr.argmax(1), Gte.argmax(1)
+
+    head = TaskHead(kind="linear")
+    head.fit(Etr, ytr, labels=[str(i) for i in range(K)], seed=0, epochs=40)
+    Lte = head.logits(Ete)
+    print(f"emotion head test acc = {(Lte.argmax(1) == yte).mean():.4f} "
+          f"(K={K}, memory={len(Etr)} rows)")
+    r = run_memory_frontier(Etr, ytr, Ete, yte, Lte,
+                            temperature=head.temperature, n_classes=K,
+                            top_t=3, k=10, trust=0.5, batch=256)
+    RESULTS["emotion_memory_frontier"] = r
+    print("emotion memory frontier:", json.dumps(r, indent=2))
+    for v in ("head", "plain_knn", "type_routed", "blend"):
+        b = r[v]
+        print(f"  {v:12s} overall={b['overall']:.4f} "
+              f"hard={b['hard_quartile']:.4f} slope={b['depth_slope']}")
+    print("TYPE-ROUTED HELPS HARD CORE:",
+          r["hard_quartile_gain_vs_head"] > 0,
+          f"(gain {r['hard_quartile_gain_vs_head']:+.4f} on hard quartile)")
+
+_emotion_frontier_leg()
+
 (WORK / "results.json").write_text(json.dumps(RESULTS, indent=2))
 write_status(done=True)
 '''),
