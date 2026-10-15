@@ -1,0 +1,194 @@
+[{"stream_name":"stderr","time":7.009842309,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":7.009883147,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":8.015190647,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.015217536,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.015222221,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.015225805,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":8.634394402,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.634432223,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.634437874,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.634442198,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":12.45790079,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":12.457934919,"data":"Tesla T4, 15360 MiB\n"}
+,{"stream_name":"stdout","time":12.457939672,"data":"\n"}
+,{"stream_name":"stdout","time":213.528292769,"data":"........................................................................ [ 11%]\n"}
+,{"stream_name":"stdout","time":213.528327463,"data":"........................................................................ [ 23%]\n"}
+,{"stream_name":"stdout","time":213.528333363,"data":"........................................................................ [ 35%]\n"}
+,{"stream_name":"stdout","time":213.528340173,"data":"........................................................................ [ 47%]\n"}
+,{"stream_name":"stdout","time":213.528357853,"data":".........................................................ss............. [ 59%]\n"}
+,{"stream_name":"stdout","time":213.528363436,"data":"..................................................................s..... [ 71%]\n"}
+,{"stream_name":"stdout","time":213.528368365,"data":"........................................................................ [ 82%]\n"}
+,{"stream_name":"stdout","time":213.528373109,"data":"........................................................................ [ 94%]\n"}
+,{"stream_name":"stdout","time":213.528377735,"data":"................................                                         [100%]\n"}
+,{"stream_name":"stdout","time":213.528382667,"data":"=============================== warnings summary ===============================\n"}
+,{"stream_name":"stdout","time":213.528387841,"data":"tests/test_decision_cli_adapt.py: 3 warnings\n"}
+,{"stream_name":"stdout","time":213.528392709,"data":"tests/test_decision_phase8.py: 1 warning\n"}
+,{"stream_name":"stdout","time":213.528398087,"data":"tests/test_decision_scorer_selection.py: 2 warnings\n"}
+,{"stream_name":"stdout","time":213.528403001,"data":"tests/test_decision_scoring_np_head.py: 3 warnings\n"}
+,{"stream_name":"stdout","time":213.528407828,"data":"tests/test_decision_slow.py: 1 warning\n"}
+,{"stream_name":"stdout","time":213.528412869,"data":"  /kaggle/working/nanocore-s1/src/decision/scoring.py:141: UserWarning: fit_temperature bound-limited at the ceiling (t=4.0); widen `ceiling` before trusting the fit\n"}
+,{"stream_name":"stdout","time":213.528428959,"data":"    warnings.warn(f\"fit_temperature bound-limited at the ceiling \"\n"}
+,{"stream_name":"stdout","time":213.528432979,"data":"\n"}
+,{"stream_name":"stdout","time":213.528436205,"data":"tests/test_decision_evaluate.py::test_tfidf_baseline_column_alignment\n"}
+,{"stream_name":"stdout","time":213.528439989,"data":"tests/test_decision_evaluate.py::test_tfidf_baseline_missing_class\n"}
+,{"stream_name":"stdout","time":213.528444085,"data":"tests/test_decision_evaluate.py::test_dataset_suite_end_to_end\n"}
+,{"stream_name":"stdout","time":213.528448537,"data":"  /usr/local/lib/python3.13/dist-packages/sklearn/linear_model/_logistic.py:451: DeprecationWarning: scipy.optimize: The `disp` and `iprint` options of the L-BFGS-B solver are deprecated and will be removed in SciPy 1.18.0.\n"}
+,{"stream_name":"stdout","time":213.528454019,"data":"    opt_res = optimize.minimize(\n"}
+,{"stream_name":"stdout","time":213.528457605,"data":"\n"}
+,{"stream_name":"stdout","time":213.528461471,"data":"-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n"}
+,{"stream_name":"stdout","time":213.528465227,"data":"605 passed, 3 skipped, 13 warnings in 180.29s (0:03:00)\n"}
+,{"stream_name":"stdout","time":213.528468885,"data":"\n"}
+,{"stream_name":"stdout","time":216.680492389,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 9.1 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":216.854201035,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 88.2 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":216.883150162,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 9.1 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":216.883173706,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 88.2 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":216.948821317,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.7/6.7 MB 96.1 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":216.996792282,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 33.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":217.045595436,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 304.9/304.9 kB 11.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":217.15113674,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.7/6.7 MB 96.1 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":217.151167869,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 33.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":217.151171583,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 304.9/304.9 kB 11.4 MB/s eta 0:00:00\n"}
+,{"stream_name":"stderr","time":255.174019715,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":255.174057757,"data":"\n"}
+,{"stream_name":"stderr","time":255.174062737,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":274.159343531,"data":"datasets path failed: HfUriError(\"Invalid HF URI 'hf://datasets/clinc_oos@155b9c710419136e17307b80d0a13e68cd46b4ec/.huggingface.yaml'. Repository id must be 'name\n"}
+,{"stream_name":"stdout","time":274.389975926,"data":"source: github json | train 15000 | val 3100 | test 5500\n"}
+,{"stream_name":"stdout","time":350.969628839,"data":"peak cuda GiB: 0.88\n"}
+,{"stream_name":"stdout","time":361.868089967,"data":"cosine calibration: {\n"}
+,{"stream_name":"stdout","time":361.868147224,"data":" \"t_prob\": 0.25,\n"}
+,{"stream_name":"stdout","time":361.868154647,"data":" \"tau_answer\": 0.015279530048182147,\n"}
+,{"stream_name":"stdout","time":361.868160307,"data":" \"qhat\": 0.02393932927923971,\n"}
+,{"stream_name":"stdout","time":361.868165695,"data":" \"t_set\": 1.0,\n"}
+,{"stream_name":"stdout","time":361.868171137,"data":" \"n_A\": 1497,\n"}
+,{"stream_name":"stdout","time":361.868176267,"data":" \"n_B\": 1503,\n"}
+,{"stream_name":"stdout","time":361.868180807,"data":" \"tau_in_schema\": 0.6991039514541626\n"}
+,{"stream_name":"stdout","time":361.868198559,"data":"}\n"}
+,{"stream_name":"stdout","time":362.553041696,"data":"cosine leg: {\"actions\": {\"escalate\": 3648, \"answer\": 1797, \"clarify\": 55}, \"resolved\": 0.482, \"encodes\": 5555, \"cov_hits\": 4113, \"n_in\": 4500, \"encodes_per_item\": 1.01, \"set_coverage_in_scope\": 0.914, \"mean_set_size\": 3.798, \"singleton_rate\": 0.0}\n"}
+,{"stream_name":"stdout","time":365.828962999,"data":"head: {'best_val_loss': 0.09621404856443405, 'epochs_run': 27, 'n_train': 13500, 'n_classes': 150}\n"}
+,{"stream_name":"stdout","time":365.829007469,"data":"TaskHead in-scope accuracy: 0.969\n"}
+,{"stream_name":"stdout","time":366.041224662,"data":"head calibration: {\n"}
+,{"stream_name":"stdout","time":366.041260729,"data":" \"t_prob\": 0.8548387096774194,\n"}
+,{"stream_name":"stdout","time":366.041268583,"data":" \"tau_answer\": 0.2898013801129313,\n"}
+,{"stream_name":"stdout","time":366.04127507,"data":" \"qhat\": 0.011418504449013068,\n"}
+,{"stream_name":"stdout","time":366.041281184,"data":" \"t_set\": 32.0,\n"}
+,{"stream_name":"stdout","time":366.041287304,"data":" \"n_A\": 1497,\n"}
+,{"stream_name":"stdout","time":366.041293234,"data":" \"n_B\": 1503,\n"}
+,{"stream_name":"stdout","time":366.041299113,"data":" \"tau_in_schema\": 9.803706169128418\n"}
+,{"stream_name":"stdout","time":366.041305256,"data":"}\n"}
+,{"stream_name":"stdout","time":366.72160374,"data":"head leg: {\"actions\": {\"answer\": 4381, \"escalate\": 1119}, \"resolved\": 0.931, \"encodes\": 5500, \"cov_hits\": 4447, \"n_in\": 4500, \"encodes_per_item\": 1.0, \"set_coverage_in_scope\": 0.988, \"mean_set_size\": 1.935, \"singleton_rate\": 0.065}\n"}
+,{"stream_name":"stdout","time":366.721643609,"data":"frontier diagnostic: {\n"}
+,{"stream_name":"stdout","time":366.721650823,"data":"  \"depth_bottleneck\": true,\n"}
+,{"stream_name":"stdout","time":366.721655827,"data":"  \"volume_bottleneck\": false,\n"}
+,{"stream_name":"stdout","time":366.721660125,"data":"  \"neither\": false,\n"}
+,{"stream_name":"stdout","time":366.721664623,"data":"  \"depth_slope\": 0.112,\n"}
+,{"stream_name":"stdout","time":366.721669709,"data":"  \"volume_slope\": 0.0,\n"}
+,{"stream_name":"stdout","time":366.721674269,"data":"  \"recommendation\": \"predictive organ first (RWM consequence prediction): accuracy falls with decision difficulty\",\n"}
+,{"stream_name":"stdout","time":366.721694902,"data":"  \"buckets\": {\n"}
+,{"stream_name":"stdout","time":366.721699404,"data":"    \"difficulty\": [\n"}
+,{"stream_name":"stdout","time":366.721703056,"data":"      {\n"}
+,{"stream_name":"stdout","time":366.72170664,"data":"        \"bucket\": 0,\n"}
+,{"stream_name":"stdout","time":366.721710342,"data":"        \"n\": 1125,\n"}
+,{"stream_name":"stdout","time":366.721714153,"data":"        \"accuracy\": 1.0,\n"}
+,{"stream_name":"stdout","time":366.721717694,"data":"        \"axis_mean\": 0.0\n"}
+,{"stream_name":"stdout","time":366.721731663,"data":"      },\n"}
+,{"stream_name":"stdout","time":366.721734583,"data":"      {\n"}
+,{"stream_name":"stdout","time":366.721737496,"data":"        \"bucket\": 1,\n"}
+,{"stream_name":"stdout","time":366.721740806,"data":"        \"n\": 1125,\n"}
+,{"stream_name":"stdout","time":366.721744427,"data":"        \"accuracy\": 0.9973,\n"}
+,{"stream_name":"stdout","time":366.721747463,"data":"        \"axis_mean\": 0.0003\n"}
+,{"stream_name":"stdout","time":366.721750853,"data":"      },\n"}
+,{"stream_name":"stdout","time":366.721754314,"data":"      {\n"}
+,{"stream_name":"stdout","time":366.721757488,"data":"        \"bucket\": 2,\n"}
+,{"stream_name":"stdout","time":366.721760668,"data":"        \"n\": 1125,\n"}
+,{"stream_name":"stdout","time":366.721763804,"data":"        \"accuracy\": 0.992,\n"}
+,{"stream_name":"stdout","time":366.721766854,"data":"        \"axis_mean\": 0.0016\n"}
+,{"stream_name":"stdout","time":366.721769801,"data":"      },\n"}
+,{"stream_name":"stdout","time":366.721773012,"data":"      {\n"}
+,{"stream_name":"stdout","time":366.721776176,"data":"        \"bucket\": 3,\n"}
+,{"stream_name":"stdout","time":366.72177926,"data":"        \"n\": 1125,\n"}
+,{"stream_name":"stdout","time":366.72178236,"data":"        \"accuracy\": 0.888,\n"}
+,{"stream_name":"stdout","time":366.721785889,"data":"        \"axis_mean\": 0.1059\n"}
+,{"stream_name":"stdout","time":366.721789049,"data":"      }\n"}
+,{"stream_name":"stdout","time":366.721792104,"data":"    ],\n"}
+,{"stream_name":"stdout","time":366.721795089,"data":"    \"volume\": [\n"}
+,{"stream_name":"stdout","time":366.721798519,"data":"      {\n"}
+,{"stream_name":"stdout","time":366.721801784,"data":"        \"bucket\": 0,\n"}
+,{"stream_name":"stdout","time":366.721805091,"data":"        \"n\": 0,\n"}
+,{"stream_name":"stdout","time":366.721808193,"data":"        \"accuracy\": NaN,\n"}
+,{"stream_name":"stdout","time":366.721811385,"data":"        \"axis_mean\": null\n"}
+,{"stream_name":"stdout","time":366.721814509,"data":"      },\n"}
+,{"stream_name":"stdout","time":366.721817603,"data":"      {\n"}
+,{"stream_name":"stdout","time":366.721821003,"data":"        \"bucket\": 1,\n"}
+,{"stream_name":"stdout","time":366.721824489,"data":"        \"n\": 0,\n"}
+,{"stream_name":"stdout","time":366.721827636,"data":"        \"accuracy\": NaN,\n"}
+,{"stream_name":"stdout","time":366.721831159,"data":"        \"axis_mean\": null\n"}
+,{"stream_name":"stdout","time":366.721834328,"data":"      },\n"}
+,{"stream_name":"stdout","time":366.721853058,"data":"      {\n"}
+,{"stream_name":"stdout","time":366.721856424,"data":"        \"bucket\": 2,\n"}
+,{"stream_name":"stdout","time":366.721860063,"data":"        \"n\": 0,\n"}
+,{"stream_name":"stdout","time":366.721863477,"data":"        \"accuracy\": NaN,\n"}
+,{"stream_name":"stdout","time":366.721867074,"data":"        \"axis_mean\": null\n"}
+,{"stream_name":"stdout","time":366.721870665,"data":"      },\n"}
+,{"stream_name":"stdout","time":366.721886255,"data":"      {\n"}
+,{"stream_name":"stdout","time":366.721890269,"data":"        \"bucket\": 3,\n"}
+,{"stream_name":"stdout","time":366.721893773,"data":"        \"n\": 4500,\n"}
+,{"stream_name":"stdout","time":366.721897288,"data":"        \"accuracy\": 0.9693,\n"}
+,{"stream_name":"stdout","time":366.721900845,"data":"        \"axis_mean\": 1.0402\n"}
+,{"stream_name":"stdout","time":366.721904198,"data":"      }\n"}
+,{"stream_name":"stdout","time":366.721907218,"data":"    ]\n"}
+,{"stream_name":"stdout","time":366.721910328,"data":"  }\n"}
+,{"stream_name":"stdout","time":366.721913333,"data":"}\n"}
+,{"stream_name":"stdout","time":366.721916773,"data":"FRONTIER VERDICT: predictive organ first (RWM consequence prediction): accuracy falls with decision difficulty\n"}
+,{"stream_name":"stdout","time":518.69657629,"data":"trajectory corpus: {\n"}
+,{"stream_name":"stdout","time":518.696609917,"data":"  \"n\": 800,\n"}
+,{"stream_name":"stdout","time":518.696616167,"data":"  \"resolved\": 659,\n"}
+,{"stream_name":"stdout","time":518.696621194,"data":"  \"resolve_rate\": 0.8237,\n"}
+,{"stream_name":"stdout","time":518.696625773,"data":"  \"multi_step\": 209,\n"}
+,{"stream_name":"stdout","time":518.696630626,"data":"  \"multi_step_rate\": 0.2612,\n"}
+,{"stream_name":"stdout","time":518.696634773,"data":"  \"by_iterations\": {\n"}
+,{"stream_name":"stdout","time":518.696640141,"data":"    \"1\": {\n"}
+,{"stream_name":"stdout","time":518.696644766,"data":"      \"n\": 591,\n"}
+,{"stream_name":"stdout","time":518.696649878,"data":"      \"resolved\": 591\n"}
+,{"stream_name":"stdout","time":518.696654407,"data":"    },\n"}
+,{"stream_name":"stdout","time":518.696659305,"data":"    \"2\": {\n"}
+,{"stream_name":"stdout","time":518.696664123,"data":"      \"n\": 35,\n"}
+,{"stream_name":"stdout","time":518.696668469,"data":"      \"resolved\": 35\n"}
+,{"stream_name":"stdout","time":518.69667292,"data":"    },\n"}
+,{"stream_name":"stdout","time":518.696677285,"data":"    \"3\": {\n"}
+,{"stream_name":"stdout","time":518.696681481,"data":"      \"n\": 174,\n"}
+,{"stream_name":"stdout","time":518.696685808,"data":"      \"resolved\": 33\n"}
+,{"stream_name":"stdout","time":518.69669035,"data":"    }\n"}
+,{"stream_name":"stdout","time":518.696694523,"data":"  }\n"}
+,{"stream_name":"stdout","time":518.696699508,"data":"}\n"}
+,{"stream_name":"stderr","time":521.466036466,"data":"Traceback (most recent call last):\n"}
+,{"stream_name":"stderr","time":521.46674169,"data":"  File \"\u003cstring\u003e\", line 1, in \u003cmodule\u003e\n"}
+,{"stream_name":"stderr","time":521.466769362,"data":"    import sys;import papermill as pm;pm.execute_notebook(\"__notebook__.ipynb\",\"__notebook__.ipynb\",progress_bar=False,log_output=True,stdout_file=sys.stdout,stderr_file=sys.stderr,allow_errors=False,timeout=43200)\n"}
+,{"stream_name":"stderr","time":521.466775568,"data":"                                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":521.466780204,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 131, in execute_notebook\n"}
+,{"stream_name":"stderr","time":521.466785138,"data":"    raise_for_execution_errors(nb, output_path)\n"}
+,{"stream_name":"stderr","time":521.466789201,"data":"    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n"}
+,{"stream_name":"stderr","time":521.466793469,"data":"  File \"/usr/local/lib/python3.13/dist-packages/papermill/execute.py\", line 251, in raise_for_execution_errors\n"}
+,{"stream_name":"stderr","time":521.466806917,"data":"    raise error\n"}
+,{"stream_name":"stderr","time":521.466811556,"data":"papermill.exceptions.PapermillExecutionError: \n"}
+,{"stream_name":"stderr","time":521.46681473,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":521.466817847,"data":"Exception encountered at \"In [8]\":\n"}
+,{"stream_name":"stderr","time":521.466820968,"data":"---------------------------------------------------------------------------\n"}
+,{"stream_name":"stderr","time":521.466824289,"data":"TypeError                                 Traceback (most recent call last)\n"}
+,{"stream_name":"stderr","time":521.466827936,"data":"/tmp/ipykernel_23/1365194033.py in \u003ccell line: 0\u003e()\n"}
+,{"stream_name":"stderr","time":521.466831486,"data":"     86 # in regenerating the corpus — chicken-and-egg otherwise).\n"}
+,{"stream_name":"stderr","time":521.466836232,"data":"     87 from src.decision.consequence import fit_consequence, ConsequenceModel, auc, brier_score\n"}
+,{"stream_name":"stderr","time":521.466840038,"data":"---\u003e 88 _Xc = [s[\"state_emb\"] for t in _traces for s in t[\"steps\"]\n"}
+,{"stream_name":"stderr","time":521.466844279,"data":"     89        if s[\"action\"] == \"escalate\" and s.get(\"state_emb\") is not None]\n"}
+,{"stream_name":"stderr","time":521.466847856,"data":"     90 _yc = [float(t[\"resolved\"]) for t in _traces for s in t[\"steps\"]\n"}
+,{"stream_name":"stderr","time":521.466851289,"data":"\n"}
+,{"stream_name":"stderr","time":521.466854359,"data":"TypeError: 'QuestionTrace' object is not subscriptable\n"}
+,{"stream_name":"stderr","time":521.466857728,"data":"\n"}
+,{"stream_name":"stderr","time":523.527629643,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":523.527659282,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":523.687007414,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":523.6870482,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":524.436685301,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":524.565966928,"data":"[NbConvertApp] Writing 776765 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":526.979233108,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":527.91819923,"data":"[NbConvertApp] Writing 1367009 bytes to __results__.html\n"}
+]

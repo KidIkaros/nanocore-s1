@@ -352,9 +352,10 @@ print("trajectory corpus:", json.dumps(_traj_stats, indent=2))
 # itself is generated head-only (the re-ranker's value is in the serve path, not
 # in regenerating the corpus — chicken-and-egg otherwise).
 from src.decision.consequence import fit_consequence, ConsequenceModel, auc, brier_score
-_Xc = [s["state_emb"] for t in _traces for s in t["steps"]
+# _traces holds QuestionTrace OBJECTS (dataclass), not dicts — attribute access.
+_Xc = [s["state_emb"] for t in _traces for s in t.steps
        if s["action"] == "escalate" and s.get("state_emb") is not None]
-_yc = [float(t["resolved"]) for t in _traces for s in t["steps"]
+_yc = [float(t.resolved) for t in _traces for s in t.steps
        if s["action"] == "escalate" and s.get("state_emb") is not None]
 _consequence = None
 if len(_yc) >= 20:
