@@ -82,4 +82,28 @@ def test_buckets_report_n_and_accuracy():
         assert len(bks) == 4
         assert sum(b["n"] for b in bks) == n
         for b in bks:
-            assert 0.0 <= b["accuracy"] <= 1.0
+            if b["n"] > 0:
+                assert 0.0 <= b["accuracy"] <= 1.0
+            else:
+                # an empty bucket has no accuracy to report — NaN is honest
+                assert b["accuracy"] != b["accuracy"]
+
+
+def test_volume_axis_is_scale_relative():
+    """The volume axis must not collapse on tightly-packed scores. A fixed
+    absolute crowd margin put every example in one bucket on emotion (all 28
+    classes within 1.0) and none on clinc (all gaps > 1.0) — the v9/#17
+    degenerate axis. Scale-relative (within one row-std of the winner) adapts to
+    each example's own spread, so the axis varies on both."""
+    n = 400
+    rng = np.random.default_rng(5)
+    top_prob = rng.uniform(0.3, 0.95, n)
+    top1 = rng.random(n) < 0.6
+    # tightly packed scores: every class within ~1.0 of the winner
+    tight = rng.normal(0, 0.05, (n, 28))
+    rec, S = _rec(top1, top_prob, tight)
+    v = diagnose_frontier(rec, S, n_buckets=4)
+    nonempty = [b for b in v.buckets["volume"] if b["n"] > 0]
+    assert len(nonempty) >= 2, (
+        f"scale-relative volume axis must split tightly-packed scores into "
+        f">1 bucket, got {len(nonempty)}")

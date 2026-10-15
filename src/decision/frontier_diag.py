@@ -73,12 +73,15 @@ def diagnose_frontier(rec: dict, scores: np.ndarray, n_buckets: int = 4,
 
     # depth axis: difficulty = 1 - confidence. Low confidence = hard decision.
     difficulty = 1.0 - top_prob
-    # volume axis: crowd = number of classes whose score is within a margin of
-    # the winner (competing stored evidence). More crowd = volume bottleneck.
-    srt = np.sort(scores, axis=1)[:, ::-1]
-    winner = srt[:, 0]
-    # classes within 1.0 of the winner's score (the "near-miss" competition)
-    crowd = (scores >= (winner[:, None] - 1.0)).sum(axis=1).astype(float)
+    # volume axis: crowd = how many classes compete with the winner, measured
+    # SCALE-RELATIVELY (within one row-std of the winner) so it adapts to each
+    # example's own score spread. A fixed absolute margin collapses to one
+    # bucket whenever the logit scale is tight (emotion: all 28 classes within
+    # 1.0) or wide (clinc: none) — the v9/#17 degenerate axis.
+    srt_v = np.sort(scores, axis=1)[:, ::-1]
+    winner_v = srt_v[:, 0]
+    row_std = scores.std(axis=1)
+    crowd = (scores >= (winner_v[:, None] - row_std[:, None])).sum(axis=1).astype(float)
 
     def slope_and_buckets(axis: np.ndarray) -> (float, List[dict]):
         b = _bucket_by(axis, n_buckets)
